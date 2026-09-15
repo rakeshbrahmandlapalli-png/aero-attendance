@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Clock in</title>
+<meta name="theme-color" content="#F6F7F8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230A6E4E'/%3E%3Ccircle cx='32' cy='32' r='15' fill='none' stroke='%23ffffff' stroke-width='4.5'/%3E%3Cpath d='M32 23v10l6.5 3.5' stroke='%23ffffff' stroke-width='4.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
+
+<!-- Supabase settings live INLINE on purpose. An external config.js gets
+     eaten by ad blockers (learned the hard way on another build) and a
+     blocked settings file means a driver cannot clock in. -->
+<script>
+  window.APP_CONFIG = {
+    url: "",   // https://xxxxxxxx.supabase.co
+    key: ""    // the PUBLISHABLE key (safe to ship — it can only do what RLS allows)
+  };
+</script>
+
+<style>
+  /* Light, restrained, built to look like a tool a company pays for.
+     Deliberate choices: hairline borders instead of drop shadows, muted
+     colours instead of saturated ones, one accent doing semantic work
+     (green = working), 10px radii, tabular numerals everywhere a number
+     can change. */
+  :root{
+    --page:#F6F7F8;
+    --card:#FFFFFF;
+    --line:#E4E7EA;
+    --line-soft:#EDEFF2;
+    --ink:#15171A;
+    --ink-2:#59616C;
+    --ink-3:#8C95A1;
+    --accent:#0A6E4E;
+    --accent-soft:#E9F3EF;
+    --warn:#9A5B0A;
+    --warn-soft:#FBF3E7;
+    --r:12px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; background:var(--page); color:var(--ink);
+    font:400 16px/1.5 "Instrument Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;}
+  body{padding:0 0 env(safe-area-inset-bottom);}
+  .num{font-variant-numeric:tabular-nums;}
+  .wrap{max-width:520px; margin:0 auto; padding:20px 18px 48px;}
+
+  .top{display:flex; align-items:center; justify-content:space-between;
+       padding:16px 20px; background:var(--card); border-bottom:1px solid var(--line);}
+  .who{font-weight:600; font-size:15px; letter-spacing:-.01em;}
+  .co{color:var(--ink-3); font-size:13px; margin-top:1px;}
+  .link{background:none; border:0; color:var(--ink-3); font:inherit; font-size:13px;
+        padding:6px; cursor:pointer;}
+  .link:hover{color:var(--ink);}
+
+  /* ── status ─────────────────────────────── */
+  .status{background:var(--card); border:1px solid var(--line); border-radius:var(--r);
+          padding:24px 22px;}
+  .state{display:flex; align-items:center; gap:8px; font-size:11.5px; font-weight:600;
+         letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3);}
+  .dot{width:7px; height:7px; border-radius:50%; background:var(--ink-3); flex:none;}
+  .dot.on{background:var(--accent); box-shadow:0 0 0 3px var(--accent-soft);}
+  .since{font-size:34px; font-weight:600; letter-spacing:-.025em; margin-top:14px;
+         font-variant-numeric:tabular-nums;}
+  .elapsed{color:var(--ink-2); font-size:14px; margin-top:4px; font-variant-numeric:tabular-nums;}
+
+  /* Green to start, near-black to stop. Red would read as an alarm for
+     something that is just the normal end of a shift. */
+  .act{width:100%; margin-top:16px; border:0; border-radius:var(--r);
+       padding:19px 20px; font:600 16.5px/1 "Instrument Sans",sans-serif;
+       letter-spacing:-.01em; cursor:pointer; color:#fff; background:var(--accent);
+       transition:opacity .12s;}
+  .act.out{background:var(--ink);}
+  .act:disabled{opacity:.5;}
+  .act:active{opacity:.88;}
+  .act:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+
+  label{display:block; font-size:11.5px; font-weight:600; letter-spacing:.08em;
+        text-transform:uppercase; color:var(--ink-3); margin:22px 0 8px;}
+  select,input{width:100%; padding:14px 13px; font:400 16px "Instrument Sans",sans-serif;
+    background:var(--card); color:var(--ink); border:1px solid var(--line); border-radius:10px;}
+  select:focus,input:focus{outline:2px solid var(--accent); outline-offset:-1px; border-color:var(--accent);}
+
+  /* ── map ────────────────────────────────
+     A fixed view, not a pannable map: centre on the site, draw the zone,
+     show where you are. Tiles are plain <img> in a grid — no mapping
+     library, so nothing breaks if a 40KB dependency changes its API, and
+     if tiles are ever blocked the zone and your position still render. */
+  .map{position:relative; height:190px; margin-top:16px; border-radius:var(--r);
+       overflow:hidden; border:1px solid var(--line); background:#EAEDF0;}
+  .map .tiles{position:absolute; inset:0;}
+  .map .tiles img{position:absolute; width:256px; height:256px; user-select:none;
+       -webkit-user-drag:none;}
+  .zone{position:absolute; border-radius:50%; border:1.5px solid var(--accent);
+        background:rgba(10,110,78,.13); transform:translate(-50%,-50%);
+        pointer-events:none;}
+  .youRing{position:absolute; border-radius:50%; background:rgba(21,23,26,.10);
+        transform:translate(-50%,-50%); pointer-events:none;}
+  .you{position:absolute; width:14px; height:14px; border-radius:50%;
+       background:var(--ink); border:2.5px solid #fff; transform:translate(-50%,-50%);
+       box-shadow:0 1px 4px rgba(0,0,0,.3); pointer-events:none;}
+  .mapTag{position:absolute; left:10px; top:10px; background:rgba(255,255,255,.94);
+       border:1px solid var(--line); border-radius:99px; padding:5px 11px;
+       font-size:12.5px; font-weight:500; display:flex; align-items:center; gap:7px;}
+  .mapTag i{width:6px; height:6px; border-radius:50%; background:var(--accent); flex:none;}
+  .mapTag.out i{background:var(--warn);}
+  .mapTag.out{color:var(--warn);}
+  .mapAttr{position:absolute; right:5px; bottom:3px; font-size:9.5px; color:#5C646E;
+       background:rgba(255,255,255,.8); padding:1px 5px; border-radius:4px;}
+  .mapAttr a{color:inherit;}
+
+  .note{font-size:13px; color:var(--ink-3); margin-top:12px; line-height:1.5;}
+  .note.warn{color:var(--warn);}
+
+  /* ── history ────────────────────────────── */
+  h2{font-size:11.5px; font-weight:600; letter-spacing:.08em; text-transform:uppercase;
+     color:var(--ink-3); margin:34px 0 4px;}
+  .list{background:var(--card); border:1px solid var(--line); border-radius:var(--r);
+        margin-top:12px; overflow:hidden;}
+  .row{display:flex; justify-content:space-between; align-items:center; gap:14px;
+       padding:15px 18px; border-bottom:1px solid var(--line-soft);}
+  .row:last-child{border-bottom:0;}
+  .row .d{font-weight:600; font-size:14.5px; letter-spacing:-.01em;}
+  .row .t{color:var(--ink-3); font-size:13px; margin-top:2px; font-variant-numeric:tabular-nums;}
+  .row .h{font-variant-numeric:tabular-nums; font-weight:600; font-size:14.5px; white-space:nowrap;}
+  .flag{color:var(--warn); font-size:12.5px; margin-top:3px;}
+
+  /* ── login ──────────────────────────────── */
+  .login{max-width:360px; margin:13vh auto; padding:0 22px;}
+  .login h1{font-size:23px; font-weight:600; letter-spacing:-.02em; margin:0 0 6px;}
+  .login p{color:var(--ink-2); font-size:14.5px; margin:0 0 26px;}
+  .btn{width:100%; padding:16px; border:0; border-radius:10px; background:var(--accent);
+       color:#fff; font:600 16px "Instrument Sans",sans-serif; cursor:pointer; margin-top:20px;}
+  .err{background:#FDF2F0; border:1px solid #F3D7D2; color:#96271A;
+       padding:12px 14px; border-radius:10px; font-size:14px; margin-top:16px;}
+  .hidden{display:none !important;}
+
+  .demoBar{background:var(--ink); color:#fff; font-size:12.5px; font-weight:500;
+    text-align:center; padding:9px 14px; letter-spacing:-.005em;}
+  .demoBar a{color:#fff; text-decoration:underline; text-underline-offset:2px;}
+
+  .toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%);
+    background:var(--ink); color:#fff; padding:12px 18px; border-radius:99px;
+    font-size:14px; font-weight:500; z-index:50; max-width:90vw;}
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN ───────────────────────────────── -->
+<div id="login" class="login hidden">
+  <h1>Clock in</h1>
+  <p>Sign in with the email your manager set up for you.</p>
+  <label for="email">Email</label>
+  <input id="email" type="email" autocomplete="username" inputmode="email">
+  <label for="pw">Password</label>
+  <input id="pw" type="password" autocomplete="current-password">
+  <button class="btn" id="signin">Sign in</button>
+  <div id="loginErr" class="err hidden"></div>
+</div>
+
+<!-- ── APP ─────────────────────────────────── -->
+<div id="app" class="hidden">
+  <div id="demoBar" class="demoBar hidden">
+    Demo — sample data, nothing saved. &nbsp;<a href="admin.html" style="color:inherit">See the manager board →</a>
+  </div>
+  <div class="top">
+    <div>
+      <div class="who" id="me">—</div>
+      <div class="co" id="company">—</div>
+    </div>
+    <button class="link" id="signout">Sign out</button>
+  </div>
+
+  <div class="wrap">
+    <div class="status">
+      <div class="state"><span class="dot off" id="dot"></span><span id="stateText">Not clocked in</span></div>
+      <div class="since" id="since">—</div>
+      <div class="elapsed" id="elapsed"></div>
+    </div>
+
+    <div id="siteWrap">
+      <label for="site">Where are you?</label>
+      <select id="site"></select>
+      <div class="map" id="map">
+        <div class="tiles" id="tiles"></div>
+        <div class="mapTag" id="mapTag" hidden><i></i><span id="mapTagText"></span></div>
+        <div class="mapAttr">&copy; <a href="https://www.openstreetmap.org/copyright"
+          target="_blank" rel="noopener">OpenStreetMap</a></div>
+      </div>
+    </div>
+
+    <button class="act in" id="action">Clock in</button>
+    <div class="note" id="locNote"></div>
+
+    <h2>Your recent shifts</h2>
+    <div id="history" class="list"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var CFG = window.APP_CONFIG || {};
+  var sb  = null;
+  var ME  = null;      // profile row
+  var OPEN = null;     // the open shift, or null
+  var tick = null;
+
+  // ── DEMO MODE ──────────────────────────────
+  //
+  // With no Supabase details filled in, the app runs on sample data instead
+  // of showing a dead "not set up" screen. That matters for two reasons:
+  // you can see what you're building before doing any setup, and you can
+  // hand a client the link and let them tap through it before they've
+  // bought anything. Everything below is fake and lives in memory only —
+  // a refresh resets it.
+  var LAST_SHIFT = null;   // most recent completed shift, for the empty state
+  var DEMO = !CFG.url || !CFG.key;
+
+  function demoShift(daysAgo, inH, inM, outH, outM, ok) {
+    var d = new Date(); d.setDate(d.getDate() - daysAgo);
+    var a = new Date(d); a.setHours(inH, inM, 0, 0);
+    var b = outH == null ? null : new Date(d); if (b) b.setHours(outH, outM, 0, 0);
+    return {
+      id: "demo-" + daysAgo + "-" + inH,
+      clock_in_at: a.toISOString(),
+      clock_out_at: b ? b.toISOString() : null,
+      clock_in_ok: ok === undefined ? true : ok,
+      clock_in_metres: ok === false ? 840 : 24,
+      clock_out_ok: true, note: ""
+    };
+  }
+
+  var D = {
+    profile: { full_name: "Sam Whitfield", company: "247 Airport Parking" },
+    sites: [
+      { id: "s1", name: "Main yard", lat: 51.87921, lng: -0.37641, radius_m: 150 },
+      { id: "s2", name: "Terminal drop-off", lat: 51.88412, lng: -0.36998, radius_m: 200 }
+    ],
+    open: null,
+    history: [
+      demoShift(1, 6, 2, 14, 11),
+      demoShift(2, 5, 58, 14, 3),
+      demoShift(3, 13, 47, 22, 6, false),
+      demoShift(4, 6, 1, 14, 0),
+      demoShift(6, 14, 5, 22, 30)
+    ]
+  };
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  function show(id, on) { $(id).classList.toggle("hidden", !on); }
+
+  function toast(msg) {
+    var t = document.createElement("div");
+    t.className = "toast"; t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(function () { t.remove(); }, 3200);
+  }
+
+  function hhmm(iso) {
+    var d = new Date(iso);
+    return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  }
+
+  function dayLabel(iso) {
+    return new Date(iso).toLocaleDateString("en-GB",
+      { weekday: "short", day: "numeric", month: "short" });
+  }
+
+  function hoursBetween(a, b) {
+    return (new Date(b || Date.now()) - new Date(a)) / 3600000;
+  }
+
+  function hoursText(h) {
+    var m = Math.round(h * 60);
+    return Math.floor(m / 60) + "h " + String(m % 60).padStart(2, "0") + "m";
+  }
+
+  // ── map ────────────────────────────────────
+  //
+  // Web Mercator, the same projection every slippy map uses. These convert a
+  // lat/lng into fractional tile coordinates at a given zoom; the whole part
+  // picks the tile, the fraction is the offset inside it.
+  function tileX(lng, z) { return (lng + 180) / 360 * Math.pow(2, z); }
+  function tileY(lat, z) {
+    var r = lat * Math.PI / 180;
+    return (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * Math.pow(2, z);
+  }
+  function metresPerPixel(lat, z) {
+    return 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, z);
+  }
+
+  function metresBetween(a, b, c, d) {
+    var R = 6371000, p = Math.PI / 180;
+    var x = Math.sin((c - a) * p / 2), y = Math.sin((d - b) * p / 2);
+    return 2 * R * Math.asin(Math.sqrt(x * x + Math.cos(a * p) * Math.cos(c * p) * y * y));
+  }
+
+  var MAP = { site: null, me: null };
+
+  function drawMap() {
+    var site = MAP.site;
+    var el = $("map"), tiles = $("tiles");
+    // A site with no coordinates yet is a real case (added by hand in SQL) —
+    // hide the map rather than drawing a circle of NaN.
+    if (!site || typeof site.lat !== "number" || typeof site.lng !== "number") {
+      el.hidden = true; return;
+    }
+    if (!site.radius_m) site.radius_m = 150;
+    el.hidden = false;
+
+    var W = el.clientWidth || 340, H = el.clientHeight || 190;
+
+    // Pick the zoom that makes the zone read well rather than hardcoding one —
+    // a 50m yard and a 400m terminal apron should both fill the frame sensibly.
+    var z = 17;
+    while (z > 12 && (site.radius_m / metresPerPixel(site.lat, z)) > W * 0.34) z--;
+    while (z < 18 && (site.radius_m / metresPerPixel(site.lat, z)) < W * 0.14) z++;
+
+    // If you're outside the zone, pull back until you AND the zone are both on
+    // screen. Showing a zone you can't see yourself relative to tells you
+    // nothing — the useful question is "which way do I walk".
+    if (MAP.me) {
+      var away = metresBetween(MAP.me.lat, MAP.me.lng, site.lat, site.lng);
+      var needed = away + site.radius_m * 0.4;          // a little breathing room
+      var half = Math.min(W, H) / 2 - 18;               // keep the dot off the edge
+      while (z > 11 && (needed / metresPerPixel(site.lat, z)) > half) z--;
+    }
+
+    var mpp = metresPerPixel(site.lat, z);
+    var cx = tileX(site.lng, z), cy = tileY(site.lat, z);      // centre, in tiles
+    var originX = cx * 256 - W / 2, originY = cy * 256 - H / 2; // top-left, in px
+
+    var html = "", n = Math.pow(2, z);
+    for (var tx = Math.floor(originX / 256); tx <= Math.floor((originX + W) / 256); tx++) {
+      for (var ty = Math.floor(originY / 256); ty <= Math.floor((originY + H) / 256); ty++) {
+        if (ty < 0 || ty >= n) continue;
+        var wrapped = ((tx % n) + n) % n;   // wrap the world at the date line
+        html += '<img alt="" loading="lazy" src="https://tile.openstreetmap.org/' +
+                z + "/" + wrapped + "/" + ty + '.png" style="left:' +
+                (tx * 256 - originX) + "px;top:" + (ty * 256 - originY) + 'px">';
+      }
+    }
+    tiles.innerHTML = html;
+
+    // Clear the previous overlay pass first. Counting what to remove after
+    // the fact was fragile — this is unambiguous.
+    el.querySelectorAll(".zone, .you, .youRing").forEach(function (o) { o.remove(); });
+
+    // the zone
+    var rPx = site.radius_m / mpp;
+    html = '<div class="zone" style="left:' + (W / 2) + "px;top:" + (H / 2) +
+           "px;width:" + (rPx * 2) + "px;height:" + (rPx * 2) + 'px"></div>';
+
+    // where you are
+    if (MAP.me) {
+      var mx = (tileX(MAP.me.lng, z) * 256 - originX);
+      var my = (tileY(MAP.me.lat, z) * 256 - originY);
+      var acc = MAP.me.accuracy ? Math.max(MAP.me.accuracy / mpp, 8) : 0;
+      if (acc) {
+        html += '<div class="youRing" style="left:' + mx + "px;top:" + my +
+                "px;width:" + (acc * 2) + "px;height:" + (acc * 2) + 'px"></div>';
+      }
+      html += '<div class="you" style="left:' + mx + "px;top:" + my + 'px"></div>';
+    }
+    el.insertAdjacentHTML("beforeend", html);
+
+    // the readout
+    var tag = $("mapTag");
+    if (MAP.me) {
+      var d = Math.round(metresBetween(MAP.me.lat, MAP.me.lng, site.lat, site.lng));
+      var inside = d <= site.radius_m;
+      tag.hidden = false;
+      tag.className = "mapTag" + (inside ? "" : " out");
+      $("mapTagText").textContent = inside
+        ? "You're at " + site.name
+        : d + "m outside the zone";
+    } else {
+      tag.hidden = false;
+      tag.className = "mapTag";
+      $("mapTagText").textContent = "Finding your location…";
+    }
+  }
+
+  function currentSite() {
+    var id = $("site").value;
+    return (MAP.sites || []).filter(function (w) { return w.id === id; })[0] || null;
+  }
+
+  function refreshMap() { MAP.site = currentSite(); drawMap(); }
+
+  // Ask for position as soon as the screen opens rather than waiting for the
+  // tap — so the zone and the dot are already on screen when someone decides
+  // whether to clock in, instead of after.
+  function watchMe() {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.watchPosition(function (p) {
+      MAP.me = { lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy };
+      drawMap();
+    }, function () { /* denied or unavailable — the zone still shows */ },
+       { enableHighAccuracy: true, maximumAge: 15000, timeout: 20000 });
+  }
+
+  // ── location ───────────────────────────────
+  //
+  // Never block the clock-in on this. If the fix is slow or refused we send
+  // no coordinates and the shift is recorded as unverified — a manager can
+  // see the flag. Refusing to clock someone in because their GPS is sulking
+  // means an unpaid shift, which is a far worse bug than a flagged one.
+  function getPosition() {
+    return new Promise(function (resolve) {
+      if (!navigator.geolocation) return resolve(null);
+      var done = false;
+      var finish = function (v) { if (!done) { done = true; resolve(v); } };
+      navigator.geolocation.getCurrentPosition(
+        function (p) { finish({ lat: p.coords.latitude, lng: p.coords.longitude }); },
+        function () { finish(null); },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+      );
+      setTimeout(function () { finish(null); }, 8500);
+    });
+  }
+
+  // ── render ─────────────────────────────────
+  function renderStatus() {
+    var on = !!OPEN;
+    $("dot").className = "dot " + (on ? "on" : "off");
+    $("stateText").textContent = on ? "On shift" : "Not clocked in";
+    // An empty state should tell you something. Showing the last shift is
+    // the thing a person actually wants to confirm before starting another.
+    if (on) {
+      $("since").textContent = "Since " + hhmm(OPEN.clock_in_at);
+    } else {
+      var last = LAST_SHIFT;
+      $("since").textContent = last ? hoursText(hoursBetween(last.clock_in_at, last.clock_out_at)) : "—";
+      $("since").style.fontSize = last ? "22px" : "34px";
+    }
+    $("action").textContent = on ? "Clock out" : "Clock in";
+    $("action").className = "act " + (on ? "out" : "in");
+    show("siteWrap", !on);
+
+    if (on && OPEN.clock_in_ok === false) {
+      $("locNote").className = "note warn";
+      $("locNote").textContent =
+        "Clocked in " + OPEN.clock_in_metres + "m from the site — your manager will see this flagged.";
+    } else if (on && OPEN.clock_in_ok === null) {
+      $("locNote").className = "note warn";
+      $("locNote").textContent = "No location recorded for this clock-in.";
+    } else {
+      $("locNote").className = "note";
+      $("locNote").textContent = on
+        ? "Location checked when you clocked in."
+        : "Your location is checked when you clock in and out. It is not tracked in between.";
+    }
+
+    clearInterval(tick);
+    if (on) {
+      var upd = function () {
+        $("elapsed").textContent = hoursText(hoursBetween(OPEN.clock_in_at)) + " so far";
+      };
+      upd();
+      tick = setInterval(upd, 30000);
+    } else {
+      $("elapsed").textContent = LAST_SHIFT
+        ? "Last shift · " + dayLabel(LAST_SHIFT.clock_in_at) + ", finished " + hhmm(LAST_SHIFT.clock_out_at)
+        : "No shifts yet";
+    }
+  }
+
+  function renderHistory(rows) {
+    LAST_SHIFT = rows.filter(function (r) { return r.clock_out_at; })[0] || null;
+    if (!rows.length) {
+      $("history").innerHTML = '<div class="note">No shifts yet.</div>';
+      return;
+    }
+    $("history").innerHTML = rows.map(function (s) {
+      var open = !s.clock_out_at;
+      var flag = (s.clock_in_ok === false || s.clock_out_ok === false)
+        ? '<div class="flag">Away from site</div>' : "";
+      return '<div class="row"><div>' +
+        '<div class="d">' + dayLabel(s.clock_in_at) + "</div>" +
+        '<div class="t">' + hhmm(s.clock_in_at) + " – " +
+          (open ? "now" : hhmm(s.clock_out_at)) + "</div>" + flag +
+        "</div><div class=\"h\">" +
+          hoursText(hoursBetween(s.clock_in_at, s.clock_out_at)) +
+        "</div></div>";
+    }).join("");
+  }
+
+  // ── data ───────────────────────────────────
+  function loadDemo() {
+    ME = { full_name: D.profile.full_name };
+    $("me").textContent = D.profile.full_name;
+    $("company").textContent = D.profile.company;
+    $("site").innerHTML = D.sites.map(function (w) {
+      return '<option value="' + w.id + '">' + w.name + "</option>";
+    }).join("");
+    MAP.sites = D.sites;
+    // Demo: stand the user just inside the Main yard zone so the map reads
+    // the way it would on a real phone.
+    if (!MAP.me) MAP.me = { lat: 51.87950, lng: -0.37600, accuracy: 22 };
+    refreshMap();
+    OPEN = D.open;
+    renderHistory((D.open ? [D.open] : []).concat(D.history));
+    renderStatus();
+    show("login", false);
+    show("app", true);
+    show("demoBar", true);
+  }
+
+  async function load() {
+    if (DEMO) return loadDemo();
+
+    var user = (await sb.auth.getUser()).data.user;
+    if (!user) return signedOut();
+
+    var prof = await sb.from("profiles")
+      .select("id, full_name, role, company_id, companies(name)")
+      .eq("id", user.id).maybeSingle();
+
+    // Surface the real error. A crash rendered as "not allowed" is how an
+    // evening got lost on another project — never hide the database's answer.
+    if (prof.error) {
+      alert("Could not load your profile: " + prof.error.message);
+      return;
+    }
+    if (!prof.data) {
+      alert("Your login works, but you have not been added to a company yet. Ask your manager.");
+      return signedOut();
+    }
+
+    ME = prof.data;
+    $("me").textContent = ME.full_name || user.email;
+    $("company").textContent = (ME.companies && ME.companies.name) || "";
+
+    var sites = await sb.from("worksites").select("id, name, lat, lng, radius_m").order("name");
+    MAP.sites = sites.data || [];
+    $("site").innerHTML = MAP.sites.map(function (w) {
+      return '<option value="' + w.id + '">' + w.name + "</option>";
+    }).join("") || '<option value="">No sites set up yet</option>';
+    refreshMap();
+    watchMe();
+
+    var open = await sb.from("shifts").select("*")
+      .is("clock_out_at", null).order("clock_in_at", { ascending: false }).limit(1);
+    OPEN = (open.data && open.data[0]) || null;
+
+    var hist = await sb.from("shifts").select("*")
+      .order("clock_in_at", { ascending: false }).limit(14);
+    renderHistory(hist.data || []);
+    renderStatus();
+
+    show("login", false);
+    show("app", true);
+  }
+
+  async function onAction() {
+    var btn = $("action");
+    btn.disabled = true;
+    btn.textContent = OPEN ? "Clocking out…" : "Getting location…";
+
+    if (DEMO) {
+      // Same shape as the real thing, minus the database and the GPS wait.
+      setTimeout(function () {
+        if (D.open) {
+          D.open.clock_out_at = new Date().toISOString();
+          D.history.unshift(D.open);
+          D.open = null;
+          toast("Clocked out");
+        } else {
+          D.open = {
+            id: "demo-open", clock_in_at: new Date().toISOString(),
+            clock_out_at: null, clock_in_ok: true, clock_in_metres: 31,
+            clock_out_ok: null, note: ""
+          };
+          toast("Clocked in");
+        }
+        btn.disabled = false;
+        loadDemo();
+      }, 450);
+      return;
+    }
+
+    var pos = await getPosition();
+
+    var res;
+    if (OPEN) {
+      res = await sb.rpc("clock_out", {
+        p_lat: pos && pos.lat, p_lng: pos && pos.lng, p_note: ""
+      });
+    } else {
+      var siteId = $("site").value;
+      if (!siteId) { toast("No worksite set up — ask your manager."); btn.disabled = false; renderStatus(); return; }
+      res = await sb.rpc("clock_in", {
+        p_worksite_id: siteId, p_lat: pos && pos.lat, p_lng: pos && pos.lng
+      });
+    }
+
+    btn.disabled = false;
+
+    if (res.error) { toast(res.error.message); renderStatus(); return; }
+
+    toast(OPEN ? "Clocked out" : "Clocked in");
+    if (!pos) toast("No location — recorded as unverified");
+    await load();
+  }
+
+  function signedOut() {
+    ME = null; OPEN = null; clearInterval(tick);
+    show("app", false);
+    show("login", true);
+  }
+
+  async function signIn() {
+    show("loginErr", false);
+    var r = await sb.auth.signInWithPassword({
+      email: $("email").value.trim(), password: $("pw").value
+    });
+    if (r.error) {
+      $("loginErr").textContent = r.error.message;
+      show("loginErr", true);
+      return;
+    }
+    await load();
+  }
+
+  // ── boot ───────────────────────────────────
+  $("action").addEventListener("click", onAction);
+  $("site").addEventListener("change", refreshMap);
+  window.addEventListener("resize", function () { if (MAP.site) drawMap(); });
+
+  if (DEMO) {
+    $("signout").textContent = "";
+    loadDemo();
+    return;
+  }
+
+  sb = window.supabase.createClient(CFG.url, CFG.key);
+
+  $("signin").addEventListener("click", signIn);
+  $("pw").addEventListener("keydown", function (e) { if (e.key === "Enter") signIn(); });
+  $("signout").addEventListener("click", async function () {
+    await sb.auth.signOut(); signedOut();
+  });
+
+  sb.auth.getSession().then(function (s) {
+    if (s.data.session) load(); else signedOut();
+  });
+})();
+</script>
+</body>
+</html>

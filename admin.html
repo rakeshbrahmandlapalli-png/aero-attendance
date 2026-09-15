@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shift board</title>
+<meta name="theme-color" content="#F6F7F8">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230A6E4E'/%3E%3Cpath d='M18 44V28M30 44V20M42 44V34' stroke='%23ffffff' stroke-width='5.5' stroke-linecap='round'/%3E%3C/svg%3E">
+
+<script>
+  window.APP_CONFIG = { url: "", key: "" };   // same two values as index.html
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  /* Same design language as the staff app. Data-dense on purpose: a manager
+     wants thirty people legible at a glance, not six oversized cards. Status
+     is a 6px dot plus muted text rather than a filled pill — pills at this
+     density turn the table into confetti. */
+  :root{
+    --page:#F6F7F8;
+    --card:#FFFFFF;
+    --line:#E4E7EA;
+    --line-soft:#EDEFF2;
+    --ink:#15171A;
+    --ink-2:#59616C;
+    --ink-3:#8C95A1;
+    --accent:#0A6E4E;
+    --accent-soft:#E9F3EF;
+    --warn:#9A5B0A;
+    --warn-soft:#FBF4E8;
+    --stop:#B42318;
+    --stop-soft:#FDF3F1;
+    --r:12px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0; background:var(--page); color:var(--ink);
+    font:400 14px/1.5 "Instrument Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;}
+  .num{font-variant-numeric:tabular-nums;}
+
+  header{display:flex; align-items:center; gap:22px; padding:0 22px; height:60px;
+    background:var(--card); border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:10;}
+  .brand{font-weight:600; font-size:14.5px; letter-spacing:-.01em; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+  .co{color:var(--ink-3); font-size:12.5px; margin-top:-1px;}
+  nav{display:flex; gap:2px; margin-left:12px;}
+  nav button{background:none; border:0; color:var(--ink-2); padding:7px 12px;
+    font:500 13.5px "Instrument Sans",sans-serif; cursor:pointer; border-radius:7px;}
+  nav button:hover{background:var(--page); color:var(--ink);}
+  nav button.on{background:var(--ink); color:#fff;}
+  .link{background:none; border:0; color:var(--ink-3); font:inherit; font-size:13px;
+    cursor:pointer; margin-left:auto;}
+  .link:hover{color:var(--ink);}
+
+  main{padding:26px 22px 60px; max-width:1180px; margin:0 auto;}
+  section{display:none;}
+  section.on{display:block;}
+
+  h2{font-size:11.5px; font-weight:600; letter-spacing:.08em; text-transform:uppercase;
+     color:var(--ink-3); margin:0 0 4px;}
+  .sub{color:var(--ink-3); font-size:13px; margin:0 0 16px;}
+
+  /* Exceptions: the reason the board gets opened. Quiet but unmissable. */
+  .flags{display:flex; flex-direction:column; gap:8px; margin-bottom:24px;}
+  .flag{display:flex; align-items:center; gap:10px; padding:13px 16px; font-size:13.5px;
+    background:var(--warn-soft); border:1px solid #F0E1C6;
+    border-left:3px solid var(--warn); border-radius:0 8px 8px 0; color:#6E4206;}
+  .flag.bad{background:var(--stop-soft); border-color:#F2D8D4;
+    border-left-color:var(--stop); color:#8A2018;}
+  .flag b{font-weight:600;}
+  .flag .act{margin-left:auto;}
+
+  /* At-a-glance counts above the table — a manager scanning on their way
+     into the office shouldn't have to read the whole list to know if
+     today is normal. */
+  .stats{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:24px;}
+  .stat{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:16px 18px;}
+  .stat .lbl{font-size:11px; font-weight:600; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-3);}
+  .stat .val{font-size:25px; font-weight:600; letter-spacing:-.02em; margin-top:7px;}
+  .stat .sub{color:var(--ink-3); font-size:12.5px; margin-top:2px;}
+  @media (max-width:820px){ .stats{grid-template-columns:repeat(2,1fr);} }
+
+  /* Values in a data table must never wrap — a half-wrapped "14h 36m" reads
+     as broken. Narrow screens scroll the table instead. */
+  .panel{background:var(--card); border:1px solid var(--line); border-radius:var(--r);
+    overflow:hidden; overflow-x:auto;}
+  td{white-space:nowrap;}
+  td.note{white-space:normal; max-width:300px;}
+  table{width:100%; border-collapse:collapse;}
+  th{text-align:left; font-size:11px; font-weight:600; letter-spacing:.07em;
+     text-transform:uppercase; color:var(--ink-3); padding:12px 16px;
+     border-bottom:1px solid var(--line); white-space:nowrap; cursor:pointer;
+     user-select:none; background:#FCFCFD;}
+  th:hover{color:var(--ink-2);}
+  td{padding:13px 16px; border-bottom:1px solid var(--line-soft); vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:0;}
+  tbody tr:hover{background:#FBFCFC;}
+  .name{font-weight:600; letter-spacing:-.01em; display:flex; align-items:center; gap:10px;}
+  .av{width:26px; height:26px; border-radius:50%; background:var(--page);
+    border:1px solid var(--line); color:var(--ink-2); font-size:11px; font-weight:600;
+    display:inline-flex; align-items:center; justify-content:center; flex:none;}
+  .tiny{color:var(--ink-3); font-size:12.5px;}
+
+  /* status = dot + text, not a filled chip */
+  .st{display:inline-flex; align-items:center; gap:7px; font-size:13px; color:var(--ink-2);
+      white-space:nowrap;}
+  .st i{width:6px; height:6px; border-radius:50%; flex:none;}
+  .st.ok i{background:var(--accent);}
+  .st.away i{background:var(--warn);}
+  .st.none i{background:#C8CDD4;}
+  .st.away{color:var(--warn);}
+
+  .role{font-size:12.5px; color:var(--ink-2); text-transform:capitalize;}
+
+  .bar{display:flex; gap:9px; align-items:center; flex-wrap:wrap; margin-bottom:16px;}
+  input,select{background:var(--card); color:var(--ink); border:1px solid var(--line);
+    border-radius:8px; padding:8px 11px; font:400 13.5px "Instrument Sans",sans-serif;}
+  input:focus,select:focus{outline:2px solid var(--accent); outline-offset:-1px;
+    border-color:var(--accent);}
+  input[type=search]{min-width:230px;}
+  button.b{background:var(--ink); color:#fff; border:0; border-radius:8px; padding:9px 15px;
+    font:600 13.5px "Instrument Sans",sans-serif; cursor:pointer;}
+  button.b:hover{opacity:.9;}
+  button.g{background:var(--card); color:var(--ink); border:1px solid var(--line);
+    border-radius:8px; padding:9px 15px; font:500 13.5px "Instrument Sans",sans-serif;
+    cursor:pointer;}
+  button.g:hover{border-color:#CFD5DC; background:#FCFCFD;}
+  button.sm{padding:5px 11px; font-size:12.5px;}
+  .danger{color:var(--stop);}
+
+  .empty{color:var(--ink-3); padding:34px 16px; font-size:13.5px; text-align:center;}
+  .tot{margin-left:auto; color:var(--ink-3); font-size:13px;}
+  .tot b{color:var(--ink); font-weight:600;}
+
+  .login{max-width:340px; margin:15vh auto; padding:0 22px;}
+  .login h1{font-size:21px; font-weight:600; letter-spacing:-.02em; margin:0 0 6px;}
+  .login p{color:var(--ink-2); font-size:14px; margin:0 0 22px;}
+  .login input{width:100%; margin-bottom:9px; padding:12px;}
+  .err{background:var(--stop-soft); border:1px solid #F2D8D4; color:#8A2018;
+    padding:11px 13px; border-radius:8px; font-size:13.5px; margin-top:12px;}
+  .hidden{display:none !important;}
+  .demoBar{background:var(--ink); color:#fff; font-size:12.5px; font-weight:500;
+    text-align:center; padding:9px 14px;}
+  .demoBar a{color:#fff; text-decoration:underline; text-underline-offset:2px;}
+  .toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%);
+    background:var(--ink); color:#fff; padding:11px 18px; border-radius:99px;
+    font-size:13.5px; font-weight:500; z-index:60;}
+</style>
+</head>
+<body>
+
+<div id="login" class="login hidden">
+  <h1>Shift board</h1>
+  <p>Manager sign-in.</p>
+  <input id="email" type="email" placeholder="Email" autocomplete="username">
+  <input id="pw" type="password" placeholder="Password" autocomplete="current-password">
+  <button class="b" id="signin" style="width:100%">Sign in</button>
+  <div id="loginErr" class="err hidden"></div>
+</div>
+
+<div id="app" class="hidden">
+  <div id="demoBar" class="demoBar hidden">
+    Demo — sample data, nothing saved. &nbsp;<a href="index.html" style="color:inherit">← See what staff use</a>
+  </div>
+  <header>
+    <div>
+      <div class="brand">SHIFT<span>·</span>BOARD</div>
+      <div class="co" id="company">—</div>
+    </div>
+    <nav>
+      <button data-tab="now" class="on">Now</button>
+      <button data-tab="sheets">Timesheets</button>
+      <button data-tab="staff">Staff</button>
+      <button data-tab="sites">Sites</button>
+    </nav>
+    <button class="link" id="signout">Sign out</button>
+  </header>
+
+  <main>
+    <!-- ── NOW ────────────────────────────── -->
+    <section id="tab-now" class="on">
+      <div id="flags" class="flags"></div>
+      <div id="stats" class="stats"></div>
+
+      <h2>On shift now</h2>
+      <div class="sub" id="nowSub">—</div>
+      <div class="panel"><table>
+        <thead><tr>
+          <th data-sort="full_name">Name</th>
+          <th data-sort="worksite">Site</th>
+          <th data-sort="clock_in_at">Started</th>
+          <th data-sort="hours_so_far">Elapsed</th>
+          <th>Location</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="nowBody"></tbody>
+      </table></div>
+      <div id="nowEmpty" class="empty hidden">Nobody is clocked in.</div>
+    </section>
+
+    <!-- ── TIMESHEETS ─────────────────────── -->
+    <section id="tab-sheets">
+      <h2>Timesheets</h2>
+      <div class="bar">
+        <input type="date" id="from">
+        <input type="date" id="to">
+        <select id="who"><option value="">Everyone</option></select>
+        <button class="b" id="run">Show</button>
+        <button class="g" id="csv">Export CSV</button>
+        <div class="tot" id="grandTotal"></div>
+      </div>
+      <div class="panel"><table>
+        <thead><tr>
+          <th>Name</th><th>Date</th><th>In</th><th>Out</th>
+          <th>Hours</th><th>Location</th><th>Note</th>
+        </tr></thead>
+        <tbody id="sheetBody"></tbody>
+      </table></div>
+      <div id="sheetEmpty" class="empty hidden">No shifts in that range.</div>
+    </section>
+
+    <!-- ── STAFF ──────────────────────────── -->
+    <section id="tab-staff">
+      <h2>Staff</h2>
+      <div class="sub">
+        To add someone: create them in Supabase → Authentication → Users, then add
+        their row here with the same email. Keeps you in control of who gets in.
+      </div>
+      <div class="bar">
+        <input type="search" id="staffSearch" placeholder="Search name or email">
+      </div>
+      <div class="panel"><table>
+        <thead><tr>
+          <th>Name</th><th>Role</th><th>Status</th><th>Last seen</th><th></th>
+        </tr></thead>
+        <tbody id="staffBody"></tbody>
+      </table></div>
+    </section>
+
+    <!-- ── SITES ──────────────────────────── -->
+    <section id="tab-sites">
+      <h2>Worksites</h2>
+      <div class="sub">
+        Staff must be within the radius to clock in cleanly. 150m is a sensible
+        default — phone GPS is routinely 20–50m out, and too tight a radius flags
+        honest people standing in the right place.
+      </div>
+      <div class="bar">
+        <input id="siteName" placeholder="Site name (e.g. Main yard)">
+        <input id="siteLat" class="num" placeholder="Latitude" style="width:130px">
+        <input id="siteLng" class="num" placeholder="Longitude" style="width:130px">
+        <input id="siteRad" class="num" type="number" value="150" style="width:90px">
+        <button class="g" id="here">Use my location</button>
+        <button class="b" id="addSite">Add site</button>
+      </div>
+      <div class="panel"><table>
+        <thead><tr><th>Site</th><th>Coordinates</th><th>Radius</th><th></th></tr></thead>
+        <tbody id="siteBody"></tbody>
+      </table></div>
+    </section>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var CFG = window.APP_CONFIG || {};
+  var sb = null, ME = null;
+  var NOW = [], SHEET = [], STAFF = [], SITES = [];
+  var sortKey = "clock_in_at", sortDir = 1;
+  var poll = null;
+
+  // ── DEMO MODE ──────────────────────────────
+  // Runs on sample data when no Supabase details are filled in, so the board
+  // can be shown to a client before anything is set up. In memory only.
+  var DEMO = !CFG.url || !CFG.key;
+
+  function agoISO(h) { return new Date(Date.now() - h * 3600000).toISOString(); }
+
+  function demoSheetRow(name, daysAgo, inH, inM, outH, outM, ok) {
+    var d = new Date(); d.setDate(d.getDate() - daysAgo);
+    var a = new Date(d); a.setHours(inH, inM, 0, 0);
+    var b = new Date(d); b.setHours(outH, outM, 0, 0);
+    return {
+      id: name + daysAgo + inH, profiles: { full_name: name },
+      worksites: { name: "Main yard" },
+      clock_in_at: a.toISOString(), clock_out_at: b.toISOString(),
+      clock_in_ok: ok === undefined ? true : ok,
+      clock_out_ok: true, note: ok === false ? "Called in, went straight to T2" : ""
+    };
+  }
+
+  var D = {
+    company: "247 Airport Parking",
+    now: [
+      { shift_id: "n1", full_name: "Sam Whitfield", worksite: "Main yard",
+        clock_in_at: agoISO(3.4), clock_in_ok: true, clock_in_metres: 24, hours_so_far: 3.4 },
+      { shift_id: "n2", full_name: "Marek Kowalski", worksite: "Terminal drop-off",
+        clock_in_at: agoISO(5.1), clock_in_ok: true, clock_in_metres: 61, hours_so_far: 5.1 },
+      { shift_id: "n3", full_name: "Danny Obi", worksite: "Main yard",
+        clock_in_at: agoISO(1.2), clock_in_ok: false, clock_in_metres: 840, hours_so_far: 1.2 },
+      { shift_id: "n4", full_name: "Priya Shah", worksite: "Main yard",
+        clock_in_at: agoISO(14.6), clock_in_ok: true, clock_in_metres: 18, hours_so_far: 14.6 }
+    ],
+    staff: [
+      { id: "p1", full_name: "Sam Whitfield", role: "staff", active: true,  created_at: agoISO(2400) },
+      { id: "p2", full_name: "Marek Kowalski", role: "staff", active: true,  created_at: agoISO(3100) },
+      { id: "p3", full_name: "Danny Obi", role: "staff", active: true,  created_at: agoISO(900) },
+      { id: "p4", full_name: "Priya Shah", role: "admin", active: true,  created_at: agoISO(5200) },
+      { id: "p5", full_name: "Tomas Nagy", role: "staff", active: false, created_at: agoISO(7000) }
+    ],
+    sites: [
+      { id: "s1", name: "Main yard", lat: 51.87921, lng: -0.37641, radius_m: 150 },
+      { id: "s2", name: "Terminal drop-off", lat: 51.88412, lng: -0.36998, radius_m: 200 }
+    ],
+    sheet: [
+      demoSheetRow("Sam Whitfield", 1, 6, 2, 14, 11),
+      demoSheetRow("Marek Kowalski", 1, 5, 58, 14, 3),
+      demoSheetRow("Danny Obi", 1, 13, 47, 22, 6, false),
+      demoSheetRow("Priya Shah", 2, 6, 1, 15, 22),
+      demoSheetRow("Sam Whitfield", 2, 14, 5, 22, 30),
+      demoSheetRow("Marek Kowalski", 3, 6, 0, 14, 8),
+      demoSheetRow("Priya Shah", 3, 13, 55, 22, 2)
+    ]
+  };
+
+  var $ = function (id) { return document.getElementById(id); };
+  var show = function (id, on) { $(id).classList.toggle("hidden", !on); };
+  var esc = function (s) {
+    return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  };
+
+  function toast(m) {
+    var t = document.createElement("div");
+    t.className = "toast"; t.textContent = m;
+    document.body.appendChild(t);
+    setTimeout(function () { t.remove(); }, 3000);
+  }
+
+  // Initials avatar — a small, quiet bit of polish that makes a dense table
+  // scannable by shape as well as by reading every name.
+  function initials(name) {
+    var parts = String(name || "?").trim().split(/\s+/);
+    return ((parts[0] || "")[0] || "?").toUpperCase() +
+           (parts.length > 1 ? (parts[parts.length - 1][0] || "").toUpperCase() : "");
+  }
+  function nameCell(name) {
+    return '<td><div class="name"><span class="av">' + esc(initials(name)) +
+           '</span>' + esc(name || "(no name)") + "</div></td>";
+  }
+
+  var pad = function (n) { return String(n).padStart(2, "0"); };
+  function hhmm(iso) { var d = new Date(iso); return pad(d.getHours()) + ":" + pad(d.getMinutes()); }
+  function dmy(iso) { var d = new Date(iso); return pad(d.getDate()) + "/" + pad(d.getMonth() + 1) + "/" + d.getFullYear(); }
+  function hrs(h) { var m = Math.round(h * 60); return Math.floor(m / 60) + "h " + pad(m % 60) + "m"; }
+  function isoDay(d) { return d.toISOString().slice(0, 10); }
+  function localDay(v) { var d = new Date(v); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+
+  // ── NOW ──────────────────────────────────
+  async function loadNow() {
+    if (DEMO) { NOW = D.now; renderNow(); renderFlags(); renderStats(); return; }
+    var r = await sb.from("on_shift_now").select("*");
+    if (r.error) { toast(r.error.message); return; }
+    NOW = r.data || [];
+    renderNow();
+    renderFlags();
+    renderStats();
+  }
+
+  function renderNow() {
+    var rows = NOW.slice().sort(function (a, b) {
+      var x = a[sortKey], y = b[sortKey];
+      if (x == null) return 1; if (y == null) return -1;
+      return (x > y ? 1 : x < y ? -1 : 0) * sortDir;
+    });
+    $("nowSub").textContent = rows.length
+      ? rows.length + (rows.length === 1 ? " person on shift" : " people on shift")
+      : "";
+    show("nowEmpty", !rows.length);
+    $("nowBody").innerHTML = rows.map(function (s) {
+      var loc = s.clock_in_ok === false
+        ? '<span class="st away"><i></i>' + s.clock_in_metres + 'm away</span>'
+        : s.clock_in_ok === null
+          ? '<span class="st none"><i></i>Not checked</span>'
+          : '<span class="st ok"><i></i>On site</span>';
+      return "<tr>" +
+        nameCell(s.full_name) +
+        "<td>" + esc(s.worksite || "—") + "</td>" +
+        '<td class="num">' + hhmm(s.clock_in_at) + "</td>" +
+        '<td class="num">' + hrs(s.hours_so_far) + "</td>" +
+        "<td>" + loc + "</td>" +
+        '<td style="text-align:right"><button class="g sm" data-close="' + s.shift_id +
+          '">Clock out</button></td>' +
+      "</tr>";
+    }).join("");
+  }
+
+  // What actually needs a manager's attention, surfaced above the board.
+  function renderFlags() {
+    var out = [];
+    NOW.forEach(function (s) {
+      // 13h is past any legitimate shift — almost always a forgotten clock-out,
+      // and every hour it sits there is an hour of wrong payroll.
+      if (s.hours_so_far > 13) {
+        out.push('<div class="flag bad"><b>' + esc(s.full_name) + "</b> has been on shift " +
+          hrs(s.hours_so_far) + " — likely forgot to clock out." +
+          '<span class="act"><button class="g sm" data-close="' + s.shift_id +
+          '">Clock out</button></span></div>');
+      }
+      if (s.clock_in_ok === false) {
+        out.push('<div class="flag"><b>' + esc(s.full_name) + "</b> clocked in " +
+          s.clock_in_metres + "m from " + esc(s.worksite || "site") + ".</div>");
+      }
+    });
+    $("flags").innerHTML = out.join("");
+  }
+
+  // Counts come from data already loaded (NOW + the timesheet range, which
+  // defaults to include today), so the stats cost no extra queries.
+  function renderStats() {
+    var today = localDay(Date.now());
+    var sites = {}, people = {}, doneH = 0;
+    NOW.forEach(function (s) {
+      if (s.worksite) sites[s.worksite] = 1;
+      if (localDay(s.clock_in_at) === today) people[s.user_id || s.full_name] = 1;
+    });
+    SHEET.forEach(function (s) {
+      if (localDay(s.clock_in_at) === today) people[s.user_id || (s.profiles && s.profiles.full_name) || s.id] = 1;
+      if (s.clock_out_at && localDay(s.clock_out_at) === today) doneH += shiftHours(s);
+    });
+    var nSites = Object.keys(sites).length;
+    var cards = [
+      ["On shift now", NOW.length, "Across " + nSites + (nSites === 1 ? " site" : " sites")],
+      ["Clocked in today", Object.keys(people).length, "Different people"],
+      ["Completed today", hrs(doneH), "From shifts ended today"],
+      ["Active staff", STAFF.filter(function (p) { return p.active; }).length,
+        SITES.length + (SITES.length === 1 ? " worksite" : " worksites")]
+    ];
+    $("stats").innerHTML = cards.map(function (c) {
+      return '<div class="stat"><div class="lbl">' + esc(c[0]) + '</div><div class="val num">' +
+        esc(c[1]) + '</div><div class="sub">' + esc(c[2]) + "</div></div>";
+    }).join("");
+  }
+
+  // One write at a time. Supabase already makes each write safe, but a
+  // double-tap on "Clock out" would otherwise fire two requests and two toasts.
+  var writing = false;
+  async function withLock(fn) {
+    if (writing) return;
+    writing = true;
+    try { await fn(); } finally { writing = false; }
+  }
+
+  function closeShift(id) {
+    return withLock(async function () {
+      if (DEMO) {
+        D.now = D.now.filter(function (x) { return x.shift_id !== id; });
+        toast("Clocked out"); await loadNow(); return;
+      }
+      var r = await sb.from("shifts").update({ clock_out_at: new Date().toISOString() }).eq("id", id);
+      if (r.error) { toast(r.error.message); return; }
+      toast("Clocked out");
+      await loadNow();
+    });
+  }
+
+  // ── TIMESHEETS ───────────────────────────
+  async function runSheet() {
+    if (DEMO) { SHEET = D.sheet; renderSheet(); renderStats(); return; }
+    var from = $("from").value, to = $("to").value, who = $("who").value;
+    var q = sb.from("shifts")
+      .select("*, profiles(full_name), worksites(name)")
+      .order("clock_in_at", { ascending: false });
+    if (from) q = q.gte("clock_in_at", from + "T00:00:00");
+    if (to)   q = q.lte("clock_in_at", to + "T23:59:59");
+    if (who)  q = q.eq("user_id", who);
+
+    var r = await q;
+    if (r.error) { toast(r.error.message); return; }
+    SHEET = r.data || [];
+    renderSheet();
+    renderStats();
+  }
+
+  function shiftHours(s) {
+    return (new Date(s.clock_out_at || Date.now()) - new Date(s.clock_in_at)) / 3600000;
+  }
+
+  function renderSheet() {
+    show("sheetEmpty", !SHEET.length);
+    var total = 0;
+    $("sheetBody").innerHTML = SHEET.map(function (s) {
+      var h = shiftHours(s); total += h;
+      var open = !s.clock_out_at;
+      var loc = (s.clock_in_ok === false || s.clock_out_ok === false)
+        ? '<span class="st away"><i></i>Away</span>'
+        : s.clock_in_ok === null ? '<span class="st none"><i></i>—</span>'
+        : '<span class="st ok"><i></i>On site</span>';
+      return "<tr>" +
+        nameCell(s.profiles && s.profiles.full_name) +
+        '<td class="num">' + dmy(s.clock_in_at) + "</td>" +
+        '<td class="num">' + hhmm(s.clock_in_at) + "</td>" +
+        '<td class="num">' + (open ? '<span class="tiny">still on</span>' : hhmm(s.clock_out_at)) + "</td>" +
+        '<td class="num">' + hrs(h) + "</td>" +
+        "<td>" + loc + "</td>" +
+        '<td class="tiny note">' + esc(s.note) + "</td>" +
+      "</tr>";
+    }).join("");
+    $("grandTotal").innerHTML = SHEET.length
+      ? SHEET.length + " shifts &nbsp;·&nbsp; <b>" + hrs(total) + "</b> total" : "";
+  }
+
+  // Payroll runs on spreadsheets, not on screenshots of a dashboard.
+  function exportCsv() {
+    if (!SHEET.length) { toast("Nothing to export"); return; }
+    var head = ["Name", "Date", "In", "Out", "Hours", "In OK", "Out OK", "Site", "Note"];
+    var lines = [head.join(",")];
+    SHEET.forEach(function (s) {
+      // A cell starting with = + - @ is run as a formula by Excel/Sheets. Staff
+      // names and notes are typed by staff, so neutralise them with a leading '.
+      var cell = function (v) {
+        var s = String(v == null ? "" : v);
+        if (/^\s*[=+\-@]/.test(s)) s = "'" + s;
+        return '"' + s.replace(/"/g, '""') + '"';
+      };
+      lines.push([
+        cell(s.profiles && s.profiles.full_name),
+        cell(dmy(s.clock_in_at)), cell(hhmm(s.clock_in_at)),
+        cell(s.clock_out_at ? hhmm(s.clock_out_at) : ""),
+        cell(shiftHours(s).toFixed(2)),
+        cell(s.clock_in_ok === null ? "" : s.clock_in_ok ? "yes" : "no"),
+        cell(s.clock_out_ok === null ? "" : s.clock_out_ok ? "yes" : "no"),
+        cell(s.worksites && s.worksites.name), cell(s.note)
+      ].join(","));
+    });
+    var blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "timesheets-" + isoDay(new Date()) + ".csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // ── STAFF ────────────────────────────────
+  async function loadStaff() {
+    if (DEMO) {
+      STAFF = D.staff;
+      $("who").innerHTML = '<option value="">Everyone</option>' + STAFF.map(function (p) {
+        return '<option value="' + p.id + '">' + esc(p.full_name) + "</option>";
+      }).join("");
+      renderStaff(); renderStats(); return;
+    }
+    var r = await sb.from("profiles").select("*").order("full_name");
+    if (r.error) { toast(r.error.message); return; }
+    STAFF = r.data || [];
+    $("who").innerHTML = '<option value="">Everyone</option>' + STAFF.map(function (p) {
+      return '<option value="' + p.id + '">' + esc(p.full_name) + "</option>";
+    }).join("");
+    renderStaff();
+    renderStats();
+  }
+
+  function renderStaff() {
+    var q = $("staffSearch").value.trim().toLowerCase();
+    var rows = STAFF.filter(function (p) {
+      return !q || (p.full_name || "").toLowerCase().indexOf(q) !== -1;
+    });
+    $("staffBody").innerHTML = rows.map(function (p) {
+      return "<tr>" +
+        nameCell(p.full_name) +
+        '<td><span class="role">' + esc(p.role) + "</span></td>" +
+        "<td>" + (p.active ? '<span class="st ok"><i></i>Active</span>'
+                           : '<span class="st none"><i></i>Inactive</span>') + "</td>" +
+        '<td class="tiny num">' + dmy(p.created_at) + "</td>" +
+        '<td style="text-align:right">' +
+          '<button class="g sm" data-toggle="' + p.id + '">' +
+            (p.active ? "Deactivate" : "Reactivate") + "</button></td>" +
+      "</tr>";
+    }).join("");
+  }
+
+  function toggleStaff(id) {
+    return withLock(async function () {
+      var p = STAFF.find(function (x) { return x.id === id; });
+      if (!p) return;
+      if (p.id === ME.id) { toast("You cannot deactivate yourself."); return; }
+      if (DEMO) {
+        p.active = !p.active;
+        toast(p.active ? "Reactivated" : "Deactivated");
+        await loadStaff(); return;
+      }
+      var r = await sb.from("profiles").update({ active: !p.active }).eq("id", id);
+      if (r.error) { toast(r.error.message); return; }
+      await loadStaff();
+    });
+  }
+
+  // ── SITES ────────────────────────────────
+  async function loadSites() {
+    if (DEMO) { SITES = D.sites; renderSites(); renderStats(); return; }
+    var r = await sb.from("worksites").select("*").order("name");
+    if (r.error) { toast(r.error.message); return; }
+    SITES = r.data || [];
+    renderSites();
+    renderStats();
+  }
+
+  function renderSites() {
+    $("siteBody").innerHTML = SITES.map(function (w) {
+      return "<tr>" +
+        '<td style="font-weight:600">' + esc(w.name) + "</td>" +
+        '<td class="num tiny">' + w.lat.toFixed(5) + ", " + w.lng.toFixed(5) + "</td>" +
+        '<td class="num">' + w.radius_m + "m</td>" +
+        '<td style="text-align:right"><button class="g sm danger" data-delsite="' + w.id +
+          '">Remove</button></td>' +
+      "</tr>";
+    }).join("");
+  }
+
+  function addSite() {
+    return withLock(async function () {
+      var name = $("siteName").value.trim();
+      var lat = parseFloat($("siteLat").value), lng = parseFloat($("siteLng").value);
+      var rad = parseInt($("siteRad").value, 10) || 150;
+      if (!name || isNaN(lat) || isNaN(lng)) { toast("Name and coordinates are needed."); return; }
+      if (DEMO) {
+        D.sites.push({ id: "s" + Date.now(), name: name, lat: lat, lng: lng, radius_m: rad });
+        $("siteName").value = ""; $("siteLat").value = ""; $("siteLng").value = "";
+        toast("Site added");
+        await loadSites(); return;
+      }
+      var r = await sb.from("worksites").insert({
+        company_id: ME.company_id, name: name, lat: lat, lng: lng, radius_m: rad
+      });
+      if (r.error) { toast(r.error.message); return; }
+      $("siteName").value = ""; $("siteLat").value = ""; $("siteLng").value = "";
+      toast("Site added");
+      await loadSites();
+    });
+  }
+
+  // A manager setting up a site is almost always standing in it.
+  function useHere() {
+    if (!navigator.geolocation) { toast("No location available on this device."); return; }
+    toast("Getting location…");
+    navigator.geolocation.getCurrentPosition(function (p) {
+      $("siteLat").value = p.coords.latitude.toFixed(6);
+      $("siteLng").value = p.coords.longitude.toFixed(6);
+      toast("Filled in from your position");
+    }, function () { toast("Could not get your location."); },
+       { enableHighAccuracy: true, timeout: 8000 });
+  }
+
+  // ── boot ─────────────────────────────────
+  async function load() {
+    if (DEMO) {
+      ME = { id: "p4", company_id: "demo", full_name: "Priya Shah" };
+      $("company").textContent = D.company;
+      $("from").value = isoDay(new Date(Date.now() - 6 * 864e5));
+      $("to").value   = isoDay(new Date());
+      show("login", false); show("app", true); show("demoBar", true);
+      loadNow(); loadStaff(); loadSites(); runSheet();
+      clearInterval(poll);
+      poll = setInterval(loadNow, 30000);
+      return;
+    }
+    var user = (await sb.auth.getUser()).data.user;
+    if (!user) return signedOut();
+
+    var prof = await sb.from("profiles")
+      .select("id, full_name, role, company_id, companies(name)")
+      .eq("id", user.id).maybeSingle();
+    if (prof.error) { alert("Could not load profile: " + prof.error.message); return; }
+    if (!prof.data) { alert("You are not attached to a company yet."); return signedOut(); }
+    if (prof.data.role === "staff") {
+      alert("This screen is for managers. Use the staff app to clock in.");
+      return signedOut();
+    }
+
+    ME = prof.data;
+    $("company").textContent = (ME.companies && ME.companies.name) || "";
+
+    var today = new Date();
+    var weekAgo = new Date(Date.now() - 6 * 864e5);
+    $("from").value = isoDay(weekAgo);
+    $("to").value = isoDay(today);
+
+    show("login", false); show("app", true);
+
+    await Promise.all([loadNow(), loadStaff(), loadSites()]);
+    await runSheet();
+
+    clearInterval(poll);
+    poll = setInterval(loadNow, 30000);   // the board has to be current, not a snapshot
+  }
+
+  function signedOut() {
+    ME = null; clearInterval(poll);
+    show("app", false); show("login", true);
+  }
+
+  async function signIn() {
+    show("loginErr", false);
+    var r = await sb.auth.signInWithPassword({
+      email: $("email").value.trim(), password: $("pw").value
+    });
+    if (r.error) { $("loginErr").textContent = r.error.message; show("loginErr", true); return; }
+    load();
+  }
+
+  if (!DEMO) sb = window.supabase.createClient(CFG.url, CFG.key);
+
+  document.querySelectorAll("nav button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      document.querySelectorAll("nav button").forEach(function (x) { x.classList.remove("on"); });
+      document.querySelectorAll("section").forEach(function (x) { x.classList.remove("on"); });
+      b.classList.add("on");
+      $("tab-" + b.dataset.tab).classList.add("on");
+    });
+  });
+
+  document.querySelectorAll("th[data-sort]").forEach(function (th) {
+    th.addEventListener("click", function () {
+      if (sortKey === th.dataset.sort) sortDir = -sortDir;
+      else { sortKey = th.dataset.sort; sortDir = 1; }
+      renderNow();
+    });
+  });
+
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+    if (t.dataset.close)   closeShift(t.dataset.close);
+    if (t.dataset.toggle)  toggleStaff(t.dataset.toggle);
+    if (t.dataset.delsite) removeSite(t.dataset.delsite);
+  });
+
+  function removeSite(id) {
+    if (!confirm("Remove this site? Past shifts keep their history.")) return;
+    return withLock(async function () {
+      if (DEMO) {
+        D.sites = D.sites.filter(function (w) { return w.id !== id; });
+        await loadSites(); return;
+      }
+      var r = await sb.from("worksites").delete().eq("id", id);
+      if (r.error) { toast(r.error.message); return; }
+      await loadSites();
+    });
+  }
+
+  $("signin").addEventListener("click", signIn);
+  $("pw").addEventListener("keydown", function (e) { if (e.key === "Enter") signIn(); });
+  $("signout").addEventListener("click", async function () { await sb.auth.signOut(); signedOut(); });
+  $("run").addEventListener("click", runSheet);
+  $("csv").addEventListener("click", exportCsv);
+  $("staffSearch").addEventListener("input", renderStaff);
+  $("addSite").addEventListener("click", addSite);
+  $("here").addEventListener("click", useHere);
+
+  if (DEMO) { $("signout").textContent = ""; load(); }
+  else sb.auth.getSession().then(function (s) { if (s.data.session) load(); else signedOut(); });
+})();
+</script>
+</body>
+</html>

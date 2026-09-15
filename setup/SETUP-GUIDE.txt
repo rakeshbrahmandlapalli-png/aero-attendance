@@ -1,0 +1,165 @@
+══════════════════════════════════════════════════════════════════════
+ TEAM APP — getting it running
+ Follow in order. Steps 1-5 are yours (I'm not allowed to create accounts
+ or type passwords for you). Everything after step 6 is mine.
+══════════════════════════════════════════════════════════════════════
+
+ USE YOUR EXISTING SUPABASE LOGIN. MAKE A NEW *PROJECT*.
+
+ Same rule as always: one account, separate projects. A new project means
+ a brand new database that cannot touch AeroPark's or Sahasra's data.
+
+
+──────────────────────────────────────────────────────────────────────
+ STEP 1 — create the project
+──────────────────────────────────────────────────────────────────────
+ supabase.com/dashboard → New project
+
+   Name:      team-app
+   Password:  "Generate a password", then SAVE IT somewhere safe
+   Region:    London (eu-west-2)   <- your clients are UK
+   Plan:      Free
+
+ *** NEVER send that database password to me or anyone else. ***
+
+
+──────────────────────────────────────────────────────────────────────
+ STEP 2 — build the tables
+──────────────────────────────────────────────────────────────────────
+ SQL Editor → New query.
+ Open setup/schema.sql, select ALL, copy, paste, Run.
+
+ Expect "Success. No rows returned". That's correct.
+
+
+──────────────────────────────────────────────────────────────────────
+ STEP 3 — create your first company
+──────────────────────────────────────────────────────────────────────
+ SQL Editor → New query. Change the name, then Run:
+
+   insert into companies (name) values ('247 Airport Parking')
+   returning id;
+
+ COPY THE ID IT PRINTS BACK. You need it in step 5.
+
+ Later, each new client you sell to = one more row here. Same app,
+ same database, walled off from each other.
+
+
+──────────────────────────────────────────────────────────────────────
+ STEP 4 — create your own login
+──────────────────────────────────────────────────────────────────────
+ Authentication → Users → Add user → Create new user
+
+   Email:    your email
+   Password: a strong one, save it in a password manager
+   Tick:     "Auto Confirm User"
+
+
+──────────────────────────────────────────────────────────────────────
+ STEP 5 — make yourself the owner
+──────────────────────────────────────────────────────────────────────
+ SQL Editor → New query. Put YOUR email and the company id from step 3:
+
+   insert into profiles (id, company_id, full_name, role)
+   select u.id, 'PASTE-COMPANY-ID-HERE', 'Rakesh', 'owner'
+   from auth.users u where u.email = 'your@email.com';
+
+ Should say "Success. 1 row". If it says 0 rows, the email doesn't match
+ what you typed in step 4 — check the spelling.
+
+ ⚠️ Creating a login is NOT enough on its own, on purpose. A person can
+ only get in once they have a row in `profiles`. That's what stops a
+ stranger who signs up from seeing any client's data.
+
+
+──────────────────────────────────────────────────────────────────────
+ STEP 5b — TURN OFF PUBLIC SIGN-UPS
+──────────────────────────────────────────────────────────────────────
+ Authentication → Sign In / Providers → Email
+ Switch OFF "Allow new users to sign up". Save.
+
+ Without this, strangers can create themselves an account. They still
+ couldn't see anything (step 5 is what grants that) — but there's no
+ reason to let them in at all.
+
+
+──────────────────────────────────────────────────────────────────────
+ STEP 6 — send me these two lines (and only these two)
+──────────────────────────────────────────────────────────────────────
+ 6a. Project Settings (gear) → API → copy "Project URL"
+     Looks like  https://abcdefgh.supabase.co
+
+ 6b. Project Settings → API Keys → "Publishable and secret API keys" tab
+     Copy the PUBLISHABLE key. Starts with  sb_publishable_
+
+     If your project only shows a "Legacy API keys" tab, copy the
+     anon/public key there instead (the long one starting eyJ) and tell
+     me it was the legacy one.
+
+ Both are designed to be public — they end up inside the app where
+ anyone can read them, and the rules from step 2 mean they can only do
+ what a signed-in user is allowed to do.
+
+ ┌──────────────────────────────────────────────────────────────────┐
+ │  NEVER SEND ME, OR PUT IN ANY FILE:                              │
+ │    • the SECRET key    — starts with  sb_secret_                 │
+ │    • the service_role key (legacy tab)                           │
+ │    • the database password from step 1                           │
+ │    • any login password                                          │
+ │                                                                  │
+ │  The secret key ignores every rule in the database. If it ever   │
+ │  reaches a web page, anyone could read or wipe EVERY client's    │
+ │  staff records. It belongs nowhere near this app.                │
+ └──────────────────────────────────────────────────────────────────┘
+
+
+──────────────────────────────────────────────────────────────────────
+ THEN — adding a client, and adding their staff
+──────────────────────────────────────────────────────────────────────
+ New client company:
+   insert into companies (name) values ('A-Z Auto Spares') returning id;
+
+ Their manager / each staff member:
+   1. Authentication → Users → Add user (email + password, Auto Confirm)
+   2. SQL Editor:
+        insert into profiles (id, company_id, full_name, role)
+        select u.id, 'THEIR-COMPANY-ID', 'Their Name', 'staff'
+        from auth.users u where u.email = 'them@example.com';
+
+      role is 'staff', 'admin' or 'owner'.
+      staff  = clock in/out, see only their own shifts
+      admin  = the whole board, timesheets, staff, sites
+      owner  = same as admin (kept separate so you can restrict later)
+
+ Worksites are added from the admin screen — stand in the yard and press
+ "Use my location", which saves hunting for coordinates.
+
+
+──────────────────────────────────────────────────────────────────────
+ WHAT EACH FILE IS
+──────────────────────────────────────────────────────────────────────
+ index.html  — the staff app. Clock in/out, see your own shifts.
+                This is the one that becomes the phone app.
+ admin.html  — the manager board. Who's on now, timesheets, CSV export,
+                staff, worksites.
+
+ Both need the two lines from step 6 pasting into the settings block at
+ the top of the file.
+
+
+──────────────────────────────────────────────────────────────────────
+ ABOUT THE LOCATION CHECK — say this plainly to clients
+──────────────────────────────────────────────────────────────────────
+ It records where someone was AT THE MOMENT they clocked in and out.
+ It does NOT track anyone in between, and the app stores no location
+ outside those two moments.
+
+ It stops someone clocking in from bed. It does NOT stop a determined
+ faker with a spoofing app on a rooted phone. Sell it as an honesty
+ check, not surveillance — overselling it is how you get an argument
+ with a staff member you can't win.
+
+ If someone's GPS fails or they refuse permission, the shift still
+ records — flagged as unverified for a manager to look at. A refused
+ clock-in would mean an unpaid shift, which is a far worse failure.
