@@ -302,7 +302,10 @@ create policy shifts_manage on shifts for all to authenticated
 
 -- ── LIVE BOARD ──────────────────────────────────────────────────────────
 -- Who is on shift right now, as the admin screen draws it.
-create or replace view on_shift_now as
+-- security_invoker is essential: without it a view runs as its owner and
+-- ignores RLS, so anyone with the public key could read every company's
+-- on-shift staff. With it, the shifts/profiles policies above apply.
+create or replace view on_shift_now with (security_invoker = true) as
   select s.id           as shift_id,
          s.company_id,
          s.user_id,
@@ -316,3 +319,17 @@ create or replace view on_shift_now as
     join profiles p  on p.id = s.user_id
     left join worksites w on w.id = s.worksite_id
    where s.clock_out_at is null;
+
+
+-- ── ACCESS ──────────────────────────────────────────────────────────────
+-- Signed-out visitors (anon) get nothing. Signed-in users get table access,
+-- and RLS then limits them to their own company. Set explicitly rather than
+-- relying on Supabase's defaults, which differ between projects.
+revoke all on table companies, worksites, profiles, shifts, on_shift_now from anon;
+grant select, insert, update, delete on table companies, worksites, profiles, shifts to authenticated;
+grant select on table on_shift_now to authenticated;
+
+revoke execute on function clock_in(uuid, double precision, double precision) from public, anon;
+revoke execute on function clock_out(double precision, double precision, text) from public, anon;
+grant execute on function clock_in(uuid, double precision, double precision) to authenticated;
+grant execute on function clock_out(double precision, double precision, text) to authenticated;
