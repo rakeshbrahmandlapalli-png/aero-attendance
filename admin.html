@@ -157,7 +157,9 @@
     background:var(--ink); color:#fff; padding:11px 18px; border-radius:99px;
     font-size:13.5px; font-weight:500; z-index:60;}
   :root{--r:6px;--ink-3:#65707A;--page:#F5F6F7;}
-  *{letter-spacing:0!important;}
+  h1{letter-spacing:-.02em;}
+  h2{letter-spacing:-.01em;}
+  .stat .lbl,th{letter-spacing:0;}
   header{height:76px;padding:0 32px;gap:32px;}
   .brand{font-size:22px;}.co{font-size:12px;color:var(--ink-2);}
   nav{gap:8px;}nav button{min-height:44px;padding:10px 16px;border-radius:4px;}
@@ -172,6 +174,9 @@
   .stat{background:transparent;border:0;border-radius:0;padding:0 24px;min-width:0;}
   .stat:first-child{padding-left:0;}.stat+.stat{border-left:1px solid var(--line);}
   .stat .lbl{text-transform:none;font-size:13px;}.stat .val{font-size:28px;}.stat .sub{margin-bottom:0;}
+  .stat-link{font:inherit;color:inherit;text-align:left;cursor:pointer;}
+  .stat-link .sub{color:var(--accent);}
+  .stat-link:hover .val,.stat-link:focus-visible .val{color:var(--accent);}
   .flags:empty{display:none;}.flag{flex-wrap:wrap;border-radius:0;}
   .panel{border:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0;}
   th{background:#EDF0F1;text-transform:none;font-size:12px;color:var(--ink-2);}
@@ -218,6 +223,41 @@
   @media print{
     body{background:white;color:black;}header,.demoBar,.page-heading,.bar,.toast,dialog,section:not(#tab-sheets){display:none!important;}
     main{padding:0;max-width:none;}#tab-sheets{display:block!important;}.panel{overflow:visible;border:0;}.print-heading{display:block;margin-bottom:20px;}th,td{padding:7px;font-size:10px;}td.note{white-space:normal;max-width:160px;}.av{display:none;}.name{font-size:10px;}tr{break-inside:avoid;}thead{display:table-header-group;}
+  }
+
+  /* ── palette ───────────────────────────────
+     Warm neutrals and a deep green-ink header give the board its own identity.
+     Colour carries meaning (working, needs attention), not decoration. */
+  :root{
+    --page:#F4F3EF; --card:#FFFFFF; --line:#E2E0D8; --line-soft:#ECEAE4;
+    --ink:#171A18; --ink-2:#565B57; --ink-3:#6E736F;
+    --accent:#0A6E4E; --accent-soft:#E6F1EC; --mint:#8FD1B3;
+    --band:#10251F; --band-2:#1B3A31;
+    --warn:#9A5B0A; --warn-soft:#FAF0DC; --stop:#B42318; --stop-soft:#FCEEEB;
+  }
+  header{background:var(--band);border-bottom:0;}
+  header .brand{color:#fff;} header .brand span{color:var(--mint);}
+  header .co{color:#A9BDB4;}
+  header nav button{background:none;color:#C9D6D0;border-radius:0;border-bottom:2px solid transparent;}
+  header nav button:hover{background:var(--band-2);color:#fff;}
+  header nav button.on{background:none;color:#fff;border-bottom-color:var(--mint);}
+  header .link{color:#C9D6D0;} header .link:hover{color:#fff;}
+  .demoBar{background:var(--warn-soft);color:#6E4206;border-bottom:1px solid #EAD9B5;}
+  .demoBar a{color:#6E4206;}
+  th{background:#EFEDE6;}
+  tbody tr:hover{background:#FAF9F6;}
+  button.b{background:var(--band);}
+  .stat-link .val,.stat-link .sub{color:var(--warn);}
+  .stat-link:hover .val,.stat-link:focus-visible .val{color:#7A4808;}
+  .av{border:0;}
+  .av.t0{background:#E3EFE8;color:#1F5A43;} .av.t1{background:#F3E6DA;color:#7A4A26;}
+  .av.t2{background:#E3E9F2;color:#2F4A6E;} .av.t3{background:#F2EBD6;color:#6B5316;}
+  .av.t4{background:#EDE4EE;color:#5E3B63;} .av.t5{background:#DFEEEE;color:#22575A;}
+  @media(max-width:700px){
+    header nav{background:var(--card);border-top:1px solid var(--line);}
+    header nav button{color:var(--ink-2);border-bottom:0;}
+    header nav button:hover{background:var(--page);color:var(--ink);}
+    header nav button.on{color:var(--accent);background:var(--accent-soft);}
   }
 </style>
 </head>
@@ -341,23 +381,33 @@
 <dialog id="settingsDialog" aria-labelledby="settingsTitle"><form id="settingsForm"><h2 id="settingsTitle">Company settings</h2><label class="field">Company name<input id="companyName" required maxlength="120"></label><div id="settingsError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelSettings">Cancel</button><button class="b" id="saveSettings">Save changes</button></div></form></dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="lucide.min.js"></script>
 <script>
 (function () {
   "use strict";
 
   var CFG = window.APP_CONFIG || {};
   var sb = null, ME = null;
-  var NOW = [], SHEET = [], STAFF = [], SITES = [];
+  var NOW = [], SHEET = [], STAFF = [], SITES = [], TODAY = [];
   var sortKey = "clock_in_at", sortDir = 1;
   var poll = null;
   var REQUESTS = [], editingSite = null, requestsLoaded = false;
   var attentionIds = null;
-  if(window.lucide) {
-    document.querySelectorAll('nav button').forEach(function(b){b.insertAdjacentHTML('afterbegin','<i aria-hidden="true" data-lucide="'+{now:'layout-dashboard',sheets:'table-2',staff:'users',sites:'map-pin',reviews:'clipboard-check'}[b.dataset.tab]+'"></i>');});
-    ['csv','printSheet','settings'].forEach(function(id){var b=document.getElementById(id);b.classList.add('icon-button');b.insertAdjacentHTML('afterbegin','<i aria-hidden="true" data-lucide="'+{csv:'download',printSheet:'printer',settings:'settings-2'}[id]+'"></i>');});
-    window.lucide.createIcons();
+  // Icon shapes from Lucide (ISC licence, LUCIDE-LICENSE.txt), inlined so no icon library has to load.
+  function icon(shapes) {
+    return '<svg class="lucide" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + shapes + '</svg>';
   }
+  var ICONS = {
+    now: '<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',
+    sheets: '<path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/>',
+    staff: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/>',
+    sites: '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+    reviews: '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',
+    csv: '<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>',
+    printSheet: '<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/>',
+    settings: '<path d="M14 17H5"/><path d="M19 7h-9"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/>'
+  };
+  document.querySelectorAll('nav button').forEach(function(b){ b.insertAdjacentHTML('afterbegin', icon(ICONS[b.dataset.tab])); });
+  ['csv','printSheet','settings'].forEach(function(id){ var b = document.getElementById(id); b.classList.add('icon-button'); b.insertAdjacentHTML('afterbegin', icon(ICONS[id])); });
 
   // ── DEMO MODE ──────────────────────────────
   // Runs on sample data when no Supabase details are filled in, so the board
@@ -437,8 +487,14 @@
     return ((parts[0] || "")[0] || "?").toUpperCase() +
            (parts.length > 1 ? (parts[parts.length - 1][0] || "").toUpperCase() : "");
   }
+  // A stable muted tint per person, so the same name is the same colour everywhere.
+  function tint(name) {
+    var h = 0;
+    String(name || "").split("").forEach(function (c) { h = (h * 31 + c.charCodeAt(0)) >>> 0; });
+    return h % 6;
+  }
   function nameCell(name) {
-    return '<td><div class="name"><span class="av">' + esc(initials(name)) +
+    return '<td><div class="name"><span class="av t' + tint(name) + '">' + esc(initials(name)) +
            '</span>' + esc(name || "(no name)") + "</div></td>";
   }
 
@@ -450,11 +506,28 @@
   function localDay(v) { var d = new Date(v); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
 
   // ── NOW ──────────────────────────────────
+  function needsAttention(s) { return s.hours_so_far > 13 || s.clock_in_ok !== true; }
+
+  // Today's counts get their own query so they stay right whatever dates the
+  // Timesheets tab is showing.
   async function loadNow() {
-    if (DEMO) { NOW = D.now; renderNow(); renderFlags(); renderStats(); return; }
-    var r = await sb.from("on_shift_now").select("*");
-    if (r.error) { toast(r.error.message); return; }
-    NOW = r.data || [];
+    var midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+    if (DEMO) {
+      NOW = D.now;
+      TODAY = D.now.map(function (s) { return { user_id: s.full_name, clock_in_at: s.clock_in_at, clock_out_at: null }; })
+        .concat(D.sheet.filter(function (s) { return new Date(s.clock_out_at) >= midnight; }));
+      renderNow(); renderFlags(); renderStats(); return;
+    }
+    var since = '"' + midnight.toISOString() + '"';
+    var res = await Promise.all([
+      sb.from("on_shift_now").select("*"),
+      sb.from("shifts").select("user_id, clock_in_at, clock_out_at")
+        .or("clock_in_at.gte." + since + ",clock_out_at.gte." + since)
+    ]);
+    var err = res[0].error || res[1].error;
+    if (err) { toast(err.message); return; }
+    NOW = res[0].data || [];
+    TODAY = res[1].data || [];
     renderNow();
     renderFlags();
     renderStats();
@@ -464,7 +537,7 @@
     var q = $("nowSearch").value.trim().toLowerCase(), site = $("nowSite").value;
     var rows = NOW.filter(function(s) {
       return (!q || (s.full_name || "").toLowerCase().includes(q)) && (!site || s.worksite === site) &&
-        (!$("attentionOnly").checked || s.hours_so_far > 13 || s.clock_in_ok !== true);
+        (!$("attentionOnly").checked || needsAttention(s));
     }).sort(function (a, b) {
       var x = a[sortKey], y = b[sortKey];
       if (x == null) return 1; if (y == null) return -1;
@@ -494,7 +567,7 @@
 
   // What actually needs a manager's attention, surfaced above the board.
   function renderFlags() {
-    var ids=NOW.filter(function(s){return s.hours_so_far>13||s.clock_in_ok!==true;}).map(function(s){return s.shift_id;});
+    var ids=NOW.filter(needsAttention).map(function(s){return s.shift_id;});
     if(attentionIds && $('boardAlerts').checked && ids.some(function(id){return !attentionIds.includes(id);}))toast('An attendance exception needs attention.');
     attentionIds=ids;
     var out = [];
@@ -516,25 +589,31 @@
     $("flags").innerHTML = out.join("");
   }
 
-  // Overview totals stay independent of the selected timesheet range.
+  function stat(label, value, sub) {
+    return '<div class="stat"><div class="lbl">' + esc(label) + '</div><div class="val num">' +
+      esc(value) + '</div><div class="sub">' + esc(sub) + "</div></div>";
+  }
+
   function renderStats() {
     renderCoverage();
-    var sites = {};
-    NOW.forEach(function (s) {
-      if (s.worksite) sites[s.worksite] = 1;
+    var midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+    var sites = {}, people = {}, doneH = 0, doneN = 0;
+    NOW.forEach(function (s) { if (s.worksite) sites[s.worksite] = 1; });
+    TODAY.forEach(function (s) {
+      if (new Date(s.clock_in_at) >= midnight) people[s.user_id] = 1;
+      if (s.clock_out_at && new Date(s.clock_out_at) >= midnight) { doneH += shiftHours(s); doneN++; }
     });
-    var nSites = Object.keys(sites).length;
-    var cards = [
-      ["On shift now", NOW.length, "Across " + nSites + (nSites === 1 ? " site" : " sites")],
-      ["Sites working", nSites, "With staff on shift"],
-      ["Needs attention", NOW.filter(function(s) { return s.hours_so_far > 13 || s.clock_in_ok !== true; }).length, "Open shifts to review"],
-      ["Active staff", STAFF.filter(function (p) { return p.active; }).length,
-        SITES.length + (SITES.length === 1 ? " worksite" : " worksites")]
-    ];
-    $("stats").innerHTML = cards.map(function (c) {
-      return '<div class="stat"><div class="lbl">' + esc(c[0]) + '</div><div class="val num">' +
-        esc(c[1]) + '</div><div class="sub">' + esc(c[2]) + "</div></div>";
-    }).join("");
+    var nSites = Object.keys(sites).length, nPeople = Object.keys(people).length;
+    var active = STAFF.filter(function (p) { return p.active; }).length;
+    var attention = NOW.filter(needsAttention).length;
+    $("stats").innerHTML =
+      stat("On shift now", NOW.length, NOW.length ? "Across " + nSites + (nSites === 1 ? " site" : " sites") : "Nobody clocked in") +
+      stat("Clocked in today", nPeople, active ? "of " + active + " active staff" : "Different people") +
+      stat("Completed today", hrs(doneH), doneN ? "From " + doneN + (doneN === 1 ? " finished shift" : " finished shifts") : "No shifts finished yet") +
+      (attention
+        ? '<button type="button" class="stat stat-link" id="showAttention"><div class="lbl">Needs attention</div><div class="val num">' +
+          attention + '</div><div class="sub">Show who →</div></button>'
+        : stat("Needs attention", 0, "All clear"));
   }
 
   function renderCoverage() {
@@ -973,6 +1052,12 @@
   $("nowSearch").addEventListener("input", renderNow);
   $("nowSite").addEventListener("change", renderNow);
   $("attentionOnly").addEventListener("change", renderNow);
+  $("stats").addEventListener("click", function (e) {
+    if (!e.target.closest("#showAttention")) return;
+    $("attentionOnly").checked = true;
+    renderNow();
+    $("nowBody").closest(".panel").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
   $("boardDate").textContent = new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});
   $("refresh").addEventListener("click", async function() {
     var button = $("refresh"); button.disabled = true; button.textContent = "Refreshing...";

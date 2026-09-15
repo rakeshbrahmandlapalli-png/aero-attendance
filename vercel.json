@@ -1,6 +1,5 @@
 {
   "rewrites": [
-    { "source": "/demo/lucide.min.js", "destination": "/lucide.min.js" },
     { "source": "/demo", "destination": "/index.html" },
     { "source": "/demo/admin", "destination": "/admin.html" }
   ]

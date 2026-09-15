@@ -152,7 +152,10 @@
     font-size:14px; font-weight:500; z-index:50; max-width:90vw;}
   /* Responsive staff workspace. */
   :root{--r:8px;--ink-3:#65707A;--page:#F5F6F7;}
-  *{letter-spacing:0!important;}
+  label{letter-spacing:0;}
+  h1{letter-spacing:-.02em;}
+  h2{letter-spacing:-.01em;}
+  .summary strong{letter-spacing:-.02em;}
   .top{padding:18px max(24px,calc((100vw - 1100px)/2));gap:18px;}
   .identity{display:flex;align-items:center;gap:14px;min-width:0;}
   .wordmark{font-size:21px;font-weight:600;padding-right:18px;border-right:1px solid var(--line);}
@@ -216,6 +219,26 @@
     .staff-nav button{min-height:58px;}.wrap{padding-bottom:100px;}.toast{bottom:calc(76px + env(safe-area-inset-bottom));}.identity{gap:9px;}.wordmark{display:none;}
     .row{align-items:flex-start;}.row>div:first-child{min-width:0;}.avatar{width:34px;height:34px;}
   }
+
+  /* ── palette ─────────────── same system as the manager board. */
+  :root{
+    --page:#F4F3EF; --card:#FFFFFF; --line:#E2E0D8; --line-soft:#ECEAE4;
+    --ink:#171A18; --ink-2:#565B57; --ink-3:#6E736F;
+    --accent:#0A6E4E; --accent-soft:#E6F1EC; --mint:#8FD1B3;
+    --band:#10251F; --band-2:#1B3A31;
+    --warn:#9A5B0A; --warn-soft:#FAF0DC;
+  }
+  .top{background:var(--band);border-bottom:0;}
+  .top .wordmark{color:#fff;border-right-color:rgba(255,255,255,.16);}
+  .top .wordmark span{color:var(--mint);}
+  .top .who{color:#fff;} .top .co{color:#A9BDB4;}
+  .top .link{color:#C9D6D0;} .top .link:hover{color:#fff;}
+  .avatar{background:var(--band-2);color:var(--mint);}
+  .demoBar{background:var(--warn-soft);color:#6E4206;border-bottom:1px solid #EAD9B5;}
+  .demoBar a{color:#6E4206;}
+  .act.out{background:var(--band);}
+  .staff-nav button[aria-selected=true]{color:var(--ink);border-color:var(--accent);}
+  .connection{border-bottom:1px solid #EAD9B5;}
 </style>
 </head>
 <body>
@@ -285,7 +308,6 @@
 <dialog id="correctionDialog" aria-labelledby="correctionTitle"><form id="correctionForm"><h2 id="correctionTitle">Request a correction</h2><p class="note" id="correctionOriginal"></p><label for="correctIn">Start</label><input id="correctIn" type="datetime-local" required><label for="correctOut">End</label><input id="correctOut" type="datetime-local" required><label for="correctReason">Reason</label><textarea id="correctReason" maxlength="1000" required></textarea><div class="err hidden" id="correctionError" role="alert"></div><div class="dialog-actions"><button type="button" class="link" id="cancelCorrection">Cancel</button><button class="btn" id="submitCorrection">Send request</button></div></form></dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="lucide.min.js"></script>
 <script>
 (function () {
   "use strict";
@@ -297,10 +319,16 @@
   var tick = null;
   var HISTORY = [];
   var REQUESTS = [], correctionShift = null, correctionBusy = false, activityBusy = false;
-  if(window.lucide) {
-    document.querySelectorAll('[data-view]').forEach(function(b){b.insertAdjacentHTML('afterbegin','<i aria-hidden="true" data-lucide="'+{work:'clock-3',inbox:'bell',account:'user-round'}[b.dataset.view]+'"></i>');});
-    window.lucide.createIcons();
+  // Icon shapes from Lucide (ISC licence, LUCIDE-LICENSE.txt), inlined so no icon library has to load.
+  function icon(shapes) {
+    return '<svg class="lucide" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + shapes + '</svg>';
   }
+  var ICONS = {
+    work: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6h4"/>',
+    inbox: '<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>',
+    account: '<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>'
+  };
+  document.querySelectorAll('[data-view]').forEach(function(b){ b.insertAdjacentHTML('afterbegin', icon(ICONS[b.dataset.view])); });
   function esc(v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function(c) { return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
 
   // ── DEMO MODE ──────────────────────────────
@@ -490,6 +518,17 @@
 
   function refreshMap() { MAP.site = currentSite(); drawMap(); }
 
+  // Drawn on screen only so staff can see which way to walk; the database
+  // still stores nothing but the fix taken at clock in and clock out.
+  var watchId = null;
+  function watchMe() {
+    if (!navigator.geolocation || watchId !== null) return;
+    watchId = navigator.geolocation.watchPosition(function (p) {
+      MAP.me = { lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy };
+      drawMap();
+    }, function () {}, { enableHighAccuracy: true, maximumAge: 15000, timeout: 20000 });
+  }
+
   // ── location ───────────────────────────────
   //
   // Never block the clock-in on this. If the fix is slow or refused we send
@@ -640,6 +679,7 @@
       return '<option value="' + esc(w.id) + '">' + esc(w.name) + "</option>";
     }).join("") || '<option value="">No sites set up yet</option>';
     refreshMap();
+    watchMe();
 
     var open = await sb.from("shifts").select("*")
       .eq("user_id", ME.id)
@@ -812,6 +852,8 @@
 
   function signedOut() {
     ME = null; OPEN = null; REQUESTS=[];HISTORY=[];clearInterval(tick);
+    if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+    MAP.me = null;
     show("app", false);
     show("login", true);
   }

@@ -59,7 +59,8 @@ its own CSS and JavaScript. The only external script is supabase-js from a CDN.
    feature needs a demo-mode path too. Clients are sent the demo link.
 10. **No map library.** The map is plain Web Mercator maths over image tiles.
     Do not add Leaflet, Google Maps or Mapbox. (OpenStreetMap's free tiles must
-    be swapped for MapTiler or Stadia before real clients use it.)
+    be swapped for MapTiler or Stadia before real clients use it.) No icon
+    library either: icons are small inline SVGs in the page (`icon()` helper).
 
 ## Secrets
 
@@ -78,8 +79,13 @@ its own CSS and JavaScript. The only external script is supabase-js from a CDN.
 
 It must look like a serious tool a company pays for, not an AI template.
 
-- Light theme. Use the CSS variables already in `:root`: accent `#0A6E4E`,
-  warning `#9A5B0A`. No bright default colours such as `#10B981` or `#EF4444`.
+- Light theme on warm neutrals (page `#F4F3EF`) under a deep green-ink header
+  band (`#10251F`, mint `#8FD1B3` for the wordmark dot and active tab). The
+  palette lives in the `palette` block at the end of each `<style>` — change
+  colours there, not scattered through the file.
+- Colour carries meaning: accent `#0A6E4E` = working, warning `#9A5B0A` =
+  needs attention. People's initials use the six muted `.t0`–`.t5` tints.
+  No bright default colours such as `#10B981` or `#EF4444`.
 - Hairline 1px borders. **No drop shadows** and no gradients.
 - Font: Instrument Sans, not Inter. Slightly tight letter-spacing on headings.
 - Every number that changes gets `font-variant-numeric: tabular-nums` (`.num`).
