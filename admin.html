@@ -168,7 +168,7 @@
 
 <div id="app" class="hidden">
   <div id="demoBar" class="demoBar hidden">
-    Demo — sample data, nothing saved. &nbsp;<a href="index.html" style="color:inherit">← See what staff use</a>
+    Demo — sample data, nothing saved. &nbsp;<a id="demoLink" href="index.html" style="color:inherit">← See what staff use</a>
   </div>
   <header>
     <div>
@@ -283,7 +283,9 @@
   // ── DEMO MODE ──────────────────────────────
   // Runs on sample data when no Supabase details are filled in, so the board
   // can be shown to a client before anything is set up. In memory only.
-  var DEMO = !CFG.url || !CFG.key;
+  // /demo/admin (or ?demo) forces sample data even when the real keys are set.
+  var FORCED_DEMO = /^\/demo(\/|$)/.test(location.pathname) || /[?&]demo\b/.test(location.search);
+  var DEMO = FORCED_DEMO || !CFG.url || !CFG.key;
 
   function agoISO(h) { return new Date(Date.now() - h * 3600000).toISOString(); }
 
@@ -301,7 +303,7 @@
   }
 
   var D = {
-    company: "247 Airport Parking",
+    company: "Example Logistics Ltd",
     now: [
       { shift_id: "n1", full_name: "Sam Whitfield", worksite: "Main yard",
         clock_in_at: agoISO(3.4), clock_in_ok: true, clock_in_metres: 24, hours_so_far: 3.4 },
@@ -768,7 +770,11 @@
   $("addSite").addEventListener("click", addSite);
   $("here").addEventListener("click", useHere);
 
-  if (DEMO) { $("signout").textContent = ""; load(); }
+  if (DEMO) {
+    $("signout").textContent = "";
+    if (FORCED_DEMO) $("demoLink").href = /^\/demo/.test(location.pathname) ? "/demo" : "index.html?demo";
+    load();
+  }
   else sb.auth.getSession().then(function (s) { if (s.data.session) load(); else signedOut(); });
 })();
 </script>

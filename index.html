@@ -165,7 +165,7 @@
 <!-- ── APP ─────────────────────────────────── -->
 <div id="app" class="hidden">
   <div id="demoBar" class="demoBar hidden">
-    Demo — sample data, nothing saved. &nbsp;<a href="admin.html" style="color:inherit">See the manager board →</a>
+    Demo — sample data, nothing saved. &nbsp;<a id="demoLink" href="admin.html" style="color:inherit">See the manager board →</a>
   </div>
   <div class="top">
     <div>
@@ -221,7 +221,10 @@
   // bought anything. Everything below is fake and lives in memory only —
   // a refresh resets it.
   var LAST_SHIFT = null;   // most recent completed shift, for the empty state
-  var DEMO = !CFG.url || !CFG.key;
+  // /demo (or ?demo) forces sample data even when the real keys are set, so
+  // one set of files serves both the live app and the sales demo link.
+  var FORCED_DEMO = /^\/demo(\/|$)/.test(location.pathname) || /[?&]demo\b/.test(location.search);
+  var DEMO = FORCED_DEMO || !CFG.url || !CFG.key;
 
   function demoShift(daysAgo, inH, inM, outH, outM, ok) {
     var d = new Date(); d.setDate(d.getDate() - daysAgo);
@@ -238,7 +241,7 @@
   }
 
   var D = {
-    profile: { full_name: "Sam Whitfield", company: "247 Airport Parking" },
+    profile: { full_name: "Sam Whitfield", company: "Example Logistics Ltd" },
     sites: [
       { id: "s1", name: "Main yard", lat: 51.87921, lng: -0.37641, radius_m: 150 },
       { id: "s2", name: "Terminal drop-off", lat: 51.88412, lng: -0.36998, radius_m: 200 }
@@ -638,6 +641,8 @@
 
   if (DEMO) {
     $("signout").textContent = "";
+    // Keep the demo on the demo side: a plain "admin.html" link from /demo would open the real sign-in.
+    if (FORCED_DEMO) $("demoLink").href = /^\/demo/.test(location.pathname) ? "/demo/admin" : "admin.html?demo";
     loadDemo();
     return;
   }

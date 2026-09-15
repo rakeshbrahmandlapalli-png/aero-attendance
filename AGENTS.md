@@ -11,6 +11,9 @@ A staff attendance app sold to several client companies (the first two are
 see who is on shift, exceptions, timesheets, staff and worksites.
 
 - Live: https://aero-attendance.vercel.app (manager board at `/admin.html`)
+- Sales demo: https://aero-attendance.vercel.app/demo (manager: `/demo/admin`).
+  Same files; `/demo` or `?demo` forces demo mode (rewrites in `vercel.json`).
+  Demo data must use made-up names only — never a real client's company name.
 - Hosting: Vercel, auto-deploys from `main`
 - Database and login: Supabase
 
