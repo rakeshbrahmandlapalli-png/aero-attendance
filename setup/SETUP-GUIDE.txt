@@ -163,3 +163,35 @@
  If someone's GPS fails or they refuse permission, the shift still
  records — flagged as unverified for a manager to look at. A refused
  clock-in would mean an unpaid shift, which is a far worse failure.
+
+
+ ATTENDANCE UPGRADE: CORRECTIONS AND HOME-SCREEN INSTALLATION
+ ---------------------------------------------------------
+ For an existing company database, run the updated setup/schema.sql:
+ 1. In Supabase, open this project's SQL Editor and click New query.
+ 2. Put the full contents of setup/schema.sql into the editor.
+ 3. Click Run and check that it succeeds before publishing the new app.
+    The update runs in a transaction and is safe to rerun with existing data.
+ 4. Test a correction with a staff account. Sign in as a different manager,
+    open Review, and approve or reject it. Check the timesheet afterwards.
+
+ Requests retain the original times, reason and manager decision. Staff
+ cannot approve their own corrections. Approvals reject overlapping times
+ and requests whose original shift has changed since submission.
+
+ Local HTML previews always use disposable sample data. Each demo page
+ has its own in-memory data; a refresh resets it. The manager Review tab
+ includes a sample request. The live database is never used by local files.
+
+ Hosted HTTPS is needed for home-screen installation. On iPhone/iPad use
+ Safari > Share > Add to Home Screen. Android and desktop browsers can
+ offer Install Aero from Account, or installation through the browser menu.
+ Attendance is not cached or queued offline: reconnect to record a shift.
+
+ Alerts are in-app while the page is open, not email, SMS or background
+ push. The manager board refreshes requests every 30 seconds. Staff see
+ approval decisions in Activity. Long-shift reminders appear after 13 hours.
+
+ Exports stay in one combined CSV. Completed shifts are selected by default;
+ clear that checkbox to include running shifts. Print / PDF opens the
+ browser's print dialogue, where Save as PDF is available on supported devices.

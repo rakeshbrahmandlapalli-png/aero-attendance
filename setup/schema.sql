@@ -9,6 +9,8 @@
 --  console and tried, Postgres would still refuse.
 -- ════════════════════════════════════════════════════════════════════════
 
+begin;
+
 -- ── TABLES ──────────────────────────────────────────────────────────────
 
 create table if not exists companies (
@@ -158,6 +160,10 @@ begin
   if v_company is null then
     raise exception 'No profile for this user — ask your manager to add you.';
   end if;
+
+  -- Serialise simultaneous clock-ins for one person before checking the open shift.
+  perform 1 from profiles where id = auth.uid() and active for update;
+  if not found then raise exception 'Your account is inactive.'; end if;
 
   -- Already on shift? Hand back the open one rather than opening a second.
   -- A double tap on a slow connection must not create two shifts.
@@ -333,3 +339,106 @@ revoke execute on function clock_in(uuid, double precision, double precision) fr
 revoke execute on function clock_out(double precision, double precision, text) from public, anon;
 grant execute on function clock_in(uuid, double precision, double precision) to authenticated;
 grant execute on function clock_out(double precision, double precision, text) to authenticated;
+
+-- Attendance corrections: originals and decisions remain available for review.
+create table if not exists shift_corrections (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references companies(id) on delete cascade,
+  shift_id uuid not null references shifts(id) on delete cascade,
+  user_id uuid not null references profiles(id) on delete cascade,
+  original_in timestamptz not null,
+  original_out timestamptz,
+  requested_in timestamptz not null,
+  requested_out timestamptz not null,
+  reason text not null check (length(trim(reason)) between 1 and 1000),
+  status text not null default 'pending' check (status in ('pending','approved','rejected')),
+  review_note text not null default '',
+  reviewed_by uuid references profiles(id),
+  reviewed_at timestamptz,
+  created_at timestamptz not null default now(),
+  check (requested_out > requested_in)
+);
+create unique index if not exists corrections_one_pending on shift_corrections(shift_id) where status = 'pending';
+create index if not exists corrections_company_date on shift_corrections(company_id, created_at desc);
+alter table shift_corrections enable row level security;
+drop policy if exists corrections_read on shift_corrections;
+create policy corrections_read on shift_corrections for select to authenticated
+  using (company_id = current_company_id() and (user_id = auth.uid() or is_manager()));
+revoke all on shift_corrections from anon, authenticated;
+grant select on shift_corrections to authenticated;
+
+-- Staff cannot change their own company, role or active status.
+drop policy if exists profiles_self_update on profiles;
+
+create or replace function request_shift_correction(
+  p_shift_id uuid, p_in timestamptz, p_out timestamptz, p_reason text
+) returns shift_corrections
+language plpgsql security definer set search_path = public as $$
+declare v_shift shifts; v_request shift_corrections;
+begin
+  if not exists (select 1 from profiles where id = auth.uid() and active) then
+    raise exception 'Your account is inactive.';
+  end if;
+  select * into v_shift from shifts where id = p_shift_id
+    and user_id = auth.uid() and company_id = current_company_id() for update;
+  if not found then raise exception 'Shift not found.'; end if;
+  if p_in is null or p_out is null or not isfinite(p_in) or not isfinite(p_out)
+     or p_out <= p_in or p_out > now() then
+    raise exception 'Enter a start and end time in the past, with the end after the start.';
+  end if;
+  if p_reason is null or length(trim(p_reason)) not between 1 and 1000 then
+    raise exception 'Enter a reason of up to 1000 characters.';
+  end if;
+  if p_in = v_shift.clock_in_at and p_out is not distinct from v_shift.clock_out_at then
+    raise exception 'The requested times are unchanged.';
+  end if;
+  if exists (select 1 from shift_corrections where shift_id = p_shift_id and status = 'pending') then
+    raise exception 'This shift already has a pending correction.';
+  end if;
+  insert into shift_corrections(company_id, shift_id, user_id, original_in, original_out,
+      requested_in, requested_out, reason)
+    values (v_shift.company_id, v_shift.id, auth.uid(), v_shift.clock_in_at,
+      v_shift.clock_out_at, p_in, p_out, trim(p_reason)) returning * into v_request;
+  return v_request;
+end;
+$$;
+
+create or replace function review_shift_correction(p_id uuid, p_approve boolean, p_note text default '')
+returns shift_corrections
+language plpgsql security definer set search_path = public as $$
+declare v_request shift_corrections; v_shift shifts;
+begin
+  if not coalesce(is_manager(), false) then raise exception 'Manager access required.'; end if;
+  if p_approve is null then raise exception 'Choose approve or reject.'; end if;
+  if length(coalesce(p_note, '')) > 1000 then raise exception 'Review note is too long.'; end if;
+  select * into v_request from shift_corrections where id = p_id
+    and company_id = current_company_id() for update;
+  if not found then raise exception 'Correction not found.'; end if;
+  if v_request.user_id = auth.uid() then raise exception 'Another manager must review your own correction.'; end if;
+  if v_request.status <> 'pending' then raise exception 'This correction has already been reviewed.'; end if;
+  if p_approve then
+    select * into v_shift from shifts where id = v_request.shift_id for update;
+    if v_shift.clock_in_at is distinct from v_request.original_in
+       or v_shift.clock_out_at is distinct from v_request.original_out then
+      raise exception 'This shift has changed since the request. Reject it and ask for a new request.';
+    end if;
+    if exists (select 1 from shifts where user_id = v_request.user_id and id <> v_shift.id
+      and clock_in_at < v_request.requested_out
+      and coalesce(clock_out_at, 'infinity'::timestamptz) > v_request.requested_in) then
+      raise exception 'These times overlap another shift.';
+    end if;
+    update shifts set clock_in_at = v_request.requested_in, clock_out_at = v_request.requested_out
+      where id = v_request.shift_id;
+  end if;
+  update shift_corrections set status = case when p_approve then 'approved' else 'rejected' end,
+    review_note = trim(coalesce(p_note, '')), reviewed_by = auth.uid(), reviewed_at = now()
+    where id = p_id returning * into v_request;
+  return v_request;
+end;
+$$;
+revoke execute on function request_shift_correction(uuid,timestamptz,timestamptz,text) from public, anon;
+revoke execute on function review_shift_correction(uuid,boolean,text) from public, anon;
+grant execute on function request_shift_correction(uuid,timestamptz,timestamptz,text) to authenticated;
+grant execute on function review_shift_correction(uuid,boolean,text) to authenticated;
+
+commit;

@@ -2,9 +2,12 @@
 <html lang="en-GB">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Shift board</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Aero Attendance | Manager board</title>
 <meta name="theme-color" content="#F6F7F8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230A6E4E'/%3E%3Cpath d='M18 44V28M30 44V20M42 44V34' stroke='%23ffffff' stroke-width='5.5' stroke-linecap='round'/%3E%3C/svg%3E">
 
 <script>
@@ -153,6 +156,69 @@
   .toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%);
     background:var(--ink); color:#fff; padding:11px 18px; border-radius:99px;
     font-size:13.5px; font-weight:500; z-index:60;}
+  :root{--r:6px;--ink-3:#65707A;--page:#F5F6F7;}
+  *{letter-spacing:0!important;}
+  header{height:76px;padding:0 32px;gap:32px;}
+  .brand{font-size:22px;}.co{font-size:12px;color:var(--ink-2);}
+  nav{gap:8px;}nav button{min-height:44px;padding:10px 16px;border-radius:4px;}
+  nav button.on{background:var(--accent-soft);color:var(--accent);}
+  .link{min-height:44px;color:var(--ink-2);}
+  main{max-width:1280px;padding:32px 32px 70px;}
+  .page-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:28px;}
+  h1{font-size:28px;font-weight:600;line-height:1.2;margin:0 0 7px;}
+  .date-line{font-size:14px;color:var(--ink-2);}
+  h2{font-size:18px;text-transform:none;color:var(--ink);margin-bottom:16px;}
+  .stats{gap:0;border-block:1px solid var(--line);padding:22px 0;margin-bottom:28px;}
+  .stat{background:transparent;border:0;border-radius:0;padding:0 24px;min-width:0;}
+  .stat:first-child{padding-left:0;}.stat+.stat{border-left:1px solid var(--line);}
+  .stat .lbl{text-transform:none;font-size:13px;}.stat .val{font-size:28px;}.stat .sub{margin-bottom:0;}
+  .flags:empty{display:none;}.flag{flex-wrap:wrap;border-radius:0;}
+  .panel{border:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0;}
+  th{background:#EDF0F1;text-transform:none;font-size:12px;color:var(--ink-2);}
+  td{padding:16px;}td.note{white-space:nowrap;max-width:none;}
+  .av{width:30px;height:30px;border-radius:6px;background:#EEF2F0;color:var(--accent);}
+  input,select{min-height:44px;font-size:16px;border-radius:5px;max-width:100%;}
+  button.b,button.g{min-height:44px;border-radius:5px;}
+  button:focus-visible,a:focus-visible,th:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
+  .filter-check{display:flex;align-items:center;gap:8px;color:var(--ink-2);min-height:44px;}
+  .filter-check input{width:18px;height:18px;min-height:18px;accent-color:var(--accent);}
+  .bar{gap:12px;margin-bottom:20px;}.bar input[type=search]{flex:1;min-width:180px;}
+  .field{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--ink-2);}
+  .field input,.field select{width:100%;}.bar .field{flex:1;min-width:140px;}
+  .bar .field input{width:100%!important;}.bar .b,.bar .g{align-self:flex-end;}
+  .tot{width:100%;margin:0;}.toast{max-width:calc(100vw - 32px);border-radius:6px;bottom:calc(24px + env(safe-area-inset-bottom));}
+  @media(max-width:700px){
+    header{height:auto;min-height:76px;flex-wrap:wrap;padding:14px 18px 0;gap:10px;}
+    header nav{order:3;width:100%;margin:0;display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--line);padding-block:8px;}
+    nav button{padding:8px 4px;font-size:13px;}.brand{font-size:20px;}
+    main{padding:24px 18px 50px;}.page-heading{align-items:flex-start;}h1{font-size:25px;}
+    .stats{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:24px;}.stat{padding:0 16px;}.stat:nth-child(3){border-left:0;padding-left:0;}.stat .val{font-size:25px;}
+    .bar>input,.bar>select{width:100%;}.bar .field{min-width:calc(50% - 12px);}
+    .flag{display:block;}.flag .act{display:block;margin-top:10px;}.demoBar{font-size:12px;}
+  }
+  .review-count{font-variant-numeric:tabular-nums;}
+  .lucide{width:18px;height:18px;flex:none;}nav button{display:flex;align-items:center;justify-content:center;gap:8px;}
+  .icon-button{display:inline-flex;gap:8px;align-items:center;justify-content:center;}
+  .review-item{padding:22px 0;border-bottom:1px solid var(--line);}.review-item h3{font-size:16px;margin:0 0 8px;}.review-item p{margin:8px 0;overflow-wrap:anywhere;color:var(--ink-2);}
+  .review-times{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:14px 0;}.review-times span{display:block;font-size:12px;color:var(--ink-2);}.review-times strong{font-weight:500;}
+  .review-item textarea{width:100%;max-width:600px;min-height:70px;padding:12px;border:1px solid var(--line);border-radius:5px;background:var(--card);font:inherit;font-size:16px;resize:vertical;}.review-item .bar{margin-top:12px;}
+  .coverage{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:20px;border-bottom:1px solid var(--line);padding:0 0 24px;margin-bottom:28px;}
+  .coverage strong{font-size:22px;display:block;font-weight:600;}.coverage span{color:var(--ink-2);}
+  .site-preview{height:230px;position:relative;overflow:hidden;background:#E8ECEE;border:1px solid var(--line);margin-bottom:24px;}.site-preview img{position:absolute;width:256px;height:256px;max-width:none;}.site-zone{position:absolute;border:2px solid var(--accent);border-radius:50%;background:rgba(10,110,78,.12);transform:translate(-50%,-50%);pointer-events:none;}.site-caption{position:absolute;bottom:8px;left:8px;right:8px;background:rgba(255,255,255,.95);padding:6px 10px;font-size:12px;}.site-caption a{color:inherit;}
+  .toolbar-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  dialog{width:min(440px,calc(100% - 32px));max-height:calc(100dvh - 32px);overflow:auto;border:1px solid var(--line);border-radius:8px;padding:24px;color:var(--ink);background:var(--card);}dialog::backdrop{background:rgba(21,23,26,.35);}dialog .field{margin:16px 0;}dialog .bar{justify-content:flex-end;margin:24px 0 0;}
+  .notify-state{color:var(--ink-2);font-size:12px;}.print-heading{display:none;}
+  button:disabled{opacity:.5;cursor:default;}textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  @media(min-width:701px) and (max-width:1100px){header{height:auto;flex-wrap:wrap;padding:16px 24px;gap:12px;}header nav{order:3;width:100%;margin-left:0;justify-content:space-between;}.co{max-width:400px;overflow-wrap:anywhere;}}
+  @media(max-width:700px){
+    header{padding-bottom:14px;position:relative;}header nav{position:fixed;inset:auto 0 0;width:100%;z-index:30;grid-template-columns:repeat(5,minmax(0,1fr));padding:4px 8px calc(4px + env(safe-area-inset-bottom));background:var(--card);}
+    header nav button{min-height:54px;font-size:12px;padding:6px 2px;flex-direction:column;gap:3px;}main{padding-bottom:110px;}.toast{bottom:calc(78px + env(safe-area-inset-bottom));}
+    .page-heading{flex-wrap:wrap;}.review-times{grid-template-columns:1fr;gap:10px;}.coverage{grid-template-columns:1fr 1fr;}.co{max-width:220px;overflow-wrap:anywhere;}
+  }
+  @media print{
+    body{background:white;color:black;}header,.demoBar,.page-heading,.bar,.toast,dialog,section:not(#tab-sheets){display:none!important;}
+    main{padding:0;max-width:none;}#tab-sheets{display:block!important;}.panel{overflow:visible;border:0;}.print-heading{display:block;margin-bottom:20px;}th,td{padding:7px;font-size:10px;}td.note{white-space:normal;max-width:160px;}.av{display:none;}.name{font-size:10px;}tr{break-inside:avoid;}thead{display:table-header-group;}
+  }
 </style>
 </head>
 <body>
@@ -172,7 +238,7 @@
   </div>
   <header>
     <div>
-      <div class="brand">SHIFT<span>·</span>BOARD</div>
+      <div class="brand">aero<span>.</span></div>
       <div class="co" id="company">—</div>
     </div>
     <nav>
@@ -180,18 +246,22 @@
       <button data-tab="sheets">Timesheets</button>
       <button data-tab="staff">Staff</button>
       <button data-tab="sites">Sites</button>
+      <button data-tab="reviews"><span>Review <span id="reviewCount" class="review-count"></span></span></button>
     </nav>
     <button class="link" id="signout">Sign out</button>
   </header>
 
   <main>
+    <div class="page-heading"><div><h1 id="pageTitle">Attendance overview</h1><div class="date-line" id="boardDate"></div></div><div class="toolbar-actions"><button class="g" id="settings">Company settings</button><button class="g" id="refresh">Refresh</button></div></div>
     <!-- ── NOW ────────────────────────────── -->
     <section id="tab-now" class="on">
       <div id="flags" class="flags"></div>
       <div id="stats" class="stats"></div>
+      <h2>Site coverage</h2><div id="coverage" class="coverage"></div>
 
       <h2>On shift now</h2>
       <div class="sub" id="nowSub">—</div>
+      <div class="bar"><input id="nowSearch" type="search" placeholder="Search staff" aria-label="Search on-shift staff"><select id="nowSite" aria-label="Filter worksite"><option value="">All sites</option></select><label class="filter-check"><input id="attentionOnly" type="checkbox">Needs attention</label></div>
       <div class="panel"><table>
         <thead><tr>
           <th data-sort="full_name">Name</th>
@@ -203,23 +273,27 @@
         </tr></thead>
         <tbody id="nowBody"></tbody>
       </table></div>
-      <div id="nowEmpty" class="empty hidden">Nobody is clocked in.</div>
+      <div id="nowEmpty" class="empty hidden">No shifts match these filters.</div>
     </section>
 
     <!-- ── TIMESHEETS ─────────────────────── -->
     <section id="tab-sheets">
+      <div class="print-heading" id="printHeading"></div>
       <h2>Timesheets</h2>
       <div class="bar">
-        <input type="date" id="from">
-        <input type="date" id="to">
-        <select id="who"><option value="">Everyone</option></select>
+        <label class="field">Date range<select id="datePreset"><option value="7">Last 7 days</option><option value="today">Today</option><option value="week">This week</option><option value="lastWeek">Last week</option><option value="custom">Custom dates</option></select></label>
+        <label class="field">From<input type="date" id="from"></label>
+        <label class="field">To<input type="date" id="to"></label>
+        <label class="field">Staff<select id="who"><option value="">Everyone</option></select></label>
         <button class="b" id="run">Show</button>
         <button class="g" id="csv">Export CSV</button>
+        <button class="g" id="printSheet">Print / PDF</button>
+        <label class="filter-check"><input type="checkbox" id="completedOnly" checked>Completed shifts only</label>
         <div class="tot" id="grandTotal"></div>
       </div>
       <div class="panel"><table>
         <thead><tr>
-          <th>Name</th><th>Date</th><th>In</th><th>Out</th>
+          <th>Name</th><th>Date</th><th>In</th><th>Out</th><th>Site</th>
           <th>Hours</th><th>Location</th><th>Note</th>
         </tr></thead>
         <tbody id="sheetBody"></tbody>
@@ -230,46 +304,44 @@
     <!-- ── STAFF ──────────────────────────── -->
     <section id="tab-staff">
       <h2>Staff</h2>
-      <div class="sub">
-        To add someone: create them in Supabase → Authentication → Users, then add
-        their row here with the same email. Keeps you in control of who gets in.
-      </div>
       <div class="bar">
-        <input type="search" id="staffSearch" placeholder="Search name or email">
+        <input type="search" id="staffSearch" placeholder="Search staff" aria-label="Search staff">
+        <select id="staffStatus" aria-label="Staff status"><option value="">All staff</option><option value="active">Active</option><option value="inactive">Inactive</option></select>
       </div>
       <div class="panel"><table>
         <thead><tr>
-          <th>Name</th><th>Role</th><th>Status</th><th>Last seen</th><th></th>
+          <th>Name</th><th>Role</th><th>Status</th><th>Added</th><th></th>
         </tr></thead>
         <tbody id="staffBody"></tbody>
       </table></div>
+      <div id="staffEmpty" class="empty hidden">No staff match these filters.</div>
     </section>
 
     <!-- ── SITES ──────────────────────────── -->
     <section id="tab-sites">
       <h2>Worksites</h2>
-      <div class="sub">
-        Staff must be within the radius to clock in cleanly. 150m is a sensible
-        default — phone GPS is routinely 20–50m out, and too tight a radius flags
-        honest people standing in the right place.
-      </div>
       <div class="bar">
-        <input id="siteName" placeholder="Site name (e.g. Main yard)">
-        <input id="siteLat" class="num" placeholder="Latitude" style="width:130px">
-        <input id="siteLng" class="num" placeholder="Longitude" style="width:130px">
-        <input id="siteRad" class="num" type="number" value="150" style="width:90px">
+        <label class="field">Site name<input id="siteName" placeholder="Main yard"></label>
+        <label class="field">Latitude<input id="siteLat" class="num" inputmode="decimal"></label>
+        <label class="field">Longitude<input id="siteLng" class="num" inputmode="decimal"></label>
+        <label class="field">Radius (metres)<input id="siteRad" class="num" type="number" min="1" value="150"></label>
         <button class="g" id="here">Use my location</button>
         <button class="b" id="addSite">Add site</button>
+        <button class="g hidden" id="cancelSite">Cancel edit</button>
       </div>
+      <div id="sitePreview" class="site-preview hidden" role="img" aria-label="Worksite radius preview"></div>
       <div class="panel"><table>
         <thead><tr><th>Site</th><th>Coordinates</th><th>Radius</th><th></th></tr></thead>
         <tbody id="siteBody"></tbody>
       </table></div>
     </section>
+    <section id="tab-reviews"><h2>Correction requests</h2><div class="bar"><select id="reviewFilter" aria-label="Request status"><option value="pending">Awaiting review</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="all">All requests</option></select><label class="filter-check"><input type="checkbox" id="boardAlerts" checked>In-app alerts</label><span class="notify-state" id="reviewUpdated"></span></div><div id="reviews" aria-live="polite"></div></section>
   </main>
 </div>
+<dialog id="settingsDialog" aria-labelledby="settingsTitle"><form id="settingsForm"><h2 id="settingsTitle">Company settings</h2><label class="field">Company name<input id="companyName" required maxlength="120"></label><div id="settingsError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelSettings">Cancel</button><button class="b" id="saveSettings">Save changes</button></div></form></dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="lucide.min.js"></script>
 <script>
 (function () {
   "use strict";
@@ -279,12 +351,19 @@
   var NOW = [], SHEET = [], STAFF = [], SITES = [];
   var sortKey = "clock_in_at", sortDir = 1;
   var poll = null;
+  var REQUESTS = [], editingSite = null, requestsLoaded = false;
+  var attentionIds = null;
+  if(window.lucide) {
+    document.querySelectorAll('nav button').forEach(function(b){b.insertAdjacentHTML('afterbegin','<i aria-hidden="true" data-lucide="'+{now:'layout-dashboard',sheets:'table-2',staff:'users',sites:'map-pin',reviews:'clipboard-check'}[b.dataset.tab]+'"></i>');});
+    ['csv','printSheet','settings'].forEach(function(id){var b=document.getElementById(id);b.classList.add('icon-button');b.insertAdjacentHTML('afterbegin','<i aria-hidden="true" data-lucide="'+{csv:'download',printSheet:'printer',settings:'settings-2'}[id]+'"></i>');});
+    window.lucide.createIcons();
+  }
 
   // ── DEMO MODE ──────────────────────────────
   // Runs on sample data when no Supabase details are filled in, so the board
   // can be shown to a client before anything is set up. In memory only.
   // /demo/admin (or ?demo) forces sample data even when the real keys are set.
-  var FORCED_DEMO = /^\/demo(\/|$)/.test(location.pathname) || /[?&]demo\b/.test(location.search);
+  var FORCED_DEMO = location.protocol === 'file:' || /^\/demo(\/|$)/.test(location.pathname) || /[?&]demo\b/.test(location.search);
   var DEMO = FORCED_DEMO || !CFG.url || !CFG.key;
 
   function agoISO(h) { return new Date(Date.now() - h * 3600000).toISOString(); }
@@ -346,7 +425,7 @@
 
   function toast(m) {
     var t = document.createElement("div");
-    t.className = "toast"; t.textContent = m;
+    t.className = "toast"; t.setAttribute('role','status');t.textContent = m;
     document.body.appendChild(t);
     setTimeout(function () { t.remove(); }, 3000);
   }
@@ -382,7 +461,11 @@
   }
 
   function renderNow() {
-    var rows = NOW.slice().sort(function (a, b) {
+    var q = $("nowSearch").value.trim().toLowerCase(), site = $("nowSite").value;
+    var rows = NOW.filter(function(s) {
+      return (!q || (s.full_name || "").toLowerCase().includes(q)) && (!site || s.worksite === site) &&
+        (!$("attentionOnly").checked || s.hours_so_far > 13 || s.clock_in_ok !== true);
+    }).sort(function (a, b) {
       var x = a[sortKey], y = b[sortKey];
       if (x == null) return 1; if (y == null) return -1;
       return (x > y ? 1 : x < y ? -1 : 0) * sortDir;
@@ -411,13 +494,16 @@
 
   // What actually needs a manager's attention, surfaced above the board.
   function renderFlags() {
+    var ids=NOW.filter(function(s){return s.hours_so_far>13||s.clock_in_ok!==true;}).map(function(s){return s.shift_id;});
+    if(attentionIds && $('boardAlerts').checked && ids.some(function(id){return !attentionIds.includes(id);}))toast('An attendance exception needs attention.');
+    attentionIds=ids;
     var out = [];
     NOW.forEach(function (s) {
       // 13h is past any legitimate shift — almost always a forgotten clock-out,
       // and every hour it sits there is an hour of wrong payroll.
       if (s.hours_so_far > 13) {
         out.push('<div class="flag bad"><b>' + esc(s.full_name) + "</b> has been on shift " +
-          hrs(s.hours_so_far) + " — likely forgot to clock out." +
+          hrs(s.hours_so_far) + " — check the finish time." +
           '<span class="act"><button class="g sm" data-close="' + s.shift_id +
           '">Clock out</button></span></div>');
       }
@@ -425,28 +511,23 @@
         out.push('<div class="flag"><b>' + esc(s.full_name) + "</b> clocked in " +
           s.clock_in_metres + "m from " + esc(s.worksite || "site") + ".</div>");
       }
+      if (s.clock_in_ok == null) out.push('<div class="flag"><b>' + esc(s.full_name) + '</b> has no verified clock-in location.</div>');
     });
     $("flags").innerHTML = out.join("");
   }
 
-  // Counts come from data already loaded (NOW + the timesheet range, which
-  // defaults to include today), so the stats cost no extra queries.
+  // Overview totals stay independent of the selected timesheet range.
   function renderStats() {
-    var today = localDay(Date.now());
-    var sites = {}, people = {}, doneH = 0;
+    renderCoverage();
+    var sites = {};
     NOW.forEach(function (s) {
       if (s.worksite) sites[s.worksite] = 1;
-      if (localDay(s.clock_in_at) === today) people[s.user_id || s.full_name] = 1;
-    });
-    SHEET.forEach(function (s) {
-      if (localDay(s.clock_in_at) === today) people[s.user_id || (s.profiles && s.profiles.full_name) || s.id] = 1;
-      if (s.clock_out_at && localDay(s.clock_out_at) === today) doneH += shiftHours(s);
     });
     var nSites = Object.keys(sites).length;
     var cards = [
       ["On shift now", NOW.length, "Across " + nSites + (nSites === 1 ? " site" : " sites")],
-      ["Clocked in today", Object.keys(people).length, "Different people"],
-      ["Completed today", hrs(doneH), "From shifts ended today"],
+      ["Sites working", nSites, "With staff on shift"],
+      ["Needs attention", NOW.filter(function(s) { return s.hours_so_far > 13 || s.clock_in_ok !== true; }).length, "Open shifts to review"],
       ["Active staff", STAFF.filter(function (p) { return p.active; }).length,
         SITES.length + (SITES.length === 1 ? " worksite" : " worksites")]
     ];
@@ -456,20 +537,27 @@
     }).join("");
   }
 
+  function renderCoverage() {
+    $("coverage").innerHTML = SITES.length ? SITES.map(function(site){var count=NOW.filter(function(s){return s.worksite===site.name;}).length;return '<div><span>'+esc(site.name)+'</span><strong class="num">'+count+'</strong><span>'+(count===1?'person on shift':'people on shift')+'</span></div>';}).join('') : '<span>No worksites added yet.</span>';
+  }
+
   // One write at a time. Supabase already makes each write safe, but a
   // double-tap on "Clock out" would otherwise fire two requests and two toasts.
   var writing = false;
   async function withLock(fn) {
     if (writing) return;
     writing = true;
-    try { await fn(); } finally { writing = false; }
+    try { await fn(); } catch(error) { toast(error.message); } finally { writing = false; }
   }
 
   function closeShift(id) {
+    var shift = NOW.find(function(s) { return s.shift_id === id; });
+    if (!shift || !confirm("Clock out " + shift.full_name + " now?")) return;
     return withLock(async function () {
       if (DEMO) {
+        D.sheet.unshift({id:shift.shift_id,profiles:{full_name:shift.full_name},worksites:{name:shift.worksite},clock_in_at:shift.clock_in_at,clock_out_at:new Date().toISOString(),clock_in_ok:shift.clock_in_ok,clock_out_ok:null,note:'Clocked out by manager'});
         D.now = D.now.filter(function (x) { return x.shift_id !== id; });
-        toast("Clocked out"); await loadNow(); return;
+        toast("Clocked out"); await loadNow(); await runSheet(); return;
       }
       var r = await sb.from("shifts").update({ clock_out_at: new Date().toISOString() }).eq("id", id);
       if (r.error) { toast(r.error.message); return; }
@@ -480,13 +568,18 @@
 
   // ── TIMESHEETS ───────────────────────────
   async function runSheet() {
-    if (DEMO) { SHEET = D.sheet; renderSheet(); renderStats(); return; }
     var from = $("from").value, to = $("to").value, who = $("who").value;
+    if (from && to && from > to) { toast("The start date must be before the end date."); return; }
+    if (DEMO) {
+      var person = D.staff.find(function(p) { return p.id === who; });
+      SHEET = D.sheet.filter(function(s) { var day = localDay(s.clock_in_at); return (!from || day >= from) && (!to || day <= to) && (!person || s.profiles.full_name === person.full_name); });
+      renderSheet(); renderStats(); return;
+    }
     var q = sb.from("shifts")
       .select("*, profiles(full_name), worksites(name)")
       .order("clock_in_at", { ascending: false });
-    if (from) q = q.gte("clock_in_at", from + "T00:00:00");
-    if (to)   q = q.lte("clock_in_at", to + "T23:59:59");
+    if (from) q = q.gte("clock_in_at", new Date(from + "T00:00:00").toISOString());
+    if (to) { var end = new Date(to + "T00:00:00"); end.setDate(end.getDate()+1); q = q.lt("clock_in_at", end.toISOString()); }
     if (who)  q = q.eq("user_id", who);
 
     var r = await q;
@@ -500,10 +593,12 @@
     return (new Date(s.clock_out_at || Date.now()) - new Date(s.clock_in_at)) / 3600000;
   }
 
+  function visibleSheet() { return SHEET.filter(function(s){return !$("completedOnly").checked || s.clock_out_at;}); }
   function renderSheet() {
-    show("sheetEmpty", !SHEET.length);
+    var rows = visibleSheet();
+    show("sheetEmpty", !rows.length);
     var total = 0;
-    $("sheetBody").innerHTML = SHEET.map(function (s) {
+    $("sheetBody").innerHTML = rows.map(function (s) {
       var h = shiftHours(s); total += h;
       var open = !s.clock_out_at;
       var loc = (s.clock_in_ok === false || s.clock_out_ok === false)
@@ -514,54 +609,60 @@
         nameCell(s.profiles && s.profiles.full_name) +
         '<td class="num">' + dmy(s.clock_in_at) + "</td>" +
         '<td class="num">' + hhmm(s.clock_in_at) + "</td>" +
-        '<td class="num">' + (open ? '<span class="tiny">still on</span>' : hhmm(s.clock_out_at)) + "</td>" +
+        '<td class="num">' + (open ? '<span class="tiny">still on</span>' : (localDay(s.clock_out_at)!==localDay(s.clock_in_at)?dmy(s.clock_out_at)+' ':'')+hhmm(s.clock_out_at)) + "</td>" +
+        '<td>' + esc(s.worksites && s.worksites.name || 'Removed site') + '</td>' +
         '<td class="num">' + hrs(h) + "</td>" +
         "<td>" + loc + "</td>" +
         '<td class="tiny note">' + esc(s.note) + "</td>" +
       "</tr>";
     }).join("");
-    $("grandTotal").innerHTML = SHEET.length
-      ? SHEET.length + " shifts &nbsp;·&nbsp; <b>" + hrs(total) + "</b> total" : "";
+    $("grandTotal").innerHTML = rows.length
+      ? rows.length + " shifts &nbsp;·&nbsp; <b>" + hrs(total) + "</b> total" + (rows.some(function(s){return !s.clock_out_at;})?' (includes running shifts)':'') : "";
+    $("printHeading").textContent = $("company").textContent + ' | ' + ($("from").value?dmy($("from").value+'T00:00:00'):'All dates') + ' - ' + ($("to").value?dmy($("to").value+'T00:00:00'):'Today') + ' | ' + rows.length + ' shifts | ' + hrs(total);
   }
 
   // Payroll runs on spreadsheets, not on screenshots of a dashboard.
   function exportCsv() {
-    if (!SHEET.length) { toast("Nothing to export"); return; }
-    var head = ["Name", "Date", "In", "Out", "Hours", "In OK", "Out OK", "Site", "Note"];
+    var rows = visibleSheet();
+    if (!rows.length) { toast("Nothing to export"); return; }
+    var head = ["Name", "Start date", "In", "End date", "Out", "Hours", "In OK", "Out OK", "Site", "Note", "Status"];
     var lines = [head.join(",")];
-    SHEET.forEach(function (s) {
+    rows.forEach(function (s) {
       // A cell starting with = + - @ is run as a formula by Excel/Sheets. Staff
       // names and notes are typed by staff, so neutralise them with a leading '.
       var cell = function (v) {
         var s = String(v == null ? "" : v);
-        if (/^\s*[=+\-@]/.test(s)) s = "'" + s;
+        if (/^\s*[=+\-@]/.test(s) || /^[\t\r\n]/.test(s)) s = "'" + s;
         return '"' + s.replace(/"/g, '""') + '"';
       };
       lines.push([
         cell(s.profiles && s.profiles.full_name),
         cell(dmy(s.clock_in_at)), cell(hhmm(s.clock_in_at)),
+        cell(s.clock_out_at ? dmy(s.clock_out_at) : ''),
         cell(s.clock_out_at ? hhmm(s.clock_out_at) : ""),
         cell(shiftHours(s).toFixed(2)),
         cell(s.clock_in_ok === null ? "" : s.clock_in_ok ? "yes" : "no"),
         cell(s.clock_out_ok === null ? "" : s.clock_out_ok ? "yes" : "no"),
-        cell(s.worksites && s.worksites.name), cell(s.note)
+        cell(s.worksites && s.worksites.name), cell(s.note), cell(s.clock_out_at?'Completed':'Running')
       ].join(","));
     });
-    var blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    var blob = new Blob(['\uFEFF' + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
     var a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "timesheets-" + isoDay(new Date()) + ".csv";
+    a.download = "timesheets-" + ($("from").value || 'all') + "-to-" + ($("to").value || localDay(new Date())) + ".csv";
     a.click();
-    URL.revokeObjectURL(a.href);
+    setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
   }
 
   // ── STAFF ────────────────────────────────
   async function loadStaff() {
+    var selected = $("who").value;
     if (DEMO) {
       STAFF = D.staff;
       $("who").innerHTML = '<option value="">Everyone</option>' + STAFF.map(function (p) {
         return '<option value="' + p.id + '">' + esc(p.full_name) + "</option>";
       }).join("");
+      if (STAFF.some(function(p) { return p.id === selected; })) $("who").value = selected;
       renderStaff(); renderStats(); return;
     }
     var r = await sb.from("profiles").select("*").order("full_name");
@@ -570,6 +671,7 @@
     $("who").innerHTML = '<option value="">Everyone</option>' + STAFF.map(function (p) {
       return '<option value="' + p.id + '">' + esc(p.full_name) + "</option>";
     }).join("");
+    if (STAFF.some(function(p) { return p.id === selected; })) $("who").value = selected;
     renderStaff();
     renderStats();
   }
@@ -577,8 +679,10 @@
   function renderStaff() {
     var q = $("staffSearch").value.trim().toLowerCase();
     var rows = STAFF.filter(function (p) {
-      return !q || (p.full_name || "").toLowerCase().indexOf(q) !== -1;
+      var status = $("staffStatus").value;
+      return (!q || (p.full_name || "").toLowerCase().indexOf(q) !== -1) && (!status || p.active === (status === "active"));
     });
+    show("staffEmpty", !rows.length);
     $("staffBody").innerHTML = rows.map(function (p) {
       return "<tr>" +
         nameCell(p.full_name) +
@@ -620,12 +724,16 @@
   }
 
   function renderSites() {
+    var selected = $("nowSite").value;
+    var siteNames = Array.from(new Set(SITES.map(function(w) { return w.name; }).concat(NOW.map(function(s) { return s.worksite; }).filter(Boolean))));
+    $("nowSite").innerHTML = '<option value="">All sites</option>' + siteNames.map(function(name) { return '<option value="' + esc(name) + '">' + esc(name) + '</option>'; }).join('');
+    if (siteNames.includes(selected)) $("nowSite").value = selected;
     $("siteBody").innerHTML = SITES.map(function (w) {
       return "<tr>" +
         '<td style="font-weight:600">' + esc(w.name) + "</td>" +
         '<td class="num tiny">' + w.lat.toFixed(5) + ", " + w.lng.toFixed(5) + "</td>" +
         '<td class="num">' + w.radius_m + "m</td>" +
-        '<td style="text-align:right"><button class="g sm danger" data-delsite="' + w.id +
+        '<td style="text-align:right"><button class="g sm" data-editsite="'+esc(w.id)+'">Edit</button> <button class="g sm danger" data-delsite="' + w.id +
           '">Remove</button></td>' +
       "</tr>";
     }).join("");
@@ -635,20 +743,20 @@
     return withLock(async function () {
       var name = $("siteName").value.trim();
       var lat = parseFloat($("siteLat").value), lng = parseFloat($("siteLng").value);
-      var rad = parseInt($("siteRad").value, 10) || 150;
+      var rad = Number($("siteRad").value);
       if (!name || isNaN(lat) || isNaN(lng)) { toast("Name and coordinates are needed."); return; }
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180 || !Number.isInteger(rad) || rad < 1) { toast("Enter valid coordinates and a positive whole-number radius."); return; }
       if (DEMO) {
-        D.sites.push({ id: "s" + Date.now(), name: name, lat: lat, lng: lng, radius_m: rad });
-        $("siteName").value = ""; $("siteLat").value = ""; $("siteLng").value = "";
-        toast("Site added");
+        var site = D.sites.find(function(s){return s.id === editingSite;});
+        if(site) { var oldName=site.name; Object.assign(site,{name:name,lat:lat,lng:lng,radius_m:rad});D.now.forEach(function(s){if(s.worksite===oldName)s.worksite=name;}); }
+        else D.sites.push({ id: "s" + Date.now(), name: name, lat: lat, lng: lng, radius_m: rad });
+        toast(editingSite ? "Site updated" : "Site added"); resetSite();
         await loadSites(); return;
       }
-      var r = await sb.from("worksites").insert({
-        company_id: ME.company_id, name: name, lat: lat, lng: lng, radius_m: rad
-      });
+      var values = {company_id:ME.company_id,name:name,lat:lat,lng:lng,radius_m:rad};
+      var r = editingSite ? await sb.from('worksites').update(values).eq('id',editingSite) : await sb.from('worksites').insert(values);
       if (r.error) { toast(r.error.message); return; }
-      $("siteName").value = ""; $("siteLat").value = ""; $("siteLng").value = "";
-      toast("Site added");
+      toast(editingSite ? "Site updated" : "Site added"); resetSite();
       await loadSites();
     });
   }
@@ -660,22 +768,108 @@
     navigator.geolocation.getCurrentPosition(function (p) {
       $("siteLat").value = p.coords.latitude.toFixed(6);
       $("siteLng").value = p.coords.longitude.toFixed(6);
+      previewSite();
       toast("Filled in from your position");
     }, function () { toast("Could not get your location."); },
        { enableHighAccuracy: true, timeout: 8000 });
   }
+
+  function resetSite() {
+    editingSite=null; ['siteName','siteLat','siteLng'].forEach(function(id){$(id).value='';});
+    $('siteRad').value=150; $('addSite').textContent='Add site';show('cancelSite',false);show('sitePreview',false);
+  }
+  function editSite(id) {
+    var site=SITES.find(function(s){return s.id===id;});if(!site)return;
+    editingSite=id;$('siteName').value=site.name;$('siteLat').value=site.lat;$('siteLng').value=site.lng;$('siteRad').value=site.radius_m;
+    $('addSite').textContent='Save site';show('cancelSite',true);previewSite();$('siteName').focus();
+  }
+  function previewSite() {
+    var lat=Number($('siteLat').value),lng=Number($('siteLng').value),radius=Number($('siteRad').value),box=$('sitePreview');
+    if(!$('siteLat').value || !$('siteLng').value || !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat)>85.05 || Math.abs(lng)>180 || !Number.isFinite(radius) || radius<=0){show('sitePreview',false);return;}
+    show('sitePreview',true);var width=box.clientWidth,height=box.clientHeight,z=16;
+    while(z>1 && radius/(156543.03392*Math.cos(lat*Math.PI/180)/Math.pow(2,z))>height*.36)z--;
+    var count=Math.pow(2,z),x=(lng+180)/360*count,y=(1-Math.log(Math.tan(lat*Math.PI/180)+1/Math.cos(lat*Math.PI/180))/Math.PI)/2*count;
+    var left=x*256-width/2,top=y*256-height/2,html='';
+    for(var tx=Math.floor(left/256);tx<=Math.floor((left+width)/256);tx++)for(var ty=Math.floor(top/256);ty<=Math.floor((top+height)/256);ty++){
+      if(ty<0||ty>=count)continue;
+      html+='<img alt="" src="https://tile.openstreetmap.org/'+z+'/'+((tx%count+count)%count)+'/'+ty+'.png" style="left:'+(tx*256-left)+'px;top:'+(ty*256-top)+'px">';
+    }
+    var diameter=radius/(156543.03392*Math.cos(lat*Math.PI/180)/count)*2;
+    box.innerHTML=html+'<div class="site-zone" style="left:50%;top:50%;width:'+diameter+'px;height:'+diameter+'px"></div><div class="site-caption">'+esc($('siteName').value||'Worksite')+' · '+radius+'m radius · &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></div>';
+  }
+  $('cancelSite').addEventListener('click',resetSite);
+  ['siteName','siteLat','siteLng','siteRad'].forEach(function(id){$(id).addEventListener('input',previewSite);});
+  window.addEventListener('resize',function(){if(!$('sitePreview').classList.contains('hidden'))previewSite();});
+
+  function seedReviews() {
+    if(REQUESTS.length)return;
+    var s=D.sheet[0];
+    REQUESTS=[{id:'demo-review-1',shift_id:s.id,user_id:'p1',profiles:{full_name:'Sam Whitfield'},original_in:s.clock_in_at,original_out:s.clock_out_at,requested_in:s.clock_in_at,requested_out:new Date(new Date(s.clock_out_at).getTime()+20*60000).toISOString(),reason:'Finished the vehicle handover after clocking out.',status:'pending',created_at:new Date().toISOString()}];
+  }
+  async function loadReviews() {
+    if(!ME)return;
+    try {
+      var previous=REQUESTS.map(function(r){return r.id;}), before=JSON.stringify(REQUESTS);
+      if(DEMO){if(!requestsLoaded)seedReviews();}
+      else {
+        var r=await sb.from('shift_corrections').select('*, profiles!shift_corrections_user_id_fkey(full_name)').order('created_at',{ascending:false}).limit(500);
+        if(r.error)throw r.error;REQUESTS=r.data||[];
+      }
+      if(requestsLoaded && $('boardAlerts').checked && REQUESTS.some(function(r){return r.status==='pending'&&!previous.includes(r.id);}))toast('A new shift correction needs review.');
+      var changed=!requestsLoaded || before!==JSON.stringify(REQUESTS);
+      requestsLoaded=true;if(changed)renderReviews();$('reviewUpdated').textContent='Updated '+hhmm(new Date());
+    }catch(error){$('reviewUpdated').textContent='Could not refresh';if(!requestsLoaded)$('reviews').textContent=error.message;else toast(error.message);}
+  }
+  function renderReviews() {
+    var drafts={};document.querySelectorAll('#reviews textarea').forEach(function(el){drafts[el.id]=el.value;});
+    var pending=REQUESTS.filter(function(r){return r.status==='pending';}).length;
+    $('reviewCount').textContent=pending?'('+pending+')':'';
+    var filter=$('reviewFilter').value,rows=REQUESTS.filter(function(r){return filter==='all'||r.status===filter;});
+    $('reviews').innerHTML=rows.length?rows.map(function(r){
+      var own=r.user_id===ME.id;
+      return '<article class="review-item"><h3>'+esc(r.profiles&&r.profiles.full_name||'Staff member')+'</h3><span class="st '+(r.status==='pending'?'away':'ok')+'"><i></i>'+esc(r.status==='pending'?'Awaiting review':r.status==='approved'?'Approved':'Rejected')+'</span><div class="review-times"><div><span>Recorded</span><strong class="num">'+dmy(r.original_in)+' '+hhmm(r.original_in)+' - '+(r.original_out?dmy(r.original_out)+' '+hhmm(r.original_out):'Still on shift')+'</strong></div><div><span>Requested</span><strong class="num">'+dmy(r.requested_in)+' '+hhmm(r.requested_in)+' - '+dmy(r.requested_out)+' '+hhmm(r.requested_out)+'</strong></div></div><p>'+esc(r.reason)+'</p>'+(r.status==='pending'?(own?'<p>Another manager must review your correction.</p>':'<label class="field" for="review-note-'+esc(r.id)+'">Review note (optional)</label><textarea id="review-note-'+esc(r.id)+'" maxlength="1000"></textarea><div class="bar"><button class="b" data-review="'+esc(r.id)+'" data-approve="true">Approve correction</button><button class="g" data-review="'+esc(r.id)+'" data-approve="false">Reject</button></div>'):'<p>'+esc(r.review_note||'No review note')+'</p><p class="tiny">Reviewed '+(r.reviewed_at?dmy(r.reviewed_at)+' '+hhmm(r.reviewed_at):'')+'</p>')+'</article>';
+    }).join(''):'<div class="empty">No '+(filter==='all'?'':esc(filter)+' ')+'correction requests.</div>';
+    Object.keys(drafts).forEach(function(id){var el=document.getElementById(id);if(el)el.value=drafts[id];});
+  }
+  function reviewRequest(id,approve) {
+    return withLock(async function(){
+      var request=REQUESTS.find(function(r){return r.id===id;});if(!request||request.status!=='pending')return;
+      var note=$('review-note-'+id).value.trim();
+      if(DEMO){
+        var shift=D.sheet.find(function(s){return s.id===request.shift_id;});
+        if(approve && shift){shift.clock_in_at=request.requested_in;shift.clock_out_at=request.requested_out;}
+        request.status=approve?'approved':'rejected';request.review_note=note;request.reviewed_at=new Date().toISOString();
+      }else{
+        var r=await sb.rpc('review_shift_correction',{p_id:id,p_approve:approve,p_note:note});if(r.error)throw r.error;
+      }
+      toast(approve?'Correction approved':'Correction rejected');await loadReviews();renderReviews();await runSheet();await loadNow();
+    });
+  }
+  $('reviewFilter').addEventListener('change',renderReviews);
+  $('settings').addEventListener('click',function(){$('companyName').value=$('company').textContent;show('settingsError',false);$('settingsDialog').showModal();});
+  $('cancelSettings').addEventListener('click',function(){$('settingsDialog').close();});
+  $('settingsForm').addEventListener('submit',async function(e){
+    e.preventDefault();var name=$('companyName').value.trim();if(!name)return;$('saveSettings').disabled=true;show('settingsError',false);
+    try{
+      if(DEMO)D.company=name;
+      else{var r=await sb.from('companies').update({name:name}).eq('id',ME.company_id);if(r.error)throw r.error;}
+      $('company').textContent=name;$('settingsDialog').close();toast('Company name updated');
+    }catch(error){$('settingsError').textContent=error.message;show('settingsError',true);}
+    finally{$('saveSettings').disabled=false;}
+  });
+  if('serviceWorker' in navigator && location.protocol==='https:' && !DEMO)navigator.serviceWorker.register('/sw.js').catch(function(error){toast(error.message);});
 
   // ── boot ─────────────────────────────────
   async function load() {
     if (DEMO) {
       ME = { id: "p4", company_id: "demo", full_name: "Priya Shah" };
       $("company").textContent = D.company;
-      $("from").value = isoDay(new Date(Date.now() - 6 * 864e5));
-      $("to").value   = isoDay(new Date());
+      $("from").value = localDay(new Date(Date.now() - 6 * 864e5));
+      $("to").value   = localDay(new Date());
       show("login", false); show("app", true); show("demoBar", true);
-      loadNow(); loadStaff(); loadSites(); runSheet();
+      loadNow(); loadStaff(); loadSites(); runSheet(); loadReviews();
       clearInterval(poll);
-      poll = setInterval(loadNow, 30000);
+      poll = setInterval(function(){loadNow();loadReviews();}, 30000);
       return;
     }
     var user = (await sb.auth.getUser()).data.user;
@@ -696,20 +890,20 @@
 
     var today = new Date();
     var weekAgo = new Date(Date.now() - 6 * 864e5);
-    $("from").value = isoDay(weekAgo);
-    $("to").value = isoDay(today);
+    $("from").value = localDay(weekAgo);
+    $("to").value = localDay(today);
 
     show("login", false); show("app", true);
 
-    await Promise.all([loadNow(), loadStaff(), loadSites()]);
+    await Promise.all([loadNow(), loadStaff(), loadSites(), loadReviews()]);
     await runSheet();
 
     clearInterval(poll);
-    poll = setInterval(loadNow, 30000);   // the board has to be current, not a snapshot
+    poll = setInterval(function(){loadNow();loadReviews();}, 30000);
   }
 
   function signedOut() {
-    ME = null; clearInterval(poll);
+    ME = null; REQUESTS=[];requestsLoaded=false;attentionIds=null;clearInterval(poll);
     show("app", false); show("login", true);
   }
 
@@ -730,6 +924,10 @@
       document.querySelectorAll("section").forEach(function (x) { x.classList.remove("on"); });
       b.classList.add("on");
       $("tab-" + b.dataset.tab).classList.add("on");
+      $("pageTitle").textContent = {now:"Attendance overview",sheets:"Timesheets",staff:"Your team",sites:"Worksites",reviews:"Review & activity"}[b.dataset.tab];
+      if(b.dataset.tab==='reviews') loadReviews();
+      if(b.dataset.tab==='sites') previewSite();
+      document.querySelectorAll("nav button").forEach(function(x) { x.setAttribute("aria-current", x === b ? "page" : "false"); });
     });
   });
 
@@ -746,6 +944,8 @@
     if (t.dataset.close)   closeShift(t.dataset.close);
     if (t.dataset.toggle)  toggleStaff(t.dataset.toggle);
     if (t.dataset.delsite) removeSite(t.dataset.delsite);
+    if (t.dataset.editsite) editSite(t.dataset.editsite);
+    if (t.dataset.review) reviewRequest(t.dataset.review,t.dataset.approve==='true');
   });
 
   function removeSite(id) {
@@ -766,12 +966,34 @@
   $("signout").addEventListener("click", async function () { await sb.auth.signOut(); signedOut(); });
   $("run").addEventListener("click", runSheet);
   $("csv").addEventListener("click", exportCsv);
+  $("completedOnly").addEventListener('change',renderSheet);
+  $("printSheet").addEventListener('click',function(){if(!visibleSheet().length){toast('Nothing to print');return;}renderSheet();window.print();});
   $("staffSearch").addEventListener("input", renderStaff);
+  $("staffStatus").addEventListener("change", renderStaff);
+  $("nowSearch").addEventListener("input", renderNow);
+  $("nowSite").addEventListener("change", renderNow);
+  $("attentionOnly").addEventListener("change", renderNow);
+  $("boardDate").textContent = new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});
+  $("refresh").addEventListener("click", async function() {
+    var button = $("refresh"); button.disabled = true; button.textContent = "Refreshing...";
+    try { await Promise.all([loadNow(),loadStaff(),loadSites(),loadReviews()]); await runSheet(); }
+    catch(error) { toast(error.message); }
+    finally { button.disabled = false; button.textContent = "Refresh"; }
+  });
+  $("datePreset").addEventListener("change",function() {
+    var preset = this.value; if (preset === "custom") return;
+    var start = new Date(), end = new Date();
+    if (preset === "7") start.setDate(start.getDate()-6);
+    if (preset === "week" || preset === "lastWeek") start.setDate(start.getDate() - (start.getDay()+6)%7);
+    if (preset === "lastWeek") { end = new Date(start); end.setDate(end.getDate()-1); start.setDate(start.getDate()-7); }
+    $("from").value = localDay(start); $("to").value = localDay(end); runSheet();
+  });
+  ["from","to"].forEach(function(id) { $(id).addEventListener("change",function() { $("datePreset").value = "custom"; }); });
   $("addSite").addEventListener("click", addSite);
   $("here").addEventListener("click", useHere);
 
   if (DEMO) {
-    $("signout").textContent = "";
+    show("signout",false);
     if (FORCED_DEMO) $("demoLink").href = /^\/demo/.test(location.pathname) ? "/demo" : "index.html?demo";
     load();
   }

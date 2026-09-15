@@ -3,8 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Clock in</title>
+<title>Aero Attendance | Your working day</title>
 <meta name="theme-color" content="#F6F7F8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Aero">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -146,9 +150,76 @@
   .toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%);
     background:var(--ink); color:#fff; padding:12px 18px; border-radius:99px;
     font-size:14px; font-weight:500; z-index:50; max-width:90vw;}
+  /* Responsive staff workspace. */
+  :root{--r:8px;--ink-3:#65707A;--page:#F5F6F7;}
+  *{letter-spacing:0!important;}
+  .top{padding:18px max(24px,calc((100vw - 1100px)/2));gap:18px;}
+  .identity{display:flex;align-items:center;gap:14px;min-width:0;}
+  .wordmark{font-size:21px;font-weight:600;padding-right:18px;border-right:1px solid var(--line);}
+  .wordmark span{color:var(--accent);}
+  .co{color:var(--ink-2);}
+  .wrap{max-width:1100px;padding:36px 24px 60px;}
+  .page-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:28px;}
+  h1{font-size:28px;line-height:1.2;margin:0;font-weight:600;}
+  .today{color:var(--ink-2);font-size:14px;}
+  .workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:56px;}
+  .workspace>div{min-width:0;}
+  .status{border:0;border-left:3px solid var(--accent);border-radius:0;background:transparent;padding:4px 0 8px 20px;}
+  .since{font-size:30px!important;line-height:1.25;}
+  .dot,.dot.on{width:6px;height:6px;box-shadow:none;}
+  .map{height:240px;border-radius:6px;}
+  .you{box-shadow:none;}
+  .mapTag{border-radius:4px;max-width:calc(100% - 20px);}
+  .act{min-height:56px;border-radius:6px;}
+  .link{min-height:44px;color:var(--ink-2);}
+  select,input,textarea{border-radius:6px;}
+  textarea{width:100%;resize:vertical;min-height:84px;padding:12px;font:inherit;font-size:16px;border:1px solid var(--line);background:var(--card);color:var(--ink);}
+  button:focus-visible,a:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
+  h2{font-size:17px;text-transform:none;color:var(--ink);margin:0 0 16px;}
+  label{font-size:13px;text-transform:none;color:var(--ink-2);}
+  .summary{display:grid;grid-template-columns:1fr 1fr;border-block:1px solid var(--line);margin:0 0 30px;padding:20px 0;}
+  .summary>div+div{border-left:1px solid var(--line);padding-left:24px;}
+  .summary span{display:block;color:var(--ink-2);font-size:13px;}
+  .summary strong{display:block;font-size:24px;font-weight:600;margin-top:6px;}
+  .history-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .history-heading h2{margin:0;}
+  .history-heading select{width:auto;font-size:14px;min-height:44px;padding:8px;}
+  .list{border:0;border-radius:0;background:transparent;}
+  .row{padding:17px 0;}
+  .row .t{color:var(--ink-2);}
+  .shift-note{font-size:13px;color:var(--ink-2);margin-top:5px;overflow-wrap:anywhere;}
+  .connection{padding:12px 24px;background:var(--warn-soft);color:var(--warn);font-size:14px;}
+  .toast{border-radius:6px;bottom:calc(24px + env(safe-area-inset-bottom));}
+  @media(max-width:700px){
+    .top{padding:14px 18px;}.wordmark{font-size:18px;padding-right:12px;}.who{font-size:14px;}.co{font-size:12px;}
+    .wrap{padding:24px 18px 40px;}.page-heading{align-items:flex-start;flex-direction:column;gap:8px;margin-bottom:24px;}
+    h1{font-size:25px;}.workspace{grid-template-columns:1fr;gap:32px;}.map{height:210px;}
+    .summary{margin-bottom:24px;}.demoBar{font-size:12px;}.history-heading select{max-width:160px;}
+  }
+  .avatar{display:inline-grid;place-items:center;width:38px;height:38px;flex:none;border-radius:6px;background:#E9F3EF;color:var(--accent);font-weight:600;}
+  .identity>div:last-child{min-width:0;}.who,.co,.account-row strong{overflow-wrap:anywhere;min-width:0;}.top>.link{flex:none;}
+  .staff-nav{display:flex;gap:20px;border-bottom:1px solid var(--line);margin-bottom:24px;}
+  .staff-nav button{font:inherit;font-size:14px;font-weight:500;min-height:48px;border:0;border-bottom:2px solid transparent;background:none;color:var(--ink-2);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;}
+  .lucide{width:18px;height:18px;flex:none;}
+  .staff-nav button[aria-selected=true]{border-color:var(--accent);color:var(--accent);}
+  .inbox-item{padding:18px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere;}
+  .inbox-item strong{display:block;font-weight:600;}.inbox-item p{margin:6px 0;color:var(--ink-2);font-size:14px;}
+  .status-line{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-2);}.status-line:before{content:'';width:6px;height:6px;flex:none;border-radius:50%;background:var(--accent);}
+  dialog{width:min(480px,calc(100% - 32px));max-height:calc(100dvh - 32px);overflow:auto;border:1px solid var(--line);border-radius:8px;padding:24px;color:var(--ink);background:var(--card);}
+  dialog::backdrop{background:rgba(21,23,26,.35);}dialog h2{margin-bottom:8px;}dialog label{margin-top:16px;}
+  .dialog-actions{display:flex;justify-content:flex-end;gap:12px;margin-top:22px;}.dialog-actions .btn{width:auto;margin:0;padding:12px 20px;}
+  .request-link{display:block;margin-top:6px;padding:0;min-height:44px;background:none;border:0;color:var(--accent);text-decoration:underline;text-underline-offset:3px;font:inherit;font-size:13px;cursor:pointer;}
+  .account-row{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 0;border-bottom:1px solid var(--line);}.account-row span{color:var(--ink-2);}
+  .check{display:flex;align-items:center;gap:12px;font-size:15px;color:var(--ink);}.check input{width:20px;min-height:20px;accent-color:var(--accent);}
+  @media(max-width:700px){
+    .staff-nav{position:fixed;inset:auto 0 0;margin:0;padding:0 12px env(safe-area-inset-bottom);background:var(--card);border-top:1px solid var(--line);border-bottom:0;display:grid;grid-template-columns:repeat(3,1fr);gap:0;z-index:20;}
+    .staff-nav button{min-height:58px;}.wrap{padding-bottom:100px;}.toast{bottom:calc(76px + env(safe-area-inset-bottom));}.identity{gap:9px;}.wordmark{display:none;}
+    .row{align-items:flex-start;}.row>div:first-child{min-width:0;}.avatar{width:34px;height:34px;}
+  }
 </style>
 </head>
 <body>
+<div id="connection" class="connection hidden" role="status">You're offline. Reconnect before recording a shift; changes are not queued.</div>
 
 <!-- ── LOGIN ───────────────────────────────── -->
 <div id="login" class="login hidden">
@@ -168,14 +239,18 @@
     Demo — sample data, nothing saved. &nbsp;<a id="demoLink" href="admin.html" style="color:inherit">See the manager board →</a>
   </div>
   <div class="top">
-    <div>
+    <div class="identity"><div class="wordmark">aero<span>.</span></div><span class="avatar" id="avatar" aria-hidden="true">SW</span><div>
       <div class="who" id="me">—</div>
       <div class="co" id="company">—</div>
+    </div>
     </div>
     <button class="link" id="signout">Sign out</button>
   </div>
 
   <div class="wrap">
+    <div class="page-heading"><h1>Your working day</h1><div class="today" id="today"></div></div>
+    <nav class="staff-nav" aria-label="Staff views"><button id="nav-work" aria-controls="staff-work" aria-selected="true" data-view="work"><span>My shifts</span></button><button id="nav-inbox" aria-controls="staff-inbox" aria-selected="false" data-view="inbox"><span>Activity <span class="num" id="inboxCount"></span></span></button><button id="nav-account" aria-controls="staff-account" aria-selected="false" data-view="account"><span>Account</span></button></nav>
+    <div class="workspace" id="staff-work" aria-labelledby="nav-work"><div>
     <div class="status">
       <div class="state"><span class="dot off" id="dot"></span><span id="stateText">Not clocked in</span></div>
       <div class="since" id="since">—</div>
@@ -193,15 +268,24 @@
       </div>
     </div>
 
+    <div id="noteWrap" class="hidden"><label for="shiftNote">Shift note (optional)</label><textarea id="shiftNote" maxlength="1000" placeholder="Anything your manager needs to know"></textarea></div>
     <button class="act in" id="action">Clock in</button>
     <div class="note" id="locNote"></div>
 
-    <h2>Your recent shifts</h2>
+    </div><div>
+    <h2>This week</h2>
+    <div class="summary"><div><span>Completed hours</span><strong class="num" id="weekHours">0h 00m</strong></div><div><span>Completed shifts</span><strong class="num" id="weekCount">0</strong></div></div>
+    <div class="history-heading"><h2>Shift history</h2><select id="historyRange" aria-label="Shift history range"><option value="7">Last 7 days</option><option value="30">Last 30 days</option></select></div>
     <div id="history" class="list"></div>
+    </div></div>
+    <div id="staff-inbox" class="hidden" role="tabpanel" aria-labelledby="nav-inbox"><div class="history-heading"><h2>Activity</h2><button class="link" id="refreshActivity">Refresh</button></div><div id="activity" aria-live="polite"></div></div>
+    <div id="staff-account" class="hidden" role="tabpanel" aria-labelledby="nav-account"><h2>Your account</h2><div class="account-row"><span>Name</span><strong id="accountName"></strong></div><div class="account-row"><span>Company</span><strong id="accountCompany"></strong></div><label class="check"><input type="checkbox" id="shiftReminder" checked>Show long-shift reminders while the app is open</label><div class="account-row"><span>Location</span><strong>Clock-in and clock-out only</strong></div><button class="btn hidden" id="installApp">Install Aero</button><p class="note" id="installStatus"></p></div>
   </div>
 </div>
+<dialog id="correctionDialog" aria-labelledby="correctionTitle"><form id="correctionForm"><h2 id="correctionTitle">Request a correction</h2><p class="note" id="correctionOriginal"></p><label for="correctIn">Start</label><input id="correctIn" type="datetime-local" required><label for="correctOut">End</label><input id="correctOut" type="datetime-local" required><label for="correctReason">Reason</label><textarea id="correctReason" maxlength="1000" required></textarea><div class="err hidden" id="correctionError" role="alert"></div><div class="dialog-actions"><button type="button" class="link" id="cancelCorrection">Cancel</button><button class="btn" id="submitCorrection">Send request</button></div></form></dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="lucide.min.js"></script>
 <script>
 (function () {
   "use strict";
@@ -211,6 +295,13 @@
   var ME  = null;      // profile row
   var OPEN = null;     // the open shift, or null
   var tick = null;
+  var HISTORY = [];
+  var REQUESTS = [], correctionShift = null, correctionBusy = false, activityBusy = false;
+  if(window.lucide) {
+    document.querySelectorAll('[data-view]').forEach(function(b){b.insertAdjacentHTML('afterbegin','<i aria-hidden="true" data-lucide="'+{work:'clock-3',inbox:'bell',account:'user-round'}[b.dataset.view]+'"></i>');});
+    window.lucide.createIcons();
+  }
+  function esc(v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function(c) { return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
 
   // ── DEMO MODE ──────────────────────────────
   //
@@ -223,7 +314,7 @@
   var LAST_SHIFT = null;   // most recent completed shift, for the empty state
   // /demo (or ?demo) forces sample data even when the real keys are set, so
   // one set of files serves both the live app and the sales demo link.
-  var FORCED_DEMO = /^\/demo(\/|$)/.test(location.pathname) || /[?&]demo\b/.test(location.search);
+  var FORCED_DEMO = location.protocol === 'file:' || /^\/demo(\/|$)/.test(location.pathname) || /[?&]demo\b/.test(location.search);
   var DEMO = FORCED_DEMO || !CFG.url || !CFG.key;
 
   function demoShift(daysAgo, inH, inM, outH, outM, ok) {
@@ -262,7 +353,7 @@
 
   function toast(msg) {
     var t = document.createElement("div");
-    t.className = "toast"; t.textContent = msg;
+    t.className = "toast"; t.setAttribute('role','status');t.textContent = msg;
     document.body.appendChild(t);
     setTimeout(function () { t.remove(); }, 3200);
   }
@@ -313,7 +404,7 @@
     var el = $("map"), tiles = $("tiles");
     // A site with no coordinates yet is a real case (added by hand in SQL) —
     // hide the map rather than drawing a circle of NaN.
-    if (!site || typeof site.lat !== "number" || typeof site.lng !== "number") {
+      if (!site || !Number.isFinite(site.lat) || !Number.isFinite(site.lng) || Math.abs(site.lat)>85.05 || Math.abs(site.lng)>180) {
       el.hidden = true; return;
     }
     if (!site.radius_m) site.radius_m = 150;
@@ -388,7 +479,7 @@
     } else {
       tag.hidden = false;
       tag.className = "mapTag";
-      $("mapTagText").textContent = "Finding your location…";
+      $("mapTagText").textContent = site.name + " · " + site.radius_m + "m zone";
     }
   }
 
@@ -398,18 +489,6 @@
   }
 
   function refreshMap() { MAP.site = currentSite(); drawMap(); }
-
-  // Ask for position as soon as the screen opens rather than waiting for the
-  // tap — so the zone and the dot are already on screen when someone decides
-  // whether to clock in, instead of after.
-  function watchMe() {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.watchPosition(function (p) {
-      MAP.me = { lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy };
-      drawMap();
-    }, function () { /* denied or unavailable — the zone still shows */ },
-       { enableHighAccuracy: true, maximumAge: 15000, timeout: 20000 });
-  }
 
   // ── location ───────────────────────────────
   //
@@ -448,6 +527,7 @@
     $("action").textContent = on ? "Clock out" : "Clock in";
     $("action").className = "act " + (on ? "out" : "in");
     show("siteWrap", !on);
+    show("noteWrap", on);
 
     if (on && OPEN.clock_in_ok === false) {
       $("locNote").className = "note warn";
@@ -478,9 +558,16 @@
   }
 
   function renderHistory(rows) {
+    HISTORY = rows;
     LAST_SHIFT = rows.filter(function (r) { return r.clock_out_at; })[0] || null;
+    var monday = new Date(); monday.setHours(0,0,0,0); monday.setDate(monday.getDate() - (monday.getDay() + 6) % 7);
+    var completed = rows.filter(function(s) { return s.clock_out_at && new Date(s.clock_in_at) >= monday; });
+    $("weekHours").textContent = hoursText(completed.reduce(function(total,s) { return total + hoursBetween(s.clock_in_at,s.clock_out_at); },0));
+    $("weekCount").textContent = completed.length;
+    var start = new Date(); start.setHours(0,0,0,0); start.setDate(start.getDate() - Number($("historyRange").value) + 1);
+    rows = rows.filter(function(s) { return new Date(s.clock_in_at) >= start; });
     if (!rows.length) {
-      $("history").innerHTML = '<div class="note">No shifts yet.</div>';
+      $("history").innerHTML = '<div class="note">No shifts in this date range.</div>';
       return;
     }
     $("history").innerHTML = rows.map(function (s) {
@@ -491,6 +578,8 @@
         '<div class="d">' + dayLabel(s.clock_in_at) + "</div>" +
         '<div class="t">' + hhmm(s.clock_in_at) + " – " +
           (open ? "now" : hhmm(s.clock_out_at)) + "</div>" + flag +
+        (s.note ? '<div class="shift-note">' + esc(s.note) + '</div>' : '') +
+        '<button class="request-link" data-correct="' + esc(s.id) + '">Request correction</button>' +
         "</div><div class=\"h\">" +
           hoursText(hoursBetween(s.clock_in_at, s.clock_out_at)) +
         "</div></div>";
@@ -503,7 +592,7 @@
     $("me").textContent = D.profile.full_name;
     $("company").textContent = D.profile.company;
     $("site").innerHTML = D.sites.map(function (w) {
-      return '<option value="' + w.id + '">' + w.name + "</option>";
+      return '<option value="' + esc(w.id) + '">' + esc(w.name) + "</option>";
     }).join("");
     MAP.sites = D.sites;
     // Demo: stand the user just inside the Main yard zone so the map reads
@@ -516,6 +605,8 @@
     show("login", false);
     show("app", true);
     show("demoBar", true);
+    refreshMap();
+    updateAccount(); loadActivity();
   }
 
   async function load() {
@@ -546,25 +637,31 @@
     var sites = await sb.from("worksites").select("id, name, lat, lng, radius_m").order("name");
     MAP.sites = sites.data || [];
     $("site").innerHTML = MAP.sites.map(function (w) {
-      return '<option value="' + w.id + '">' + w.name + "</option>";
+      return '<option value="' + esc(w.id) + '">' + esc(w.name) + "</option>";
     }).join("") || '<option value="">No sites set up yet</option>';
     refreshMap();
-    watchMe();
 
     var open = await sb.from("shifts").select("*")
+      .eq("user_id", ME.id)
       .is("clock_out_at", null).order("clock_in_at", { ascending: false }).limit(1);
     OPEN = (open.data && open.data[0]) || null;
 
     var hist = await sb.from("shifts").select("*")
-      .order("clock_in_at", { ascending: false }).limit(14);
+      .eq("user_id", ME.id).gte("clock_in_at", new Date(Date.now() - 30 * 864e5).toISOString())
+      .order("clock_in_at", { ascending: false });
+    if (sites.error || open.error || hist.error) { toast((sites.error || open.error || hist.error).message); return; }
     renderHistory(hist.data || []);
     renderStatus();
 
     show("login", false);
     show("app", true);
+    refreshMap();
+    updateAccount(); loadActivity();
   }
 
   async function onAction() {
+    if ($("action").disabled) return;
+    if (!DEMO && !navigator.onLine) { toast("You're offline. Reconnect and try again."); return; }
     var btn = $("action");
     btn.disabled = true;
     btn.textContent = OPEN ? "Clocking out…" : "Getting location…";
@@ -573,6 +670,8 @@
       // Same shape as the real thing, minus the database and the GPS wait.
       setTimeout(function () {
         if (D.open) {
+          D.open.note = $("shiftNote").value.trim();
+          $("shiftNote").value = "";
           D.open.clock_out_at = new Date().toISOString();
           D.history.unshift(D.open);
           D.open = null;
@@ -591,12 +690,13 @@
       return;
     }
 
+    try {
     var pos = await getPosition();
 
     var res;
     if (OPEN) {
       res = await sb.rpc("clock_out", {
-        p_lat: pos && pos.lat, p_lng: pos && pos.lng, p_note: ""
+        p_lat: pos && pos.lat, p_lng: pos && pos.lng, p_note: $("shiftNote").value.trim()
       });
     } else {
       var siteId = $("site").value;
@@ -609,14 +709,109 @@
     btn.disabled = false;
 
     if (res.error) { toast(res.error.message); renderStatus(); return; }
+    $("shiftNote").value = "";
 
     toast(OPEN ? "Clocked out" : "Clocked in");
     if (!pos) toast("No location — recorded as unverified");
     await load();
+    } catch (error) { toast(error.message); }
+    finally { btn.disabled = false; renderStatus(); }
   }
 
+  function localInput(iso) {
+    var d = new Date(iso); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0,16);
+  }
+  function updateAccount() {
+    var name = $("me").textContent;
+    $("avatar").textContent = name.trim().split(/\s+/).map(function(x){return x[0];}).filter(Boolean).slice(0,2).join('').toUpperCase();
+    $("accountName").textContent = name; $("accountCompany").textContent = $("company").textContent;
+  }
+  function renderActivity() {
+    $("inboxCount").textContent = REQUESTS.length ? '(' + REQUESTS.length + ')' : '';
+    $("activity").innerHTML = REQUESTS.length ? REQUESTS.map(function(r) {
+      return '<article class="inbox-item"><strong>Shift correction</strong><p>' + esc(dayLabel(r.requested_in)) + ' · ' + hhmm(r.requested_in) + ' - ' + hhmm(r.requested_out) + '</p><div class="status-line">' + esc(r.status === 'pending' ? 'Awaiting manager review' : r.status === 'approved' ? 'Approved' : 'Rejected') + '</div><p>' + esc(r.reason) + '</p>' + (r.review_note ? '<p>Manager: ' + esc(r.review_note) + '</p>' : '') + '</article>';
+    }).join('') : '<p class="note">No correction requests yet.</p>';
+  }
+  async function loadActivity() {
+    if(!ME || activityBusy)return;
+    if (!DEMO) {
+      activityBusy=true;var userId=ME.id;
+      try {
+        var r = await sb.from('shift_corrections').select('*').eq('user_id',userId).order('created_at',{ascending:false}).limit(100);
+        if (r.error) throw r.error;
+        if(!ME || ME.id!==userId)return;
+        var decisions=(r.data||[]).filter(function(item){return item.status!=='pending' && REQUESTS.some(function(old){return old.id===item.id && old.status==='pending';});});
+        if(decisions.length)toast('Your manager has reviewed a shift correction.');
+        REQUESTS = r.data || [];
+      } catch(error) { $("activity").textContent = error.message; return; }
+      finally{activityBusy=false;}
+    }
+    renderActivity();
+  }
+  document.addEventListener('click',function(e) {
+    var button = e.target.closest('[data-correct]'); if (!button) return;
+    correctionShift = HISTORY.find(function(s){return s.id === button.dataset.correct;}); if (!correctionShift) return;
+    if (REQUESTS.some(function(r){return r.shift_id === correctionShift.id && r.status === 'pending';})) { toast('This shift already has a pending correction.'); return; }
+    $("correctIn").value = localInput(correctionShift.clock_in_at);
+    $("correctOut").value = localInput(correctionShift.clock_out_at || new Date());
+    $("correctReason").value = ''; show('correctionError',false);
+    $("correctionOriginal").textContent = dayLabel(correctionShift.clock_in_at) + ': ' + hhmm(correctionShift.clock_in_at) + ' - ' + (correctionShift.clock_out_at ? hhmm(correctionShift.clock_out_at) : 'Still on shift');
+    $("correctionDialog").showModal();
+  });
+  $("cancelCorrection").addEventListener('click',function(){if(!correctionBusy) $("correctionDialog").close();});
+  $("correctionDialog").addEventListener('cancel',function(e){if(correctionBusy)e.preventDefault();});
+  $("correctionForm").addEventListener('submit',async function(e) {
+    e.preventDefault(); if(correctionBusy) return;
+    var start = new Date($("correctIn").value), end = new Date($("correctOut").value), reason = $("correctReason").value.trim();
+    show('correctionError',false);
+    if (!reason || !Number.isFinite(+start) || !Number.isFinite(+end) || end <= start || end > new Date()) {
+      $("correctionError").textContent = 'Enter a reason and past times, with the end after the start.'; show('correctionError',true); return;
+    }
+    correctionBusy = true; $("submitCorrection").disabled = true;
+    try {
+      if(DEMO) {
+        REQUESTS.unshift({id:'request-'+Date.now(),shift_id:correctionShift.id,requested_in:start.toISOString(),requested_out:end.toISOString(),reason:reason,status:'pending'});
+      } else {
+        var r = await sb.rpc('request_shift_correction',{p_shift_id:correctionShift.id,p_in:start.toISOString(),p_out:end.toISOString(),p_reason:reason});
+        if(r.error) throw r.error;
+      }
+      $("correctionDialog").close(); await loadActivity(); toast('Correction sent to your manager');
+    } catch(error) { $("correctionError").textContent = error.message; show('correctionError',true); }
+    finally { correctionBusy = false; $("submitCorrection").disabled = false; }
+  });
+  document.querySelectorAll('[data-view]').forEach(function(button) {
+    button.setAttribute('role','tab');button.setAttribute('tabindex',button.dataset.view==='work'?'0':'-1');
+    button.parentElement && button.parentElement.setAttribute('role','tablist');
+    $('staff-'+button.dataset.view).setAttribute('role','tabpanel');
+    button.addEventListener('click',function(){
+      document.querySelectorAll('[data-view]').forEach(function(b){b.setAttribute('aria-selected',String(b===button));b.setAttribute('tabindex',b===button?'0':'-1');show('staff-'+b.dataset.view,b===button);});
+      if(button.dataset.view==='inbox') loadActivity();
+      if(button.dataset.view==='work') refreshMap();
+    });
+    button.addEventListener('keydown',function(e){
+      var tabs=Array.from(document.querySelectorAll('[data-view]')),index=tabs.indexOf(button),next;
+      if(e.key==='ArrowRight')next=(index+1)%tabs.length;else if(e.key==='ArrowLeft')next=(index+tabs.length-1)%tabs.length;else if(e.key==='Home')next=0;else if(e.key==='End')next=tabs.length-1;else return;
+      e.preventDefault();tabs[next].click();tabs[next].focus();
+    });
+  });
+  $("refreshActivity").addEventListener('click',loadActivity);
+  setInterval(function(){if(ME && !DEMO && document.visibilityState!=='hidden')loadActivity();},30000);
+  var remindedShift = null;
+  setInterval(function(){
+    if(ME && OPEN && $("shiftReminder").checked && hoursBetween(OPEN.clock_in_at) > 13 && remindedShift !== OPEN.id) {
+      remindedShift = OPEN.id; toast('You have been on shift for over 13 hours. Check your clock-out time.');
+    }
+  },60000);
+  var installPrompt = null;
+  window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();installPrompt=e;show('installApp',true);});
+  $("installApp").addEventListener('click',async function(){if(installPrompt){await installPrompt.prompt();installPrompt=null;show('installApp',false);}});
+  window.addEventListener('appinstalled',function(){show('installApp',false);$("installStatus").textContent='Aero is installed.';});
+  $("installStatus").textContent = location.protocol === 'file:' ? 'Home-screen installation is available on the hosted app.' : /iPad|iPhone|iPod/.test(navigator.userAgent) ? 'In Safari, open Share and choose Add to Home Screen.' : 'Install Aero from your browser menu when available.';
+  if('serviceWorker' in navigator && location.protocol === 'https:' && !DEMO) navigator.serviceWorker.register('/sw.js').catch(function(error){$("installStatus").textContent=error.message;});
+
   function signedOut() {
-    ME = null; OPEN = null; clearInterval(tick);
+    ME = null; OPEN = null; REQUESTS=[];HISTORY=[];clearInterval(tick);
     show("app", false);
     show("login", true);
   }
@@ -635,12 +830,16 @@
   }
 
   // ── boot ───────────────────────────────────
+  $("today").textContent = new Date().toLocaleDateString("en-GB", {weekday:"long",day:"numeric",month:"long"});
+  $("historyRange").addEventListener("change",function() { renderHistory(HISTORY); });
+  function connection() { show("connection", !navigator.onLine); }
+  window.addEventListener("online",connection); window.addEventListener("offline",connection); connection();
   $("action").addEventListener("click", onAction);
   $("site").addEventListener("change", refreshMap);
   window.addEventListener("resize", function () { if (MAP.site) drawMap(); });
 
   if (DEMO) {
-    $("signout").textContent = "";
+    show("signout", false);
     // Keep the demo on the demo side: a plain "admin.html" link from /demo would open the real sign-in.
     if (FORCED_DEMO) $("demoLink").href = /^\/demo/.test(location.pathname) ? "/demo/admin" : "admin.html?demo";
     loadDemo();
