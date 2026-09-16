@@ -82,7 +82,7 @@ adapt to tablet and desktop. The staff app stays a single 560px column.
 
 Staff app structure — keep it:
 - **Home**: greeting, a today card (status, running time while on shift, the
-  64px Clock in/out button), a Mon–Sun hours bar chart with the week total,
+  Clock in/out button), a Mon–Sun hours bar chart with the week total,
   then recent shifts. Activity and Account are the other bottom tabs.
 - **Clock screen**: a separate full-screen view opened from Home. Full map
   with back button and today's hours, position against the site zone, and a
@@ -106,7 +106,11 @@ Staff app structure — keep it:
 - One white surface level, open sections separated by space or hairlines.
   No nested panels, coloured pill badges, gradients or drop shadows.
   Corners at most 8px; circular location/status dots are the exception.
-- Controls at least 48px high; clock action 64px. Inputs at least 16px.
+- Staff app sections are white blocks on the light surface with 8px gaps,
+  never cards inside cards. Keep it light: section titles 16px, weight 600 only
+  for titles, the greeting and the clock action; everything else 400-500.
+- Controls at least 44px high (Apple's minimum); clock action 52px; bottom
+  tabs 56px. Inputs use 16px text so iOS does not zoom.
   Checkbox labels provide the full touch target. No hover-only controls.
   Every control has a visible focus ring.
 - Under 768px, manager table records stack into labelled two-column rows.

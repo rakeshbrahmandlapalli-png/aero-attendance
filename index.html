@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Aero Attendance | Your working day</title>
-<meta name="theme-color" content="#171C24">
+<meta name="theme-color" content="#FFFFFF">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Aero">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -87,55 +87,59 @@
   @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important;}}
 
   /* ── staff app shell ───────────────────── */
-  .top{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);max-width:560px;margin:0 auto;padding:var(--s3) var(--s4);}
+  #app{min-height:100vh;background:var(--surface);}
+  .top{display:flex;align-items:center;gap:var(--s3);max-width:560px;margin:0 auto;padding:var(--s3) var(--s4);background:var(--card);}
   .identity{display:flex;align-items:center;gap:var(--s3);min-width:0;}
   .identity>div{min-width:0;}
-  .avatar{display:grid;place-items:center;flex:none;width:48px;height:48px;border-radius:50%;background:var(--ink);color:#fff;font-size:var(--t1);font-weight:600;}
-  .who{font-size:var(--t3);font-weight:600;line-height:1.2;overflow-wrap:anywhere;}
-  .top .co{margin-top:var(--s1);}
-  .top .link{color:var(--ink-2);}
-  .wrap{display:block;max-width:560px;margin:0 auto;padding:var(--s2) var(--s4) calc(112px + env(safe-area-inset-bottom));}
-  .wrap section+section{margin-top:var(--s8);}
-  .section-head{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);margin-bottom:var(--s4);}
-  .section-head h2{margin:0;font-size:var(--t3);}
-  .section-head strong{font-size:var(--t3);}
-  .section-head select{width:auto;}
+  .avatar{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:50%;background:var(--ink);color:#fff;font-size:var(--t1);font-weight:500;}
+  .who{font-size:var(--t2);font-weight:600;line-height:1.3;overflow-wrap:anywhere;}
+  .top .co{margin-top:0;}
+  .signout{width:100%;margin-top:var(--s6);}
+  .wrap{display:block;max-width:560px;margin:0 auto;padding:var(--s2) 0 calc(80px + env(safe-area-inset-bottom));}
+  .wrap section,#staff-inbox,#staff-account{padding:var(--s4);background:var(--card);}
+  .wrap section+section{margin-top:var(--s2);}
+  .section-head{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);margin-bottom:var(--s3);}
+  .section-head h2{margin:0;font-size:var(--t2);}
+  .section-head strong{font-size:var(--t2);font-weight:600;}
+  .section-head select{width:auto;min-height:44px;padding:0 var(--s2);border:0;background:none;color:var(--accent);font-weight:500;}
 
   /* today: the one thing staff open the app for */
-  .today-card{padding:var(--s6) var(--s4) var(--s4);border-radius:var(--r);background:var(--surface);}
-  .today-card .today{margin:0 0 var(--s3);}
-  .state{display:flex;align-items:center;gap:var(--s2);font-size:var(--t2);font-weight:600;}
+  .today-head{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);}
+  .today-card .today{margin:0;white-space:nowrap;}
+  .state{display:flex;align-items:center;gap:var(--s2);font-size:var(--t2);font-weight:500;}
   .dot{width:10px;height:10px;flex:none;border-radius:50%;background:#667085;}
   .dot.on{background:var(--accent);outline:4px solid rgb(20 86 192 / .18);}
-  .since{margin-top:var(--s3);font-size:var(--t6);font-weight:600;line-height:1.1;}
-  .elapsed{margin-top:var(--s2);font-size:var(--t2);color:var(--ink-2);}
-  .act{display:flex;align-items:center;justify-content:center;gap:var(--s2);width:100%;min-height:64px;padding:var(--s4);border:0;border-radius:var(--r);background:var(--accent);color:#fff;font-size:var(--t3);font-weight:600;line-height:1.2;}
+  .since{margin-top:var(--s2);font-size:var(--t5);font-weight:600;line-height:1.2;}
+  .elapsed{margin-top:var(--s1);font-size:var(--t1);color:var(--ink-2);}
+  .act{display:flex;align-items:center;justify-content:center;gap:var(--s2);width:100%;min-height:52px;padding:var(--s3) var(--s4);border:0;border-radius:var(--r);background:var(--accent);color:#fff;font-size:var(--t2);font-weight:600;line-height:1.2;}
   .act.out{background:var(--ink);}
-  .act .lucide{width:24px;height:24px;}
-  .today-card .act{margin-top:var(--s6);}
+  .act .lucide{width:20px;height:20px;}
+  .today-card .act{margin-top:var(--s4);}
   .note{margin-top:var(--s3);}
   .note:empty{display:none;}
   .note.warn,.flag{color:var(--warn);}
 
   /* this week */
-  .bars{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:var(--s2);}
+  .bars{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:0;}
   .bar{display:flex;flex-direction:column;align-items:center;min-width:0;}
-  .track{position:relative;width:100%;height:120px;border-radius:6px;background:var(--surface);overflow:hidden;}
-  .fill{position:absolute;left:0;right:0;bottom:0;border-radius:6px 6px 0 0;background:#5B86CF;}
+  .track{position:relative;width:100%;height:88px;border-bottom:1px solid var(--line);}
+  .fill{position:absolute;left:24%;right:24%;bottom:0;border-radius:4px 4px 0 0;background:#5B86CF;}
   .bar.is-today .fill{background:var(--accent);}
   .bar .day{margin-top:var(--s2);font-size:var(--t1);color:var(--ink-2);}
   .bar.is-today .day{color:var(--ink);font-weight:600;}
-  .bar .val{font-size:var(--t1);font-weight:500;white-space:nowrap;}
-  #weekCount{margin-top:var(--s4);}
+  .bar .val{font-size:var(--t1);color:var(--ink-2);white-space:nowrap;}
+  .bar.is-today .val{color:var(--ink);font-weight:500;}
+  #weekCount{margin-top:var(--s3);}
 
   /* history, activity, account */
-  .row{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3);padding:var(--s4) 0;border-bottom:1px solid var(--line-soft);}
+  .row{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3);padding:var(--s3) 0;border-bottom:1px solid var(--line-soft);}
+  .row:last-child{border-bottom:0;}
   .row>div:first-child{min-width:0;}
-  .row .d{font-size:var(--t2);font-weight:600;}
+  .row .d{font-size:var(--t2);font-weight:500;}
   .row .t,.shift-note,.flag{font-size:var(--t1);margin-top:var(--s1);overflow-wrap:anywhere;}
   .row .t,.shift-note{color:var(--ink-2);}
-  .row .h{font-size:var(--t2);font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums;}
-  .request-link{display:inline-flex;align-items:center;min-height:48px;padding:0;border:0;background:none;color:var(--accent);font-size:var(--t1);font-weight:500;text-decoration:underline;text-underline-offset:4px;}
+  .row .h{font-size:var(--t2);font-weight:500;white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .request-link{display:inline-flex;align-items:center;min-height:44px;padding:0;border:0;background:none;color:var(--accent);font-size:var(--t1);font-weight:500;text-decoration:underline;text-underline-offset:4px;}
   .inbox-item{padding:var(--s4) 0;border-bottom:1px solid var(--line-soft);overflow-wrap:anywhere;}
   .inbox-item strong{font-size:var(--t2);}
   .inbox-item p{margin:var(--s2) 0;color:var(--ink-2);}
@@ -149,9 +153,9 @@
 
   /* bottom tabs */
   .staff-nav{position:fixed;z-index:20;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:0 max(var(--s2),calc((100vw - 560px) / 2)) env(safe-area-inset-bottom);background:var(--card);border-top:1px solid var(--line);}
-  .staff-nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s1);min-height:64px;border:0;background:none;color:var(--ink-2);font-size:var(--t1);font-weight:500;}
-  .staff-nav button .lucide{width:24px;height:24px;}
-  .staff-nav button[aria-selected=true]{color:var(--accent);font-weight:600;}
+  .staff-nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;border:0;background:none;color:var(--ink-2);font-size:var(--t1);font-weight:400;}
+  .staff-nav button .lucide{width:22px;height:22px;}
+  .staff-nav button[aria-selected=true]{color:var(--accent);font-weight:500;}
 
   /* clock screen: the map and the action get the whole phone */
   .clock{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;max-width:560px;margin:0 auto;background:var(--card);}
@@ -173,8 +177,8 @@
   .mapAttr{position:absolute;z-index:2;right:var(--s2);bottom:var(--s2);display:flex;align-items:flex-end;justify-content:flex-end;min-width:48px;min-height:48px;color:var(--ink-2);font-size:var(--t1);text-decoration:none;}
   .mapAttr span{padding:2px var(--s2);border-radius:4px;background:var(--card);}
   .map[hidden]~.sheet{margin-top:88px;}
-  .sheet{flex:none;padding:var(--s6) var(--s4) calc(var(--s6) + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:var(--card);}
-  .sheet h1{margin-bottom:var(--s4);font-size:var(--t4);}
+  .sheet{flex:none;padding:var(--s4) var(--s4) calc(var(--s6) + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:var(--card);}
+  .sheet h1{margin-bottom:var(--s3);font-size:var(--t3);}
   #siteWrap,#noteWrap{margin-bottom:var(--s4);}
   #siteWrap label,#noteWrap label{display:block;margin-bottom:var(--s2);}
   #noteWrap textarea{min-height:72px;}
@@ -214,14 +218,12 @@
         </div>
       </div>
       <span id="me" hidden></span>
-      <button class="link" id="signout">Sign out</button>
     </header>
 
     <main class="wrap">
       <div id="staff-work" aria-labelledby="nav-work">
         <section class="today-card" aria-label="Today">
-          <div class="today" id="today"></div>
-          <div class="state"><span class="dot off" id="dot"></span><span id="stateText">Not clocked in</span></div>
+          <div class="today-head"><div class="state"><span class="dot off" id="dot"></span><span id="stateText">Not clocked in</span></div><div class="today" id="today"></div></div>
           <div class="since num hidden" id="since"></div>
           <div class="elapsed" id="elapsed"></div>
           <button class="act in" id="openClock">Clock in</button>
@@ -240,7 +242,7 @@
         </section>
       </div>
       <div id="staff-inbox" class="hidden" role="tabpanel" aria-labelledby="nav-inbox"><div class="section-head"><h2>Activity</h2><button class="link" id="refreshActivity">Refresh</button></div><div id="activity" aria-live="polite"></div></div>
-      <div id="staff-account" class="hidden" role="tabpanel" aria-labelledby="nav-account"><div class="section-head"><h2>Your account</h2></div><div class="account-row"><span>Name</span><strong id="accountName"></strong></div><div class="account-row"><span>Company</span><strong id="accountCompany"></strong></div><label class="check"><input type="checkbox" id="shiftReminder" checked>Show long-shift reminders while the app is open</label><div class="account-row"><span>Location</span><strong>Clock-in and clock-out only</strong></div><button class="btn hidden" id="installApp">Install Aero</button><p class="note" id="installStatus"></p></div>
+      <div id="staff-account" class="hidden" role="tabpanel" aria-labelledby="nav-account"><div class="section-head"><h2>Your account</h2></div><div class="account-row"><span>Name</span><strong id="accountName"></strong></div><div class="account-row"><span>Company</span><strong id="accountCompany"></strong></div><label class="check"><input type="checkbox" id="shiftReminder" checked>Show long-shift reminders while the app is open</label><div class="account-row"><span>Location</span><strong>Clock-in and clock-out only</strong></div><button class="btn hidden" id="installApp">Install Aero</button><p class="note" id="installStatus"></p><button class="btn g signout" id="signout">Sign out</button></div>
     </main>
 
     <nav class="staff-nav" aria-label="Staff views"><button id="nav-work" aria-controls="staff-work" aria-selected="true" data-view="work"><span>Home</span></button><button id="nav-inbox" aria-controls="staff-inbox" aria-selected="false" data-view="inbox"><span>Activity <span class="num" id="inboxCount"></span></span></button><button id="nav-account" aria-controls="staff-account" aria-selected="false" data-view="account"><span>Account</span></button></nav>
@@ -889,7 +891,7 @@
   }
 
   // ── boot ───────────────────────────────────
-  $("today").textContent = new Date().toLocaleDateString("en-GB", {weekday:"long",day:"numeric",month:"long"});
+  $("today").textContent = new Date().toLocaleDateString("en-GB", {weekday:"short",day:"numeric",month:"short"});
   $("historyRange").addEventListener("change",function() { renderHistory(HISTORY); });
   function connection() { show("connection", !navigator.onLine); }
   window.addEventListener("online",connection); window.addEventListener("offline",connection); connection();
