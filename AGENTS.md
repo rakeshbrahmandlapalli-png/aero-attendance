@@ -103,12 +103,21 @@ Staff app structure — keep it:
   estimate, not a payslip. Pages must keep working if the pay SQL hasn't
   been run: treat a failed pay query as "pay off".
 
-- White surfaces, graphite header/ink `#171C24`, secondary text `#475467`,
-  neutral surface `#F1F4F8`. Working cobalt `#1456C0`; attention amber `#805000` on
-  `#FFF3D9`. Colour indicates state, not decoration. Neutral initials.
-- Verified WCAG text contrast: ink on white 17.10:1, secondary on white
-  7.69:1 (6.97:1 on the neutral surface), white on cobalt 6.73:1,
-  amber on its attention surface 6.22:1. Recalculate after palette changes.
+- **Own identity, not Connecteam's.** The owner rejected a look that copied
+  Connecteam (bright blue, round clock button, white blocks on grey). Never
+  bring back blue as the brand colour or a round tap-to-clock button.
+- Aero palette: deep navy `#0E1420` (ink, header, Home today block, Clock
+  screen sheet), raised navy `#1A2233`, navy hairline `#2A3447`, secondary
+  text on navy `#AEB7C4`. Aero orange `#E8871E` is the brand: fills with navy
+  text, the tab indicator, the site zone. Orange text on light surfaces uses
+  `#9A5200`. White surfaces, secondary text `#4A5363`, neutral surface
+  `#F3F5F8`. Attention red `#B42318` on `#FEF1F0` (never orange: orange is
+  the brand). Success green `#0F7B4A`.
+- Verified WCAG text contrast: ink on white 18.43:1, secondary on white
+  7.75:1 (7.10:1 on the neutral surface), navy on orange 6.95:1, orange text
+  on white 5.86:1, white on navy-2 15.90:1, `#AEB7C4` on navy 9.10:1, red on
+  its attention surface 5.97:1, white on green 5.31:1. Recalculate after
+  palette changes.
 - The phone's own font (system-ui stack: San Francisco on Apple, Roboto on
   Android, Segoe UI on Windows). No web fonts. Weights 400/500/600 only. Six sizes: 14/16/20/24/32/48px,
   defined as `--t1` through `--t6`. Headings use 1.2 line-height, body 1.5.
@@ -117,20 +126,25 @@ Staff app structure — keep it:
   map coordinates, hairlines and safe-area offsets are not spacing tokens.
 - One white surface level, open sections separated by space or hairlines.
   No nested panels, coloured pill badges, gradients or drop shadows.
-  Corners at most 8px. Exceptions: circular location/status dots, pill-shaped
-  primary buttons, and the round clock button on the Clock screen.
-- Staff app sections are white blocks on the light surface with 8px gaps,
+  Corners at most 8px. Exception: circular location/status dots.
+- Home opens with one navy block (header + today status + orange Clock in
+  button); the other staff app sections are white blocks with 8px gaps,
   never cards inside cards. Keep it light: section titles 16px, weight 600 only
   for section titles and the running timer; everything else 400-500.
 - Few words on Home: no helper sentences. A shift row is tappable (chevron)
   and opens the correction request; don't add a link under every shift.
-- Week chart: pale bars, today in full accent, faint day guides and a dashed
+- Week chart: pale grey bars, today in navy, faint day guides and a dashed
   8-hour reference line so empty days still read as a chart.
-- The Clock screen's action is a 152px circle: blue to clock in, ink to clock
-  out, a spinner while locating, a brief green tick on success, and a zone
-  line under it (inside / metres away, still allowed and flagged / no fix).
+- The Clock screen's action is **slide to confirm**: a 64px navy track with a
+  square handle (orange to clock in, white to clock out). A tap only nudges
+  the handle, so a phone in a pocket can't clock anyone in; dragging to the
+  end clocks. Keyboard users press the handle (click with `detail === 0`).
+  Spinner in the handle while locating, the track turns green with a tick on
+  success, and a zone line sits under it (inside / metres away, still allowed
+  and flagged / no fix). Today's hours sit at the top of the navy sheet, not
+  in a pill over the map.
 - Controls at least 44px high (Apple's minimum); Home clock button 56px; bottom
-  tabs 56px. Inputs use 16px text so iOS does not zoom.
+  tabs 56px (selected: navy text + short orange bar). Inputs use 16px text so iOS does not zoom.
   Checkbox labels provide the full touch target. No hover-only controls.
   Every control has a visible focus ring.
 - Under 768px, manager table records stack into labelled two-column rows.
@@ -139,8 +153,8 @@ Staff app structure — keep it:
   sync with the table headings and preserve table semantics in markup.
 - Empty states use readable text and open spacing; errors use attention
   colour and a left rule; busy controls keep legible text and stable size.
-- Transitions: 160ms colour changes, a 120ms press scale on clock buttons,
-  and the busy spinner. Reduced motion turns all of them off.
+- Transitions: 160ms colour changes and handle snap-back, a 120ms press scale
+  on the Home clock button, the tap nudge and the busy spinner. Reduced motion turns all of them off.
 - British English throughout. Preserve existing attendance, demo, security
   and database behaviour. Do not add fonts, libraries or asset downloads.
 - Before committing, run both script parse checks and click through staff

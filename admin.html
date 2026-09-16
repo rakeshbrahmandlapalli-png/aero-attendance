@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Aero Attendance | Manager board</title>
-<meta name="theme-color" content="#171C24">
+<meta name="theme-color" content="#0E1420">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -21,10 +21,10 @@
 <style>
   /* Quiet premium: phone-first, six type sizes, one spacing scale. */
   :root{
-    --page:#FFFFFF;--card:#FFFFFF;--surface:#F1F4F8;
-    --line:#D5DBE3;--line-soft:#E7EBF0;--ink:#171C24;
-    --ink-2:#475467;--ink-3:#475467;--accent:#1456C0;
-    --accent-soft:#EDF3FD;--warn:#805000;--warn-soft:#FFF3D9;
+    --page:#FFFFFF;--card:#FFFFFF;--surface:#F3F5F8;
+    --line:#DDE2E8;--line-soft:#EAEDF1;--ink:#0E1420;
+    --ink-2:#4A5363;--ink-3:#4A5363;--accent:#9A5200;
+    --accent-soft:#FCEFE0;--warn:#B42318;--warn-soft:#FEF1F0;--brand:#E8871E;
     --stop:var(--warn);--stop-soft:var(--warn-soft);--r:8px;
     --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s6:24px;--s8:32px;--s12:48px;
     --t1:14px;--t2:16px;--t3:20px;--t4:24px;--t5:32px;--t6:48px;
@@ -84,7 +84,7 @@
   header>div{min-width:0;}.brand{font-size:var(--t4);font-weight:600;}
   header nav{position:fixed;z-index:30;inset:auto 0 0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:var(--s2) var(--s1) calc(8px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line);}
   nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s1);min-height:64px;min-width:0;padding:var(--s1) 0;border:0;border-bottom:2px solid transparent;background:none;color:var(--ink-2);font-size:var(--t1);font-weight:500;}
-  nav button.on{color:var(--ink);border-bottom-color:var(--accent);}
+  nav button.on{color:var(--ink);border-bottom-color:var(--brand);}
   main{max-width:1280px;margin:auto;padding:var(--s6) var(--s4) calc(112px + env(safe-area-inset-bottom));}
   section{display:none;}section.on{display:block;}
   section>h2{margin-top:var(--s8);}
@@ -134,7 +134,7 @@
   .review-item textarea{margin-top:var(--s2);max-width:640px;}
   .site-preview{height:240px;position:relative;overflow:hidden;background:var(--surface);margin-bottom:var(--s6);border-radius:var(--r);}
   .site-preview img{position:absolute;width:256px;height:256px;max-width:none;}
-  .site-zone{position:absolute;border:2px solid var(--accent);border-radius:50%;background:rgb(20 86 192 / .12);transform:translate(-50%,-50%);pointer-events:none;}
+  .site-zone{position:absolute;border:2px solid var(--brand);border-radius:50%;background:rgb(232 135 30 / .16);transform:translate(-50%,-50%);pointer-events:none;}
   .site-caption{position:absolute;bottom:0;left:0;right:0;background:var(--card);padding:var(--s2);font-size:var(--t1);}
   .site-caption a{display:inline-flex;align-items:center;min-height:48px;color:inherit;}
   dialog .field{margin:var(--s4) 0;}dialog .bar{justify-content:flex-end;margin:var(--s6) 0 0;}
@@ -181,7 +181,7 @@
   @media(min-width:768px){
     header{padding:var(--s4) var(--s8);flex-wrap:wrap;}
     header nav{position:static;display:flex;order:3;flex-basis:100%;gap:var(--s6);padding:0;border-top:0;background:none;}
-    header nav button{color:#D5DBE3;}header nav button.on{color:#fff;border-bottom-color:#fff;}header nav :focus-visible{outline-color:#fff;}
+    header nav button{color:#D5DBE3;}header nav button.on{color:#fff;border-bottom-color:var(--brand);}header nav :focus-visible{outline-color:#fff;}
     nav button{flex-direction:row;font-size:var(--t2);min-height:48px;gap:var(--s2);}
     main{padding:var(--s8) var(--s8) var(--s12);}
     .page-heading{flex-direction:row;align-items:center;justify-content:space-between;}

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Aero Attendance | Your working day</title>
-<meta name="theme-color" content="#FFFFFF">
+<meta name="theme-color" content="#0E1420">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Aero">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -23,12 +23,13 @@
 </script>
 
 <style>
-  /* Quiet premium: phone-first, six type sizes, one spacing scale. */
+  /* Aero identity: deep navy + Aero orange. Phone-first, six type sizes, one spacing scale. */
   :root{
-    --page:#FFFFFF;--card:#FFFFFF;--surface:#F1F4F8;
-    --line:#D5DBE3;--line-soft:#E7EBF0;--ink:#171C24;
-    --ink-2:#475467;--ink-3:#475467;--accent:#1456C0;
-    --accent-soft:#EDF3FD;--warn:#805000;--warn-soft:#FFF3D9;
+    --page:#FFFFFF;--card:#FFFFFF;--surface:#F3F5F8;
+    --line:#DDE2E8;--line-soft:#EAEDF1;--ink:#0E1420;
+    --ink-2:#4A5363;--ink-3:#4A5363;--accent:#9A5200;
+    --accent-soft:#FCEFE0;--warn:#B42318;--warn-soft:#FEF1F0;
+    --navy:#0E1420;--navy-2:#1A2233;--navy-line:#2A3447;--on-navy-2:#AEB7C4;--brand:#E8871E;
     --stop:var(--warn);--stop-soft:var(--warn-soft);--r:8px;
     --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s6:24px;--s8:32px;--s12:48px;
     --t1:14px;--t2:16px;--t3:20px;--t4:24px;--t5:32px;--t6:48px;
@@ -85,14 +86,16 @@
 
   /* ── staff app shell ───────────────────── */
   #app{min-height:100vh;background:var(--surface);}
-  .top{display:flex;align-items:center;gap:var(--s3);max-width:560px;margin:0 auto;padding:var(--s3) var(--s4);background:var(--card);}
+  .top{display:flex;align-items:center;gap:var(--s3);max-width:560px;margin:0 auto;padding:var(--s3) var(--s4);background:var(--navy);color:#fff;}
+  .top .co{color:var(--on-navy-2);}
   .identity{display:flex;align-items:center;gap:var(--s3);min-width:0;}
   .identity>div{min-width:0;}
-  .avatar{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-size:var(--t1);font-weight:600;}
+  .avatar{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:var(--r);background:var(--navy-2);border:1px solid var(--navy-line);color:#fff;font-size:var(--t1);font-weight:600;}
   .who{font-size:var(--t2);font-weight:500;line-height:1.3;overflow-wrap:anywhere;}
   .top .co{margin-top:0;}
   .signout{width:100%;margin-top:var(--s6);}
-  .wrap{display:block;max-width:560px;margin:0 auto;padding:var(--s2) 0 calc(80px + env(safe-area-inset-bottom));}
+  .wrap{display:block;max-width:560px;margin:0 auto;padding:0 0 calc(80px + env(safe-area-inset-bottom));}
+  #staff-sheet,#staff-inbox,#staff-account{margin-top:var(--s2);}
   .wrap section,#staff-inbox,#staff-account{padding:var(--s4);background:var(--card);}
   .wrap section+section{margin-top:var(--s2);}
   .section-head{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);margin-bottom:var(--s3);}
@@ -102,32 +105,44 @@
 
   /* today: the one thing staff open the app for */
   .today-head{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);}
+  .wrap .today-card{margin-top:-1px;padding:calc(var(--s2) + 1px) var(--s4) var(--s6);background:var(--navy);color:#fff;}
+  .today-card .today,.today-card .elapsed{color:var(--on-navy-2);}
+  .today-card :focus-visible{outline-color:var(--brand);}
   .today-card .today{margin:0;white-space:nowrap;}
   .state{display:flex;align-items:center;gap:var(--s2);font-size:var(--t2);font-weight:500;}
-  .dot{width:10px;height:10px;flex:none;border-radius:50%;background:#667085;}
-  .dot.on{background:var(--accent);outline:4px solid rgb(20 86 192 / .18);}
+  .dot{width:10px;height:10px;flex:none;border-radius:50%;background:#7A8494;}
+  .dot.on{background:var(--brand);outline:4px solid rgb(232 135 30 / .25);}
   .since{margin-top:var(--s2);font-size:var(--t5);font-weight:600;line-height:1.2;}
   .elapsed{margin-top:var(--s1);font-size:var(--t1);color:var(--ink-2);}
   .elapsed:empty{display:none;}
-  .act{display:flex;align-items:center;justify-content:center;gap:var(--s2);width:100%;min-height:56px;padding:var(--s3) var(--s6);border:0;border-radius:999px;background:var(--accent);color:#fff;font-size:var(--t2);font-weight:500;line-height:1.2;}
-  .act.out{background:var(--ink);}
-  .act,.clock-btn{transition:transform 120ms,background-color 160ms;}
-  .act:active,.clock-btn:active{transform:scale(.97);}
-  .clock-action{display:flex;flex-direction:column;align-items:center;gap:var(--s4);margin:var(--s3) 0 var(--s2);}
-  .clock-btn{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s1);width:152px;height:152px;padding:0;border:0;border-radius:50%;background:var(--accent);color:#fff;font-size:var(--t3);font-weight:500;outline:10px solid var(--accent-soft);}
-  .clock-btn .lucide{width:32px;height:32px;}
-  .clock-btn.out{background:var(--ink);outline-color:#E7EBF0;}
-  .clock-btn.done{background:#0F7B4A;outline-color:#E3F3EA;}
-  .clock-btn:disabled{background:var(--accent);color:#fff;border:0;cursor:wait;}
-  .clock-btn.out:disabled{background:var(--ink);}
-  .clock-btn.done:disabled{background:#0F7B4A;cursor:default;}
-  .clock-btn:focus-visible{outline-color:var(--accent);}
-  .clock-btn.busy::after{content:"";position:absolute;inset:8px;border:3px solid rgb(255 255 255 / .3);border-top-color:#fff;border-radius:50%;animation:spin 900ms linear infinite;}
+  .act{display:flex;align-items:center;justify-content:center;gap:var(--s2);width:100%;min-height:56px;padding:var(--s3) var(--s6);border:0;border-radius:var(--r);background:var(--brand);color:var(--navy);font-size:var(--t2);font-weight:600;line-height:1.2;}
+  .act.out{background:#fff;}
+  .act{transition:transform 120ms,background-color 160ms;}
+  .act:active{transform:scale(.98);}
+  /* slide to confirm: a deliberate drag, so a phone in a pocket can't clock anyone in */
+  .slide{position:relative;height:64px;margin:var(--s2) 0 var(--s3);padding:4px;border:1px solid var(--navy-line);border-radius:var(--r);background:var(--navy-2);overflow:hidden;user-select:none;-webkit-user-select:none;}
+  .slide-fill{position:absolute;left:0;top:0;bottom:0;width:calc(var(--x,0px) + 60px);background:rgb(232 135 30 / .18);pointer-events:none;}
+  .slide.out .slide-fill{background:rgb(255 255 255 / .1);}
+  .slide-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding-left:60px;color:#fff;font-weight:500;pointer-events:none;}
+  .slide-knob{position:relative;z-index:1;display:grid;place-items:center;width:56px;height:54px;padding:0;border:0;border-radius:6px;background:var(--brand);color:var(--navy);transform:translateX(var(--x,0px));touch-action:none;cursor:grab;}
+  .slide-knob .lucide{width:24px;height:24px;}
+  .slide.out .slide-knob,.slide.done .slide-knob{background:#fff;color:var(--navy);}
+  .slide-knob:disabled{background:var(--brand);color:var(--navy);border:0;cursor:wait;}
+  .slide.out .slide-knob:disabled,.slide.done .slide-knob:disabled{background:#fff;}
+  .slide.snap .slide-knob{transition:transform 160ms;}
+  .slide.snap .slide-fill{transition:width 160ms;}
+  .slide.nudge .slide-knob{animation:nudge 480ms ease-out;}
+  @keyframes nudge{40%{transform:translateX(18px);}}
+  .slide.busy .slide-knob::after{content:"";width:22px;height:22px;border:3px solid rgb(14 20 32 / .25);border-top-color:var(--navy);border-radius:50%;animation:spin 900ms linear infinite;}
+  .slide.done{border-color:#0F7B4A;background:#0F7B4A;}
+  .slide.done .slide-knob{color:#0F7B4A;cursor:default;}
+  .slide.done .slide-fill{display:none;}
+  .slide-knob:focus-visible{outline:2px solid #fff;outline-offset:2px;}
   @keyframes spin{to{transform:rotate(360deg);}}
-  .zone-line{max-width:320px;text-align:center;font-size:var(--t1);color:var(--ink-2);}
+  .zone-line{text-align:center;font-size:var(--t1);color:var(--on-navy-2);}
   .zone-line:empty{display:none;}
-  .zone-line.ok{color:#0F7B4A;}
-  .zone-line.warn{color:var(--warn);}
+  .zone-line.ok{color:#6FD39A;}
+  .zone-line.warn{color:#F5A3A3;}
   .note-toggle{display:inline-flex;align-items:center;min-height:44px;padding:0;border:0;background:none;color:var(--accent);font-weight:500;}
   #clockNote{text-align:center;}
   .act .lucide{width:20px;height:20px;}
@@ -142,8 +157,8 @@
   .track{position:relative;display:block;width:100%;height:88px;border-bottom:1px solid var(--line);}
   .bar+.bar .track{border-left:1px solid var(--line-soft);}
   .track::before{content:"";position:absolute;left:0;right:0;bottom:var(--ref,100%);border-top:1px dashed var(--line);}
-  .fill{position:absolute;left:24%;right:24%;bottom:0;border-radius:4px 4px 0 0;background:#9DB8E6;}
-  .bar.is-today .fill{background:var(--accent);}
+  .fill{position:absolute;left:24%;right:24%;bottom:0;border-radius:2px 2px 0 0;background:#C3CAD5;}
+  .bar.is-today .fill{background:var(--navy);}
   .bar .day{margin-top:var(--s2);font-size:var(--t1);color:var(--ink-2);}
   .bar.is-today .day{color:var(--ink);font-weight:600;}
   .bar .val{font-size:var(--t1);color:var(--ink-2);white-space:nowrap;}
@@ -169,7 +184,7 @@
   .pay{margin-top:var(--s4);padding-top:var(--s4);border-top:1px solid var(--line-soft);}
   .pay strong{display:block;font-size:var(--t5);font-weight:600;line-height:1.2;}
   .site-auto{display:flex;align-items:center;justify-content:center;gap:var(--s2);min-height:44px;font-weight:500;}
-  .site-auto .pin{display:grid;color:var(--accent);}
+  .site-auto .pin{display:grid;color:var(--brand);}
   .site-auto .pin .lucide{width:18px;height:18px;}
   #sitePick{margin-top:var(--s2);}
 
@@ -199,31 +214,38 @@
   .staff-nav{position:fixed;z-index:20;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:0 max(var(--s2),calc((100vw - 560px) / 2)) env(safe-area-inset-bottom);background:var(--card);border-top:1px solid var(--line);}
   .staff-nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;border:0;background:none;color:var(--ink-2);font-size:var(--t1);font-weight:400;}
   .staff-nav button .lucide{width:22px;height:22px;}
-  .staff-nav button[aria-selected=true]{color:var(--accent);font-weight:500;}
+  .staff-nav button{position:relative;}
+  .staff-nav button[aria-selected=true]{color:var(--ink);font-weight:600;}
+  .staff-nav button[aria-selected=true]::before{content:"";position:absolute;top:-1px;left:30%;right:30%;height:3px;background:var(--brand);}
 
   /* clock screen: the map and the action get the whole phone */
-  .clock{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;max-width:560px;margin:0 auto;overflow-y:auto;background:var(--card);}
+  .clock{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;max-width:560px;margin:0 auto;overflow-y:auto;background:var(--navy);}
   .map{position:relative;flex:1 1 auto;min-height:180px;overflow:hidden;background:var(--surface);}
   .tiles{position:absolute;inset:0;}
   .tiles img{position:absolute;width:256px;height:256px;max-width:none;user-select:none;}
   .zone,.youRing,.you{position:absolute;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;}
-  .zone{border:2px solid var(--accent);background:rgb(20 86 192 / .14);}
-  .youRing{background:rgb(20 86 192 / .14);}
-  .you{width:20px;height:20px;background:var(--accent);border:3px solid #fff;}
-  .back{position:absolute;z-index:2;top:calc(var(--s3) + env(safe-area-inset-top));left:var(--s3);display:grid;place-items:center;width:48px;height:48px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--card);color:var(--ink);}
-  .todayPill{position:absolute;z-index:2;top:calc(var(--s3) + env(safe-area-inset-top));left:72px;right:var(--s3);display:flex;align-items:center;justify-content:space-between;gap:var(--s3);min-height:48px;padding:0 var(--s4);border:1px solid var(--line);border-radius:var(--r);background:var(--card);}
-  .todayPill span{color:var(--ink-2);}
+  .zone{border:2px solid var(--brand);background:rgb(232 135 30 / .16);}
+  .youRing{background:rgb(14 20 32 / .14);}
+  .you{width:20px;height:20px;background:var(--navy);border:3px solid #fff;}
+  .back{position:absolute;z-index:2;top:calc(var(--s3) + env(safe-area-inset-top));left:var(--s3);display:grid;place-items:center;width:48px;height:48px;padding:0;border:0;border-radius:var(--r);background:var(--navy);color:#fff;}
+  .back:focus-visible{outline-color:var(--brand);}
   .mapTag{position:absolute;z-index:2;left:var(--s3);bottom:var(--s3);max-width:calc(100% - 180px);display:flex;align-items:center;gap:var(--s2);min-height:40px;padding:var(--s2) var(--s3);border:1px solid var(--line);border-radius:var(--r);background:var(--card);font-size:var(--t1);font-weight:500;}
   .mapTag[hidden]{display:none;}
-  .mapTag i{width:8px;height:8px;flex:none;border-radius:50%;background:var(--accent);}
+  .mapTag i{width:8px;height:8px;flex:none;border-radius:50%;background:var(--brand);}
   .mapTag.out{color:var(--warn);}
   .mapTag.out i{background:var(--warn);}
   .mapAttr{position:absolute;z-index:2;right:var(--s2);bottom:var(--s2);display:flex;align-items:flex-end;justify-content:flex-end;min-width:48px;min-height:48px;color:var(--ink-2);font-size:var(--t1);text-decoration:none;}
   .mapAttr span{padding:2px var(--s2);border-radius:4px;background:var(--card);}
   .map[hidden]~.sheet{margin-top:88px;}
-  .sheet{flex:none;padding:var(--s4) var(--s4) calc(var(--s6) + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:var(--card);}
+  .sheet{flex:none;padding:var(--s4) var(--s4) calc(var(--s6) + env(safe-area-inset-bottom));background:var(--navy);color:#fff;}
+  .sheet-head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s3);padding-bottom:var(--s3);margin-bottom:var(--s3);border-bottom:1px solid var(--navy-line);}
+  .sheet-head span,.sheet label,.sheet .note{color:var(--on-navy-2);}
+  .sheet-head strong{font-size:var(--t3);font-weight:600;}
+  .sheet .note-toggle{color:var(--brand);}
+  .sheet :focus-visible{outline-color:var(--brand);}
+  .sheet select,.sheet textarea{color:var(--ink);}
   .sheet h1{margin-bottom:var(--s3);font-size:var(--t3);}
-  #siteWrap,#noteWrap{margin-bottom:var(--s4);}
+  #siteWrap,#noteWrap{margin-bottom:var(--s2);}
   #siteWrap label,#noteWrap label{display:block;margin-bottom:var(--s2);}
   #noteWrap textarea{min-height:72px;}
   body:has(#clock:not(.hidden)) .toast{top:calc(72px + env(safe-area-inset-top));bottom:auto;}
@@ -301,7 +323,6 @@
 
   <section id="clock" class="clock hidden" aria-labelledby="clockTitle">
     <button class="back" id="closeClock" aria-label="Back to home"><svg class="lucide" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg></button>
-    <div class="todayPill"><span>Today</span><strong class="num" id="todayHours">0h 00m</strong></div>
     <div class="map" id="map">
       <div class="tiles" id="tiles"></div>
       <div class="mapTag" id="mapTag" hidden><i></i><span id="mapTagText"></span></div>
@@ -309,9 +330,11 @@
     </div>
     <div class="sheet">
       <h1 id="clockTitle" class="sr-only">Clock in</h1>
+      <div class="sheet-head"><span>Today</span><strong class="num" id="todayHours">0h 00m</strong></div>
       <div id="siteWrap"><div class="site-auto"><span class="pin" aria-hidden="true"></span><span id="siteAuto"></span><button type="button" class="note-toggle" id="changeSite">Change</button></div><div id="sitePick" class="hidden"><label for="site">Worksite</label><select id="site"></select></div></div>
       <div id="noteWrap" class="hidden"><button type="button" class="note-toggle" id="addNote">Add a note for your manager</button><div id="noteField" class="hidden"><label for="shiftNote">Shift note (optional)</label><textarea id="shiftNote" maxlength="1000" placeholder="Anything your manager needs to know"></textarea></div></div>
-      <div class="clock-action"><button class="clock-btn in" id="action">Clock in</button><p class="zone-line" id="zoneLine" aria-live="polite"></p></div>
+      <div class="slide in" id="slide"><span class="slide-fill" aria-hidden="true"></span><span class="slide-label" id="slideLabel" aria-hidden="true">Slide to clock in</span><button type="button" class="slide-knob" id="action" aria-label="Clock in"></button></div>
+      <p class="zone-line" id="zoneLine" aria-live="polite"></p>
       <p class="note" id="clockNote"></p>
     </div>
   </section>
@@ -340,6 +363,7 @@
     work: '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
     timer: '<line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/>',
     check: '<path d="M20 6 9 17l-5-5"/>',
+    slide: '<path d="m6 17 5-5-5-5"/><path d="m13 17 5-5-5-5"/>',
     chevron: '<path d="m9 18 6-6-6-6"/>',
     prev: '<path d="m15 18-6-6 6-6"/>',
     sheet: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/>',
@@ -606,8 +630,9 @@
     if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.isActive)) navigator.vibrate(15);
     setTimeout(function () {
       var b = $("action");
-      b.className = "clock-btn done"; b.disabled = true;
-      b.innerHTML = icon(ICONS.check) + "<span>" + label + "</span>";
+      b.disabled = true;
+      setSlide("done", label, knobMax());
+      b.innerHTML = icon(ICONS.check);
       setTimeout(function () { b.disabled = false; finishClock(); renderStatus(); }, 800);
     }, 0);
   }
@@ -696,8 +721,9 @@
     show("since", on);
     $("openClock").className = "act " + (on ? "out" : "in");
     $("openClock").innerHTML = icon(ICONS.timer) + "<span>" + label + "</span>";
-    $("action").className = "clock-btn " + (on ? "out" : "in");
-    $("action").innerHTML = icon(ICONS.timer) + "<span>" + label + "</span>";
+    setSlide(on ? "out" : "in", on ? "Slide to clock out" : "Slide to clock in", 0);
+    $("action").innerHTML = icon(ICONS.slide);
+    $("action").setAttribute("aria-label", label);
     $("clockTitle").textContent = label;
     show("siteWrap", !on);
     show("noteWrap", on);
@@ -881,8 +907,8 @@
     if (!DEMO && !navigator.onLine) { toast("You're offline. Reconnect and try again."); return; }
     var btn = $("action");
     btn.disabled = true;
-    btn.classList.add("busy");
-    btn.innerHTML = "<span>" + (OPEN ? "Clocking out…" : "Locating…") + "</span>";
+    setSlide((OPEN ? "out" : "in") + " busy", OPEN ? "Clocking out…" : "Locating…", knobMax());
+    btn.innerHTML = "";
 
     if (DEMO) {
       // Same shape as the real thing, minus the database and the GPS wait.
@@ -1057,7 +1083,40 @@
   $("today").textContent = new Date().toLocaleDateString("en-GB", {weekday:"short",day:"numeric",month:"short"});
   function connection() { show("connection", !navigator.onLine); }
   window.addEventListener("online",connection); window.addEventListener("offline",connection); connection();
-  $("action").addEventListener("click", onAction);
+  // Slide to confirm. A tap only nudges the handle; a drag to the end clocks.
+  // Keyboard and switch users press the handle instead (click with detail 0).
+  function knobMax() { return Math.max(0, $("slide").clientWidth - 8 - $("action").offsetWidth); }
+  function setSlide(state, label, x) {
+    $("slide").className = "slide " + state;
+    $("slideLabel").textContent = label;
+    $("slide").style.setProperty("--x", x + "px");
+  }
+  var drag = null;
+  $("action").addEventListener("pointerdown", function (e) {
+    if ($("action").disabled || e.button > 0) return;
+    drag = { start: e.clientX, x: 0, max: knobMax() };
+    $("slide").classList.remove("snap", "nudge");
+    $("action").setPointerCapture(e.pointerId);
+  });
+  $("action").addEventListener("pointermove", function (e) {
+    if (!drag) return;
+    drag.x = Math.max(0, Math.min(drag.max, e.clientX - drag.start));
+    $("slide").style.setProperty("--x", drag.x + "px");
+  });
+  function endDrag(e) {
+    if (!drag) return;
+    var d = drag; drag = null;
+    if (e.type === "pointerup" && d.max && d.x >= d.max * 0.9) { $("slide").style.setProperty("--x", d.max + "px"); onAction(); return; }
+    $("slide").classList.add("snap");
+    $("slide").style.setProperty("--x", "0px");
+    if (e.type === "pointerup" && d.x < 6) {
+      void $("slide").offsetWidth; $("slide").classList.add("nudge");
+      setTimeout(function () { $("slide").classList.remove("nudge"); }, 500);
+    }
+  }
+  $("action").addEventListener("pointerup", endDrag);
+  $("action").addEventListener("pointercancel", endDrag);
+  $("action").addEventListener("click", function (e) { if (e.detail === 0) onAction(); });
   $("openClock").addEventListener("click", openClock);
   $("prevMonth").innerHTML = icon(ICONS.prev);
   $("nextMonth").innerHTML = icon(ICONS.chevron);
