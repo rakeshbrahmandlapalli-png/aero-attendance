@@ -98,7 +98,8 @@ Staff app structure — keep it:
 - Verified WCAG text contrast: ink on white 17.10:1, secondary on white
   7.69:1 (6.97:1 on the neutral surface), white on cobalt 6.73:1,
   amber on its attention surface 6.22:1. Recalculate after palette changes.
-- Instrument Sans, weights 400/500/600 only. Six sizes: 14/16/20/24/32/48px,
+- The phone's own font (system-ui stack: San Francisco on Apple, Roboto on
+  Android, Segoe UI on Windows). No web fonts. Weights 400/500/600 only. Six sizes: 14/16/20/24/32/48px,
   defined as `--t1` through `--t6`. Headings use 1.2 line-height, body 1.5.
   Use zero letter-spacing, sentence case, and tabular changing numbers.
 - Spacing: 4/8/12/16/24/32/48px, via `--s*` tokens. Component dimensions,
@@ -109,7 +110,11 @@ Staff app structure — keep it:
   primary buttons, and the round clock button on the Clock screen.
 - Staff app sections are white blocks on the light surface with 8px gaps,
   never cards inside cards. Keep it light: section titles 16px, weight 600 only
-  for titles, the greeting and the clock action; everything else 400-500.
+  for section titles and the running timer; everything else 400-500.
+- Few words on Home: no helper sentences. A shift row is tappable (chevron)
+  and opens the correction request; don't add a link under every shift.
+- Week chart: pale bars, today in full accent, faint day guides and a dashed
+  8-hour reference line so empty days still read as a chart.
 - The Clock screen's action is a 152px circle: blue to clock in, ink to clock
   out, a spinner while locating, a brief green tick on success, and a zone
   line under it (inside / metres away, still allowed and flagged / no fix).

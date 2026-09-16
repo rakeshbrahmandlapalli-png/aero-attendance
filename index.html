@@ -9,9 +9,6 @@
 <meta name="apple-mobile-web-app-title" content="Aero">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230A6E4E'/%3E%3Ccircle cx='32' cy='32' r='15' fill='none' stroke='%23ffffff' stroke-width='4.5'/%3E%3Cpath d='M32 23v10l6.5 3.5' stroke='%23ffffff' stroke-width='4.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
 
@@ -37,7 +34,7 @@
     --t1:14px;--t2:16px;--t3:20px;--t4:24px;--t5:32px;--t6:48px;
   }
   *{box-sizing:border-box;letter-spacing:0;}
-  html,body{margin:0;background:var(--page);color:var(--ink);font:400 var(--t2)/1.5 "Instrument Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;}
+  html,body{margin:0;background:var(--page);color:var(--ink);font:400 var(--t2)/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;}
   body{padding-bottom:env(safe-area-inset-bottom);}
   .hidden{display:none!important;}
   .boot-status{padding:var(--s12) var(--s6);color:var(--ink-2);}
@@ -91,8 +88,8 @@
   .top{display:flex;align-items:center;gap:var(--s3);max-width:560px;margin:0 auto;padding:var(--s3) var(--s4);background:var(--card);}
   .identity{display:flex;align-items:center;gap:var(--s3);min-width:0;}
   .identity>div{min-width:0;}
-  .avatar{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:50%;background:var(--ink);color:#fff;font-size:var(--t1);font-weight:500;}
-  .who{font-size:var(--t2);font-weight:600;line-height:1.3;overflow-wrap:anywhere;}
+  .avatar{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-size:var(--t1);font-weight:600;}
+  .who{font-size:var(--t2);font-weight:500;line-height:1.3;overflow-wrap:anywhere;}
   .top .co{margin-top:0;}
   .signout{width:100%;margin-top:var(--s6);}
   .wrap{display:block;max-width:560px;margin:0 auto;padding:var(--s2) 0 calc(80px + env(safe-area-inset-bottom));}
@@ -111,12 +108,13 @@
   .dot.on{background:var(--accent);outline:4px solid rgb(20 86 192 / .18);}
   .since{margin-top:var(--s2);font-size:var(--t5);font-weight:600;line-height:1.2;}
   .elapsed{margin-top:var(--s1);font-size:var(--t1);color:var(--ink-2);}
-  .act{display:flex;align-items:center;justify-content:center;gap:var(--s2);width:100%;min-height:56px;padding:var(--s3) var(--s6);border:0;border-radius:999px;background:var(--accent);color:#fff;font-size:var(--t2);font-weight:600;line-height:1.2;}
+  .elapsed:empty{display:none;}
+  .act{display:flex;align-items:center;justify-content:center;gap:var(--s2);width:100%;min-height:56px;padding:var(--s3) var(--s6);border:0;border-radius:999px;background:var(--accent);color:#fff;font-size:var(--t2);font-weight:500;line-height:1.2;}
   .act.out{background:var(--ink);}
   .act,.clock-btn{transition:transform 120ms,background-color 160ms;}
   .act:active,.clock-btn:active{transform:scale(.97);}
   .clock-action{display:flex;flex-direction:column;align-items:center;gap:var(--s4);margin:var(--s3) 0 var(--s2);}
-  .clock-btn{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s1);width:152px;height:152px;padding:0;border:0;border-radius:50%;background:var(--accent);color:#fff;font-size:var(--t3);font-weight:600;outline:10px solid var(--accent-soft);}
+  .clock-btn{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s1);width:152px;height:152px;padding:0;border:0;border-radius:50%;background:var(--accent);color:#fff;font-size:var(--t3);font-weight:500;outline:10px solid var(--accent-soft);}
   .clock-btn .lucide{width:32px;height:32px;}
   .clock-btn.out{background:var(--ink);outline-color:#E7EBF0;}
   .clock-btn.done{background:#0F7B4A;outline-color:#E3F3EA;}
@@ -142,23 +140,26 @@
   .bars{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:0;}
   .bar{display:flex;flex-direction:column;align-items:center;min-width:0;}
   .track{position:relative;width:100%;height:88px;border-bottom:1px solid var(--line);}
-  .fill{position:absolute;left:24%;right:24%;bottom:0;border-radius:4px 4px 0 0;background:#5B86CF;}
+  .bar+.bar .track{border-left:1px solid var(--line-soft);}
+  .track::before{content:"";position:absolute;left:0;right:0;bottom:var(--ref,100%);border-top:1px dashed var(--line);}
+  .fill{position:absolute;left:24%;right:24%;bottom:0;border-radius:4px 4px 0 0;background:#9DB8E6;}
   .bar.is-today .fill{background:var(--accent);}
   .bar .day{margin-top:var(--s2);font-size:var(--t1);color:var(--ink-2);}
   .bar.is-today .day{color:var(--ink);font-weight:600;}
   .bar .val{font-size:var(--t1);color:var(--ink-2);white-space:nowrap;}
   .bar.is-today .val{color:var(--ink);font-weight:500;}
-  #weekCount{margin-top:var(--s3);}
 
   /* history, activity, account */
-  .row{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3);padding:var(--s3) 0;border-bottom:1px solid var(--line-soft);}
+  .row{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3);padding:var(--s3) 0;border-bottom:1px solid var(--line-soft);cursor:pointer;}
   .row:last-child{border-bottom:0;}
+  .row:active{background:var(--surface);}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
   .row>div:first-child{min-width:0;}
   .row .d{font-size:var(--t2);font-weight:500;}
   .row .t,.shift-note,.flag{font-size:var(--t1);margin-top:var(--s1);overflow-wrap:anywhere;}
   .row .t,.shift-note{color:var(--ink-2);}
-  .row .h{font-size:var(--t2);font-weight:500;white-space:nowrap;font-variant-numeric:tabular-nums;}
-  .request-link{display:inline-flex;align-items:center;min-height:44px;padding:0;border:0;background:none;color:var(--accent);font-size:var(--t1);font-weight:500;text-decoration:underline;text-underline-offset:4px;}
+  .row .h{display:flex;align-items:center;gap:var(--s1);font-size:var(--t2);font-weight:500;white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .row .h .lucide{width:18px;height:18px;color:#98A2B3;}
   .inbox-item{padding:var(--s4) 0;border-bottom:1px solid var(--line-soft);overflow-wrap:anywhere;}
   .inbox-item strong{font-size:var(--t2);}
   .inbox-item p{margin:var(--s2) 0;color:var(--ink-2);}
@@ -252,7 +253,6 @@
         <section aria-labelledby="weekTitle">
           <div class="section-head"><h2 id="weekTitle">This week</h2><strong class="num" id="weekHours">0h 00m</strong></div>
           <div class="bars" id="weekBars" role="img" aria-label="Hours this week"></div>
-          <p class="note" id="weekCount"></p>
         </section>
 
         <section aria-labelledby="historyTitle">
@@ -306,6 +306,7 @@
     work: '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
     timer: '<line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/>',
     check: '<path d="M20 6 9 17l-5-5"/>',
+    chevron: '<path d="m9 18 6-6-6-6"/>',
     inbox: '<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>',
     account: '<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>'
   };
@@ -561,15 +562,15 @@
     var monday = new Date(); monday.setHours(0, 0, 0, 0);
     monday.setDate(monday.getDate() - (monday.getDay() + 6) % 7);
     var dayIndex = function (d) { var x = new Date(d); x.setHours(0, 0, 0, 0); return Math.round((x - monday) / 864e5); };
-    var days = [0, 0, 0, 0, 0, 0, 0], done = 0;
+    var days = [0, 0, 0, 0, 0, 0, 0];
     HISTORY.forEach(function (s) {
       var i = dayIndex(s.clock_in_at);
       if (i < 0 || i > 6) return;
       days[i] += hoursBetween(s.clock_in_at, s.clock_out_at);
-      if (s.clock_out_at) done++;
     });
     var total = days.reduce(function (a, b) { return a + b; }, 0);
     var max = Math.max(8, Math.max.apply(null, days));
+    $("weekBars").style.setProperty("--ref", (8 / max * 100) + "%");
     var today = dayIndex(new Date());
     var names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     $("weekBars").innerHTML = days.map(function (h, i) {
@@ -579,9 +580,6 @@
     }).join("");
     $("weekBars").setAttribute("aria-label", "Hours this week. " + days.map(function (h, i) { return names[i] + " " + hoursText(h); }).join(", "));
     $("weekHours").textContent = hoursText(total);
-    $("weekCount").textContent = done
-      ? done + (done === 1 ? " completed shift" : " completed shifts") + " this week"
-      : "No completed shifts yet this week";
   }
 
   function renderToday() {
@@ -651,9 +649,7 @@
       upd();
       tick = setInterval(upd, 30000);
     } else {
-      $("elapsed").textContent = LAST_SHIFT
-        ? "Last shift " + dayLabel(LAST_SHIFT.clock_in_at) + ", " + hoursText(hoursBetween(LAST_SHIFT.clock_in_at, LAST_SHIFT.clock_out_at))
-        : "No shifts yet";
+      $("elapsed").textContent = "";
     }
   }
 
@@ -671,14 +667,14 @@
       var open = !s.clock_out_at;
       var flag = (s.clock_in_ok === false || s.clock_out_ok === false)
         ? '<div class="flag">Away from site</div>' : "";
-      return '<div class="row"><div>' +
+      return '<div class="row" role="button" tabindex="0" data-correct="' + esc(s.id) + '"><div>' +
         '<div class="d">' + dayLabel(s.clock_in_at) + "</div>" +
         '<div class="t">' + hhmm(s.clock_in_at) + " – " +
           (open ? "now" : hhmm(s.clock_out_at)) + "</div>" + flag +
         (s.note ? '<div class="shift-note">' + esc(s.note) + '</div>' : '') +
-        '<button class="request-link" data-correct="' + esc(s.id) + '">Request correction</button>' +
+        '<span class="sr-only">Request a correction</span>' +
         "</div><div class=\"h\">" +
-          hoursText(hoursBetween(s.clock_in_at, s.clock_out_at)) +
+          hoursText(hoursBetween(s.clock_in_at, s.clock_out_at)) + icon(ICONS.chevron) +
         "</div></div>";
     }).join("");
   }
@@ -938,6 +934,10 @@
   window.addEventListener("online",connection); window.addEventListener("offline",connection); connection();
   $("action").addEventListener("click", onAction);
   $("openClock").addEventListener("click", openClock);
+  document.addEventListener("keydown", function (e) {
+    var row = e.target.closest && e.target.closest(".row[data-correct]");
+    if (row && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); row.click(); }
+  });
   $("addNote").addEventListener("click", function () { show("addNote", false); show("noteField", true); $("shiftNote").focus(); });
   $("closeClock").addEventListener("click", function () {
     if (history.state && history.state.clock) history.back(); else closeClock();
