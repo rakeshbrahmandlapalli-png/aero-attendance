@@ -111,8 +111,27 @@
   .dot.on{background:var(--accent);outline:4px solid rgb(20 86 192 / .18);}
   .since{margin-top:var(--s2);font-size:var(--t5);font-weight:600;line-height:1.2;}
   .elapsed{margin-top:var(--s1);font-size:var(--t1);color:var(--ink-2);}
-  .act{display:flex;align-items:center;justify-content:center;gap:var(--s2);width:100%;min-height:52px;padding:var(--s3) var(--s4);border:0;border-radius:var(--r);background:var(--accent);color:#fff;font-size:var(--t2);font-weight:600;line-height:1.2;}
+  .act{display:flex;align-items:center;justify-content:center;gap:var(--s2);width:100%;min-height:56px;padding:var(--s3) var(--s6);border:0;border-radius:999px;background:var(--accent);color:#fff;font-size:var(--t2);font-weight:600;line-height:1.2;}
   .act.out{background:var(--ink);}
+  .act,.clock-btn{transition:transform 120ms,background-color 160ms;}
+  .act:active,.clock-btn:active{transform:scale(.97);}
+  .clock-action{display:flex;flex-direction:column;align-items:center;gap:var(--s4);margin:var(--s3) 0 var(--s2);}
+  .clock-btn{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s1);width:152px;height:152px;padding:0;border:0;border-radius:50%;background:var(--accent);color:#fff;font-size:var(--t3);font-weight:600;outline:10px solid var(--accent-soft);}
+  .clock-btn .lucide{width:32px;height:32px;}
+  .clock-btn.out{background:var(--ink);outline-color:#E7EBF0;}
+  .clock-btn.done{background:#0F7B4A;outline-color:#E3F3EA;}
+  .clock-btn:disabled{background:var(--accent);color:#fff;border:0;cursor:wait;}
+  .clock-btn.out:disabled{background:var(--ink);}
+  .clock-btn.done:disabled{background:#0F7B4A;cursor:default;}
+  .clock-btn:focus-visible{outline-color:var(--accent);}
+  .clock-btn.busy::after{content:"";position:absolute;inset:8px;border:3px solid rgb(255 255 255 / .3);border-top-color:#fff;border-radius:50%;animation:spin 900ms linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .zone-line{max-width:320px;text-align:center;font-size:var(--t1);color:var(--ink-2);}
+  .zone-line:empty{display:none;}
+  .zone-line.ok{color:#0F7B4A;}
+  .zone-line.warn{color:var(--warn);}
+  .note-toggle{display:inline-flex;align-items:center;min-height:44px;padding:0;border:0;background:none;color:var(--accent);font-weight:500;}
+  #clockNote{text-align:center;}
   .act .lucide{width:20px;height:20px;}
   .today-card .act{margin-top:var(--s4);}
   .note{margin-top:var(--s3);}
@@ -158,8 +177,8 @@
   .staff-nav button[aria-selected=true]{color:var(--accent);font-weight:500;}
 
   /* clock screen: the map and the action get the whole phone */
-  .clock{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;max-width:560px;margin:0 auto;background:var(--card);}
-  .map{position:relative;flex:1 1 auto;min-height:220px;overflow:hidden;background:var(--surface);}
+  .clock{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;max-width:560px;margin:0 auto;overflow-y:auto;background:var(--card);}
+  .map{position:relative;flex:1 1 auto;min-height:180px;overflow:hidden;background:var(--surface);}
   .tiles{position:absolute;inset:0;}
   .tiles img{position:absolute;width:256px;height:256px;max-width:none;user-select:none;}
   .zone,.youRing,.you{position:absolute;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;}
@@ -259,8 +278,8 @@
     <div class="sheet">
       <h1 id="clockTitle">Clock in</h1>
       <div id="siteWrap"><label for="site">Worksite</label><select id="site"></select></div>
-      <div id="noteWrap" class="hidden"><label for="shiftNote">Shift note (optional)</label><textarea id="shiftNote" maxlength="1000" placeholder="Anything your manager needs to know"></textarea></div>
-      <button class="act in" id="action">Clock in</button>
+      <div id="noteWrap" class="hidden"><button type="button" class="note-toggle" id="addNote">Add a note for your manager</button><div id="noteField" class="hidden"><label for="shiftNote">Shift note (optional)</label><textarea id="shiftNote" maxlength="1000" placeholder="Anything your manager needs to know"></textarea></div></div>
+      <div class="clock-action"><button class="clock-btn in" id="action">Clock in</button><p class="zone-line" id="zoneLine" aria-live="polite"></p></div>
       <p class="note" id="clockNote"></p>
     </div>
   </section>
@@ -286,6 +305,7 @@
   var ICONS = {
     work: '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
     timer: '<line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/>',
+    check: '<path d="M20 6 9 17l-5-5"/>',
     inbox: '<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>',
     account: '<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>'
   };
@@ -394,7 +414,7 @@
     // A site with no coordinates yet is a real case (added by hand in SQL) —
     // hide the map rather than drawing a circle of NaN.
       if (!site || !Number.isFinite(site.lat) || !Number.isFinite(site.lng) || Math.abs(site.lat)>85.05 || Math.abs(site.lng)>180) {
-      el.hidden = true; return;
+      el.hidden = true; $("zoneLine").textContent = ""; return;
     }
     if (!site.radius_m) site.radius_m = 150;
     el.hidden = false;
@@ -456,7 +476,7 @@
     el.insertAdjacentHTML("beforeend", html);
 
     // the readout
-    var tag = $("mapTag");
+    var tag = $("mapTag"), verb = OPEN ? "clock out" : "clock in";
     if (MAP.me) {
       var d = Math.round(metresBetween(MAP.me.lat, MAP.me.lng, site.lat, site.lng));
       var inside = d <= site.radius_m;
@@ -465,10 +485,18 @@
       $("mapTagText").textContent = inside
         ? "You're at " + site.name
         : d + "m outside the zone";
+      $("zoneLine").className = "zone-line " + (inside ? "ok" : "warn");
+      $("zoneLine").textContent = inside
+        ? "You're inside the " + site.name + " zone"
+        : d + "m from " + site.name + ". You can still " + verb + "; your manager will see it flagged.";
     } else {
       tag.hidden = false;
       tag.className = "mapTag";
       $("mapTagText").textContent = site.name + " · " + site.radius_m + "m zone";
+      $("zoneLine").className = "zone-line";
+      $("zoneLine").textContent = MAP.noFix
+        ? "Location is unavailable. You can still " + verb + "; it will be marked unverified."
+        : "Finding your location…";
     }
   }
 
@@ -487,7 +515,7 @@
     watchId = navigator.geolocation.watchPosition(function (p) {
       MAP.me = { lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy };
       drawMap();
-    }, function () {}, { enableHighAccuracy: true, maximumAge: 15000, timeout: 20000 });
+    }, function () { MAP.noFix = true; drawMap(); }, { enableHighAccuracy: true, maximumAge: 15000, timeout: 20000 });
   }
 
   function stopWatch() {
@@ -499,6 +527,7 @@
   function openClock() {
     show("main", false); show("clock", true);
     renderStatus(); renderToday();
+    show("noteField", !!$("shiftNote").value); show("addNote", !$("shiftNote").value);
     refreshMap();
     if (!DEMO) watchMe();
     try { if (!(history.state && history.state.clock)) history.pushState({ clock: true }, ""); } catch (e) {}
@@ -506,6 +535,18 @@
   function closeClock() {
     show("clock", false); show("main", true);
     if (!DEMO) { stopWatch(); MAP.me = null; }
+  }
+  // A short, unmistakable confirmation before returning home. Runs after the
+  // caller's own re-render so it isn't immediately overwritten.
+  function showDone(label) {
+    // Browsers only allow a buzz shortly after a real tap; a slow GPS fix can outlast that.
+    if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.isActive)) navigator.vibrate(15);
+    setTimeout(function () {
+      var b = $("action");
+      b.className = "clock-btn done"; b.disabled = true;
+      b.innerHTML = icon(ICONS.check) + "<span>" + label + "</span>";
+      setTimeout(function () { b.disabled = false; finishClock(); renderStatus(); }, 800);
+    }, 0);
   }
   function finishClock() {
     if (history.state && history.state.clock) history.back(); else closeClock();
@@ -577,10 +618,10 @@
     $("dot").className = "dot " + (on ? "on" : "off");
     $("stateText").textContent = on ? "On shift" : "Not clocked in";
     show("since", on);
-    ["openClock", "action"].forEach(function (id) {
-      $(id).className = "act " + (on ? "out" : "in");
-      $(id).innerHTML = icon(ICONS.timer) + "<span>" + label + "</span>";
-    });
+    $("openClock").className = "act " + (on ? "out" : "in");
+    $("openClock").innerHTML = icon(ICONS.timer) + "<span>" + label + "</span>";
+    $("action").className = "clock-btn " + (on ? "out" : "in");
+    $("action").innerHTML = icon(ICONS.timer) + "<span>" + label + "</span>";
     $("clockTitle").textContent = label;
     show("siteWrap", !on);
     show("noteWrap", on);
@@ -720,29 +761,29 @@
     if (!DEMO && !navigator.onLine) { toast("You're offline. Reconnect and try again."); return; }
     var btn = $("action");
     btn.disabled = true;
-    btn.textContent = OPEN ? "Clocking out…" : "Getting location…";
+    btn.classList.add("busy");
+    btn.innerHTML = "<span>" + (OPEN ? "Clocking out…" : "Locating…") + "</span>";
 
     if (DEMO) {
       // Same shape as the real thing, minus the database and the GPS wait.
       setTimeout(function () {
+        var doneLabel = D.open ? "Clocked out" : "Clocked in";
         if (D.open) {
           D.open.note = $("shiftNote").value.trim();
           $("shiftNote").value = "";
           D.open.clock_out_at = new Date().toISOString();
           D.history.unshift(D.open);
           D.open = null;
-          toast("Clocked out");
         } else {
           D.open = {
             id: "demo-open", clock_in_at: new Date().toISOString(),
             clock_out_at: null, clock_in_ok: true, clock_in_metres: 31,
             clock_out_ok: null, note: "", worksite_id: $("site").value
           };
-          toast("Clocked in");
         }
         btn.disabled = false;
         loadDemo();
-        finishClock();
+        showDone(doneLabel);
       }, 450);
       return;
     }
@@ -768,10 +809,10 @@
     if (res.error) { toast(res.error.message); renderStatus(); return; }
     $("shiftNote").value = "";
 
-    toast(OPEN ? "Clocked out" : "Clocked in");
+    var doneLabel = OPEN ? "Clocked out" : "Clocked in";
     if (!pos) toast("No location — recorded as unverified");
     await load();
-    finishClock();
+    showDone(doneLabel);
     } catch (error) { toast(error.message); }
     finally { btn.disabled = false; renderStatus(); }
   }
@@ -897,6 +938,7 @@
   window.addEventListener("online",connection); window.addEventListener("offline",connection); connection();
   $("action").addEventListener("click", onAction);
   $("openClock").addEventListener("click", openClock);
+  $("addNote").addEventListener("click", function () { show("addNote", false); show("noteField", true); $("shiftNote").focus(); });
   $("closeClock").addEventListener("click", function () {
     if (history.state && history.state.clock) history.back(); else closeClock();
   });

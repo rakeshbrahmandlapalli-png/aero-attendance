@@ -105,11 +105,15 @@ Staff app structure — keep it:
   map coordinates, hairlines and safe-area offsets are not spacing tokens.
 - One white surface level, open sections separated by space or hairlines.
   No nested panels, coloured pill badges, gradients or drop shadows.
-  Corners at most 8px; circular location/status dots are the exception.
+  Corners at most 8px. Exceptions: circular location/status dots, pill-shaped
+  primary buttons, and the round clock button on the Clock screen.
 - Staff app sections are white blocks on the light surface with 8px gaps,
   never cards inside cards. Keep it light: section titles 16px, weight 600 only
   for titles, the greeting and the clock action; everything else 400-500.
-- Controls at least 44px high (Apple's minimum); clock action 52px; bottom
+- The Clock screen's action is a 152px circle: blue to clock in, ink to clock
+  out, a spinner while locating, a brief green tick on success, and a zone
+  line under it (inside / metres away, still allowed and flagged / no fix).
+- Controls at least 44px high (Apple's minimum); Home clock button 56px; bottom
   tabs 56px. Inputs use 16px text so iOS does not zoom.
   Checkbox labels provide the full touch target. No hover-only controls.
   Every control has a visible focus ring.
@@ -119,7 +123,8 @@ Staff app structure — keep it:
   sync with the table headings and preserve table semantics in markup.
 - Empty states use readable text and open spacing; errors use attention
   colour and a left rule; busy controls keep legible text and stable size.
-- Transitions are 160ms colour changes only; honour reduced motion.
+- Transitions: 160ms colour changes, a 120ms press scale on clock buttons,
+  and the busy spinner. Reduced motion turns all of them off.
 - British English throughout. Preserve existing attendance, demo, security
   and database behaviour. Do not add fonts, libraries or asset downloads.
 - Before committing, run both script parse checks and click through staff
