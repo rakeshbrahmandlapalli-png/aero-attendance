@@ -82,15 +82,26 @@ adapt to tablet and desktop. The staff app stays a single 560px column.
 
 Staff app structure — keep it:
 - **Home**: greeting, a today card (status, running time while on shift, the
-  Clock in/out button), a Mon–Sun hours bar chart with the week total,
-  then recent shifts. Activity and Account are the other bottom tabs.
+  Clock in/out button), and a Mon–Sun hours bar chart with the week total.
+  The chart's bars are buttons: tapping a day shows that day's shifts below.
+- **Timesheet** tab: one calendar month at a time (arrows for earlier
+  months), totals for hours, shifts and days worked, estimated pay when the
+  company has it on, and every shift (tap one to request a correction).
+  Activity and Account are the other bottom tabs.
 - **Clock screen**: a separate full-screen view opened from Home. Full map
   with back button and today's hours, position against the site zone, and a
-  bottom sheet with the worksite (or shift note), the clock action and the
+  bottom sheet with the worksite (picked automatically from GPS: the site
+  you're inside, or the nearest; a "Change" link stays for when GPS is off
+  or wrong), or the shift note when clocking out, the clock action and the
   location notice. The phone's back button closes it. Live position is only
   watched while this screen is open.
-- Estimated pay stays out (see "Not in version 1") even though competitors
-  show it.
+- Estimated pay is optional and off by default for each company
+  (`companies.show_pay`). Hourly rates live in `pay_rates`, never on
+  `profiles` (colleagues can read profiles). Staff read their own rate only
+  when pay is on; managers set rates on the Staff tab and switch pay on in
+  Company settings. Estimate = completed hours × rate, always labelled as an
+  estimate, not a payslip. Pages must keep working if the pay SQL hasn't
+  been run: treat a failed pay query as "pay off".
 
 - White surfaces, graphite header/ink `#171C24`, secondary text `#475467`,
   neutral surface `#F1F4F8`. Working cobalt `#1456C0`; attention amber `#805000` on
@@ -139,7 +150,8 @@ Staff app structure — keep it:
 
 ## Not in version 1 — do not add without the owner asking
 
-Estimated pay or wages, QR-code clock-in, continuous location tracking.
+QR-code clock-in, continuous location tracking, payroll (tax, breaks,
+holiday pay, overtime). Pay is an estimate only.
 
 ## Working in this repo
 

@@ -138,8 +138,8 @@
 
   /* this week */
   .bars{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:0;}
-  .bar{display:flex;flex-direction:column;align-items:center;min-width:0;}
-  .track{position:relative;width:100%;height:88px;border-bottom:1px solid var(--line);}
+  .bar{display:flex;flex-direction:column;align-items:center;min-width:0;padding:0 0 var(--s1);border:0;border-radius:4px;background:none;font:inherit;color:inherit;cursor:pointer;}
+  .track{position:relative;display:block;width:100%;height:88px;border-bottom:1px solid var(--line);}
   .bar+.bar .track{border-left:1px solid var(--line-soft);}
   .track::before{content:"";position:absolute;left:0;right:0;bottom:var(--ref,100%);border-top:1px dashed var(--line);}
   .fill{position:absolute;left:24%;right:24%;bottom:0;border-radius:4px 4px 0 0;background:#9DB8E6;}
@@ -148,6 +148,30 @@
   .bar.is-today .day{color:var(--ink);font-weight:600;}
   .bar .val{font-size:var(--t1);color:var(--ink-2);white-space:nowrap;}
   .bar.is-today .val{color:var(--ink);font-weight:500;}
+  .fill,.bar .day,.bar .val{display:block;}
+  .bar.is-selected .track{background:var(--accent-soft);}
+  .bar.is-selected .day,.bar.is-selected .val{color:var(--accent);font-weight:600;}
+  .day-detail{margin-top:var(--s4);padding-top:var(--s3);border-top:1px solid var(--line-soft);}
+  .day-title{margin-bottom:var(--s2);font-size:var(--t1);color:var(--ink-2);}
+  .day-shift{display:flex;justify-content:space-between;gap:var(--s3);padding:var(--s1) 0;}
+  .day-shift em{margin-left:var(--s2);font-style:normal;font-size:var(--t1);color:var(--warn);}
+  .day-shift strong{font-weight:500;}
+  .day-detail .note{margin-top:0;}
+
+  /* timesheet */
+  .month-nav{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);margin-bottom:var(--s4);}
+  .month-nav h2{margin:0;font-size:var(--t3);}
+  .icon-btn{display:grid;place-items:center;width:44px;height:44px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--card);color:var(--ink);}
+  .icon-btn:disabled{background:var(--card);opacity:.35;cursor:default;}
+  .sheet-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s3);}
+  .sheet-stats span,.pay span{display:block;font-size:var(--t1);color:var(--ink-2);}
+  .sheet-stats strong{display:block;font-size:var(--t3);font-weight:600;}
+  .pay{margin-top:var(--s4);padding-top:var(--s4);border-top:1px solid var(--line-soft);}
+  .pay strong{display:block;font-size:var(--t5);font-weight:600;line-height:1.2;}
+  .site-auto{display:flex;align-items:center;justify-content:center;gap:var(--s2);min-height:44px;font-weight:500;}
+  .site-auto .pin{display:grid;color:var(--accent);}
+  .site-auto .pin .lucide{width:18px;height:18px;}
+  #sitePick{margin-top:var(--s2);}
 
   /* history, activity, account */
   .row{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3);padding:var(--s3) 0;border-bottom:1px solid var(--line-soft);cursor:pointer;}
@@ -172,7 +196,7 @@
   #staff-inbox .note{padding:var(--s6) 0;}
 
   /* bottom tabs */
-  .staff-nav{position:fixed;z-index:20;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:0 max(var(--s2),calc((100vw - 560px) / 2)) env(safe-area-inset-bottom);background:var(--card);border-top:1px solid var(--line);}
+  .staff-nav{position:fixed;z-index:20;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:0 max(var(--s2),calc((100vw - 560px) / 2)) env(safe-area-inset-bottom);background:var(--card);border-top:1px solid var(--line);}
   .staff-nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;border:0;background:none;color:var(--ink-2);font-size:var(--t1);font-weight:400;}
   .staff-nav button .lucide{width:22px;height:22px;}
   .staff-nav button[aria-selected=true]{color:var(--accent);font-weight:500;}
@@ -252,19 +276,27 @@
 
         <section aria-labelledby="weekTitle">
           <div class="section-head"><h2 id="weekTitle">This week</h2><strong class="num" id="weekHours">0h 00m</strong></div>
-          <div class="bars" id="weekBars" role="img" aria-label="Hours this week"></div>
+          <div class="bars" id="weekBars" role="group" aria-label="Hours this week. Choose a day to see its shifts."></div>
+          <div class="day-detail" id="dayDetail" aria-live="polite"></div>
         </section>
-
-        <section aria-labelledby="historyTitle">
-          <div class="section-head"><h2 id="historyTitle">Recent shifts</h2><select id="historyRange" aria-label="Shift history range"><option value="7">Last 7 days</option><option value="30">Last 30 days</option></select></div>
-          <div id="history" class="list"></div>
+      </div>
+      <div id="staff-sheet" class="hidden" role="tabpanel" aria-labelledby="nav-sheet">
+        <section>
+          <div class="month-nav"><button type="button" class="icon-btn" id="prevMonth" aria-label="Previous month"></button><h2 id="monthLabel">This month</h2><button type="button" class="icon-btn" id="nextMonth" aria-label="Next month"></button></div>
+          <div class="sheet-stats">
+            <div><span>Hours</span><strong class="num" id="monthHours">0h 00m</strong></div>
+            <div><span>Shifts</span><strong class="num" id="monthShifts">0</strong></div>
+            <div><span>Days worked</span><strong class="num" id="monthDays">0</strong></div>
+          </div>
+          <div class="pay hidden" id="payBox"><span>Estimated pay</span><strong class="num" id="monthPay">£0.00</strong><p class="note" id="payNote"></p></div>
         </section>
+        <section><div id="monthList" class="list"></div></section>
       </div>
       <div id="staff-inbox" class="hidden" role="tabpanel" aria-labelledby="nav-inbox"><div class="section-head"><h2>Activity</h2><button class="link" id="refreshActivity">Refresh</button></div><div id="activity" aria-live="polite"></div></div>
       <div id="staff-account" class="hidden" role="tabpanel" aria-labelledby="nav-account"><div class="section-head"><h2>Your account</h2></div><div class="account-row"><span>Name</span><strong id="accountName"></strong></div><div class="account-row"><span>Company</span><strong id="accountCompany"></strong></div><label class="check"><input type="checkbox" id="shiftReminder" checked>Show long-shift reminders while the app is open</label><div class="account-row"><span>Location</span><strong>Clock-in and clock-out only</strong></div><button class="btn hidden" id="installApp">Install Aero</button><p class="note" id="installStatus"></p><button class="btn g signout" id="signout">Sign out</button></div>
     </main>
 
-    <nav class="staff-nav" aria-label="Staff views"><button id="nav-work" aria-controls="staff-work" aria-selected="true" data-view="work"><span>Home</span></button><button id="nav-inbox" aria-controls="staff-inbox" aria-selected="false" data-view="inbox"><span>Activity <span class="num" id="inboxCount"></span></span></button><button id="nav-account" aria-controls="staff-account" aria-selected="false" data-view="account"><span>Account</span></button></nav>
+    <nav class="staff-nav" aria-label="Staff views"><button id="nav-work" aria-controls="staff-work" aria-selected="true" data-view="work"><span>Home</span></button><button id="nav-sheet" aria-controls="staff-sheet" aria-selected="false" data-view="sheet"><span>Timesheet</span></button><button id="nav-inbox" aria-controls="staff-inbox" aria-selected="false" data-view="inbox"><span>Activity <span class="num" id="inboxCount"></span></span></button><button id="nav-account" aria-controls="staff-account" aria-selected="false" data-view="account"><span>Account</span></button></nav>
   </div>
 
   <section id="clock" class="clock hidden" aria-labelledby="clockTitle">
@@ -276,8 +308,8 @@
       <a class="mapAttr" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener"><span>&copy; OpenStreetMap</span></a>
     </div>
     <div class="sheet">
-      <h1 id="clockTitle">Clock in</h1>
-      <div id="siteWrap"><label for="site">Worksite</label><select id="site"></select></div>
+      <h1 id="clockTitle" class="sr-only">Clock in</h1>
+      <div id="siteWrap"><div class="site-auto"><span class="pin" aria-hidden="true"></span><span id="siteAuto"></span><button type="button" class="note-toggle" id="changeSite">Change</button></div><div id="sitePick" class="hidden"><label for="site">Worksite</label><select id="site"></select></div></div>
       <div id="noteWrap" class="hidden"><button type="button" class="note-toggle" id="addNote">Add a note for your manager</button><div id="noteField" class="hidden"><label for="shiftNote">Shift note (optional)</label><textarea id="shiftNote" maxlength="1000" placeholder="Anything your manager needs to know"></textarea></div></div>
       <div class="clock-action"><button class="clock-btn in" id="action">Clock in</button><p class="zone-line" id="zoneLine" aria-live="polite"></p></div>
       <p class="note" id="clockNote"></p>
@@ -297,6 +329,8 @@
   var OPEN = null;     // the open shift, or null
   var tick = null;
   var HISTORY = [];
+  var MONTH_ROWS = [], SHEET_MONTH = null, monthToken = 0, PAY = { on: false, rate: null };
+  var SELECTED_DAY = null, WEEK_SHIFTS = [], WEEK_START = null, siteChosen = false;
   var REQUESTS = [], correctionShift = null, correctionBusy = false, activityBusy = false;
   // Icon shapes from Lucide (ISC licence, LUCIDE-LICENSE.txt), inlined so no icon library has to load.
   function icon(shapes) {
@@ -307,6 +341,9 @@
     timer: '<line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/>',
     check: '<path d="M20 6 9 17l-5-5"/>',
     chevron: '<path d="m9 18 6-6-6-6"/>',
+    prev: '<path d="m15 18-6-6 6-6"/>',
+    sheet: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/>',
+    pin: '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
     inbox: '<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>',
     account: '<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>'
   };
@@ -356,6 +393,13 @@
       demoShift(6, 14, 5, 22, 30)
     ]
   };
+
+  // A believable few weeks of history so the demo timesheet has a last month.
+  for (var ago = 8; ago <= 45; ago++) {
+    var demoDay = new Date(); demoDay.setDate(demoDay.getDate() - ago);
+    if (demoDay.getDay() === 0 || demoDay.getDay() === 6) continue;
+    D.history.push(demoShift(ago, 6, (ago * 7) % 10, 14, (ago * 13) % 20));
+  }
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -506,7 +550,24 @@
     return (MAP.sites || []).filter(function (w) { return w.id === id; })[0] || null;
   }
 
-  function refreshMap() { MAP.site = currentSite(); drawMap(); }
+  // The worksite comes from GPS: the site you're inside, or the nearest one.
+  // "Change" stays for when GPS is off or wrong.
+  function autoPickSite() {
+    if (siteChosen || OPEN || !MAP.me) return;
+    var best = null, bestGap = Infinity;
+    (MAP.sites || []).forEach(function (w) {
+      if (!Number.isFinite(w.lat) || !Number.isFinite(w.lng)) return;
+      var gap = metresBetween(MAP.me.lat, MAP.me.lng, w.lat, w.lng) - (w.radius_m || 150);
+      if (gap < bestGap) { bestGap = gap; best = w; }
+    });
+    if (best) $("site").value = best.id;
+  }
+  function renderSiteLine() {
+    var site = currentSite();
+    $("siteAuto").textContent = site ? site.name : "No worksite set up yet";
+    show("changeSite", (MAP.sites || []).length > 1 && $("sitePick").classList.contains("hidden"));
+  }
+  function refreshMap() { autoPickSite(); MAP.site = currentSite(); renderSiteLine(); drawMap(); }
 
   // Drawn on screen only so staff can see which way to walk; the database
   // still stores nothing but the fix taken at clock in and clock out.
@@ -515,7 +576,7 @@
     if (!navigator.geolocation || watchId !== null) return;
     watchId = navigator.geolocation.watchPosition(function (p) {
       MAP.me = { lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy };
-      drawMap();
+      refreshMap();
     }, function () { MAP.noFix = true; drawMap(); }, { enableHighAccuracy: true, maximumAge: 15000, timeout: 20000 });
   }
 
@@ -535,6 +596,7 @@
   }
   function closeClock() {
     show("clock", false); show("main", true);
+    siteChosen = false; show("sitePick", false);
     if (!DEMO) { stopWatch(); MAP.me = null; }
   }
   // A short, unmistakable confirmation before returning home. Runs after the
@@ -561,25 +623,41 @@
   function renderWeek() {
     var monday = new Date(); monday.setHours(0, 0, 0, 0);
     monday.setDate(monday.getDate() - (monday.getDay() + 6) % 7);
+    WEEK_START = monday;
     var dayIndex = function (d) { var x = new Date(d); x.setHours(0, 0, 0, 0); return Math.round((x - monday) / 864e5); };
     var days = [0, 0, 0, 0, 0, 0, 0];
+    WEEK_SHIFTS = [[], [], [], [], [], [], []];
     HISTORY.forEach(function (s) {
       var i = dayIndex(s.clock_in_at);
       if (i < 0 || i > 6) return;
       days[i] += hoursBetween(s.clock_in_at, s.clock_out_at);
+      WEEK_SHIFTS[i].push(s);
     });
     var total = days.reduce(function (a, b) { return a + b; }, 0);
     var max = Math.max(8, Math.max.apply(null, days));
     $("weekBars").style.setProperty("--ref", (8 / max * 100) + "%");
     var today = dayIndex(new Date());
+    if (SELECTED_DAY === null) SELECTED_DAY = today;
     var names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     $("weekBars").innerHTML = days.map(function (h, i) {
-      return '<div class="bar' + (i === today ? " is-today" : "") + '"><div class="track"><div class="fill" style="height:' +
-        (h ? Math.max(4, h / max * 100) : 0) + '%"></div></div><div class="day">' + names[i] +
-        '</div><div class="val num">' + (h ? hoursShort(h) : "–") + "</div></div>";
+      return '<button type="button" class="bar' + (i === today ? " is-today" : "") + (i === SELECTED_DAY ? " is-selected" : "") +
+        '" data-day="' + i + '" aria-pressed="' + (i === SELECTED_DAY) + '" aria-label="' + names[i] + ", " + hoursText(h) + '">' +
+        '<span class="track"><span class="fill" style="height:' + (h ? Math.max(4, h / max * 100) : 0) + '%"></span></span>' +
+        '<span class="day">' + names[i] + '</span><span class="val num">' + (h ? hoursShort(h) : "–") + "</span></button>";
     }).join("");
-    $("weekBars").setAttribute("aria-label", "Hours this week. " + days.map(function (h, i) { return names[i] + " " + hoursText(h); }).join(", "));
     $("weekHours").textContent = hoursText(total);
+    renderDayDetail();
+  }
+
+  function renderDayDetail() {
+    var list = WEEK_SHIFTS[SELECTED_DAY] || [];
+    var date = new Date(WEEK_START); date.setDate(date.getDate() + SELECTED_DAY);
+    $("dayDetail").innerHTML = '<div class="day-title">' + esc(date.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })) + "</div>" +
+      (list.length ? list.map(function (s) {
+        var away = s.clock_in_ok === false || s.clock_out_ok === false;
+        return '<div class="day-shift"><span class="num">' + hhmm(s.clock_in_at) + " – " + (s.clock_out_at ? hhmm(s.clock_out_at) : "now") +
+          (away ? "<em>Away from site</em>" : "") + '</span><strong class="num">' + hoursText(hoursBetween(s.clock_in_at, s.clock_out_at)) + "</strong></div>";
+      }).join("") : '<p class="note">No shifts</p>');
   }
 
   function renderToday() {
@@ -653,30 +731,66 @@
     }
   }
 
+  function shiftRow(s) {
+    var open = !s.clock_out_at;
+    var flag = (s.clock_in_ok === false || s.clock_out_ok === false) ? '<div class="flag">Away from site</div>' : "";
+    return '<div class="row" role="button" tabindex="0" data-correct="' + esc(s.id) + '"><div>' +
+      '<div class="d">' + dayLabel(s.clock_in_at) + "</div>" +
+      '<div class="t">' + hhmm(s.clock_in_at) + " – " + (open ? "now" : hhmm(s.clock_out_at)) + "</div>" + flag +
+      (s.note ? '<div class="shift-note">' + esc(s.note) + "</div>" : "") +
+      '<span class="sr-only">Request a correction</span>' +
+      '</div><div class="h">' + hoursText(hoursBetween(s.clock_in_at, s.clock_out_at)) + icon(ICONS.chevron) + "</div></div>";
+  }
+
   function renderHistory(rows) {
     HISTORY = rows;
     LAST_SHIFT = rows.filter(function (r) { return r.clock_out_at; })[0] || null;
     renderWeek(); renderToday();
-    var start = new Date(); start.setHours(0,0,0,0); start.setDate(start.getDate() - Number($("historyRange").value) + 1);
-    rows = rows.filter(function(s) { return new Date(s.clock_in_at) >= start; });
-    if (!rows.length) {
-      $("history").innerHTML = '<div class="note">No shifts in this date range.</div>';
-      return;
+    if (!$("staff-sheet").classList.contains("hidden")) loadMonth();
+  }
+
+  function money(n) { return Number(n).toLocaleString("en-GB", { style: "currency", currency: "GBP" }); }
+
+  // One calendar month at a time, fetched when needed, so staff can look back
+  // further than the 30 days Home keeps.
+  async function loadMonth() {
+    if (!SHEET_MONTH) { var now = new Date(); SHEET_MONTH = new Date(now.getFullYear(), now.getMonth(), 1); }
+    var start = SHEET_MONTH, end = new Date(start.getFullYear(), start.getMonth() + 1, 1);
+    var token = ++monthToken;
+    $("monthLabel").textContent = start.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+    $("nextMonth").disabled = end > new Date();
+    if (DEMO) {
+      MONTH_ROWS = HISTORY.filter(function (s) { var t = new Date(s.clock_in_at); return t >= start && t < end; });
+    } else {
+      if (!ME) return;
+      var r = await sb.from("shifts").select("*").eq("user_id", ME.id)
+        .gte("clock_in_at", start.toISOString()).lt("clock_in_at", end.toISOString())
+        .order("clock_in_at", { ascending: false });
+      if (token !== monthToken) return;
+      if (r.error) { toast(r.error.message); return; }
+      MONTH_ROWS = r.data || [];
     }
-    $("history").innerHTML = rows.map(function (s) {
-      var open = !s.clock_out_at;
-      var flag = (s.clock_in_ok === false || s.clock_out_ok === false)
-        ? '<div class="flag">Away from site</div>' : "";
-      return '<div class="row" role="button" tabindex="0" data-correct="' + esc(s.id) + '"><div>' +
-        '<div class="d">' + dayLabel(s.clock_in_at) + "</div>" +
-        '<div class="t">' + hhmm(s.clock_in_at) + " – " +
-          (open ? "now" : hhmm(s.clock_out_at)) + "</div>" + flag +
-        (s.note ? '<div class="shift-note">' + esc(s.note) + '</div>' : '') +
-        '<span class="sr-only">Request a correction</span>' +
-        "</div><div class=\"h\">" +
-          hoursText(hoursBetween(s.clock_in_at, s.clock_out_at)) + icon(ICONS.chevron) +
-        "</div></div>";
-    }).join("");
+    renderMonth();
+  }
+
+  function renderMonth() {
+    var hours = 0, doneHours = 0, days = {};
+    MONTH_ROWS.forEach(function (s) {
+      var hrs = hoursBetween(s.clock_in_at, s.clock_out_at);
+      hours += hrs;
+      if (s.clock_out_at) doneHours += hrs;
+      days[new Date(s.clock_in_at).toDateString()] = 1;
+    });
+    $("monthHours").textContent = hoursText(hours);
+    $("monthShifts").textContent = MONTH_ROWS.length;
+    $("monthDays").textContent = Object.keys(days).length;
+    var showPay = PAY.on && PAY.rate !== null;
+    show("payBox", showPay);
+    if (showPay) {
+      $("monthPay").textContent = money(doneHours * PAY.rate);
+      $("payNote").textContent = "Completed hours × " + money(PAY.rate) + " an hour, before tax and deductions. An estimate, not a payslip.";
+    }
+    $("monthList").innerHTML = MONTH_ROWS.length ? MONTH_ROWS.map(shiftRow).join("") : '<p class="note">No shifts this month.</p>';
   }
 
   // ── data ───────────────────────────────────
@@ -692,6 +806,7 @@
     // the way it would on a real phone.
     if (!MAP.me) MAP.me = { lat: 51.87950, lng: -0.37600, accuracy: 22 };
     refreshMap();
+    PAY = { on: true, rate: 12.5 };
     OPEN = D.open;
     renderHistory((D.open ? [D.open] : []).concat(D.history));
     renderStatus();
@@ -726,6 +841,15 @@
     ME = prof.data;
     $("me").textContent = ME.full_name || user.email;
     $("company").textContent = (ME.companies && ME.companies.name) || "";
+
+    // Estimated pay is optional. If the pay tables aren't set up yet, or the
+    // company hasn't switched it on, the app simply shows no money.
+    PAY = { on: false, rate: null };
+    var co = await sb.from("companies").select("show_pay").eq("id", ME.company_id).maybeSingle();
+    if (!co.error && co.data && co.data.show_pay) {
+      var rate = await sb.from("pay_rates").select("hourly_rate").eq("user_id", ME.id).maybeSingle();
+      if (!rate.error && rate.data) PAY = { on: true, rate: Number(rate.data.hourly_rate) };
+    }
 
     var sites = await sb.from("worksites").select("id, name, lat, lng, radius_m").order("name");
     MAP.sites = sites.data || [];
@@ -848,7 +972,7 @@
   }
   document.addEventListener('click',function(e) {
     var button = e.target.closest('[data-correct]'); if (!button) return;
-    correctionShift = HISTORY.find(function(s){return s.id === button.dataset.correct;}); if (!correctionShift) return;
+    correctionShift = HISTORY.concat(MONTH_ROWS).find(function(s){return s.id === button.dataset.correct;}); if (!correctionShift) return;
     if (REQUESTS.some(function(r){return r.shift_id === correctionShift.id && r.status === 'pending';})) { toast('This shift already has a pending correction.'); return; }
     $("correctIn").value = localInput(correctionShift.clock_in_at);
     $("correctOut").value = localInput(correctionShift.clock_out_at || new Date());
@@ -884,6 +1008,7 @@
     button.addEventListener('click',function(){
       document.querySelectorAll('[data-view]').forEach(function(b){b.setAttribute('aria-selected',String(b===button));b.setAttribute('tabindex',b===button?'0':'-1');show('staff-'+b.dataset.view,b===button);});
       if(button.dataset.view==='inbox') loadActivity();
+      if(button.dataset.view==='sheet') loadMonth();
     });
     button.addEventListener('keydown',function(e){
       var tabs=Array.from(document.querySelectorAll('[data-view]')),index=tabs.indexOf(button),next;
@@ -909,6 +1034,7 @@
   function signedOut() {
     ME = null; OPEN = null; REQUESTS=[];HISTORY=[];clearInterval(tick);
     stopWatch(); MAP.me = null;
+    MONTH_ROWS = []; SHEET_MONTH = null; PAY = { on: false, rate: null }; SELECTED_DAY = null;
     show("clock", false); show("main", true);
     show("app", false);
     show("login", true);
@@ -929,11 +1055,22 @@
 
   // ── boot ───────────────────────────────────
   $("today").textContent = new Date().toLocaleDateString("en-GB", {weekday:"short",day:"numeric",month:"short"});
-  $("historyRange").addEventListener("change",function() { renderHistory(HISTORY); });
   function connection() { show("connection", !navigator.onLine); }
   window.addEventListener("online",connection); window.addEventListener("offline",connection); connection();
   $("action").addEventListener("click", onAction);
   $("openClock").addEventListener("click", openClock);
+  $("prevMonth").innerHTML = icon(ICONS.prev);
+  $("nextMonth").innerHTML = icon(ICONS.chevron);
+  document.querySelector(".site-auto .pin").innerHTML = icon(ICONS.pin);
+  $("prevMonth").addEventListener("click", function () { SHEET_MONTH = new Date(SHEET_MONTH.getFullYear(), SHEET_MONTH.getMonth() - 1, 1); loadMonth(); });
+  $("nextMonth").addEventListener("click", function () { SHEET_MONTH = new Date(SHEET_MONTH.getFullYear(), SHEET_MONTH.getMonth() + 1, 1); loadMonth(); });
+  $("weekBars").addEventListener("click", function (e) {
+    var bar = e.target.closest("[data-day]"); if (!bar) return;
+    SELECTED_DAY = Number(bar.dataset.day);
+    renderWeek();
+    $("weekBars").querySelector('[data-day="' + SELECTED_DAY + '"]').focus();
+  });
+  $("changeSite").addEventListener("click", function () { show("sitePick", true); show("changeSite", false); $("site").focus(); });
   document.addEventListener("keydown", function (e) {
     var row = e.target.closest && e.target.closest(".row[data-correct]");
     if (row && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); row.click(); }
@@ -948,7 +1085,7 @@
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape" && !$("clock").classList.contains("hidden") && !$("correctionDialog").open) $("closeClock").click();
   });
-  $("site").addEventListener("change", refreshMap);
+  $("site").addEventListener("change", function () { siteChosen = true; refreshMap(); });
   window.addEventListener("resize", function () { if (MAP.site) drawMap(); });
 
   if (DEMO) {

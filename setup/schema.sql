@@ -441,4 +441,42 @@ revoke execute on function review_shift_correction(uuid,boolean,text) from publi
 grant execute on function request_shift_correction(uuid,timestamptz,timestamptz,text) to authenticated;
 grant execute on function review_shift_correction(uuid,boolean,text) to authenticated;
 
+-- ── ESTIMATED PAY (optional, off by default) ─────────────────────────────
+-- One hourly rate per person. Rates live in their own table because every
+-- colleague can read profiles. Staff can read their own rate only once their
+-- company has switched pay on; managers read and set rates for their own
+-- company only. Safe to run again.
+alter table companies add column if not exists show_pay boolean not null default false;
+
+create table if not exists pay_rates (
+  user_id     uuid primary key references profiles(id) on delete cascade,
+  company_id  uuid not null references companies(id) on delete cascade,
+  hourly_rate numeric(8,2) not null check (hourly_rate >= 0 and hourly_rate <= 1000),
+  updated_at  timestamptz not null default now()
+);
+create index if not exists pay_rates_company_idx on pay_rates(company_id);
+alter table pay_rates enable row level security;
+
+drop policy if exists pay_rates_read on pay_rates;
+create policy pay_rates_read on pay_rates for select to authenticated
+  using (pay_rates.company_id = current_company_id()
+         and (is_manager()
+              or (pay_rates.user_id = auth.uid()
+                  and exists (select 1 from companies c
+                              where c.id = pay_rates.company_id and c.show_pay))));
+
+drop policy if exists pay_rates_manage on pay_rates;
+create policy pay_rates_manage on pay_rates for all to authenticated
+  using (pay_rates.company_id = current_company_id() and is_manager())
+  with check (pay_rates.company_id = current_company_id() and is_manager()
+              and exists (select 1 from profiles p
+                          where p.id = pay_rates.user_id and p.company_id = pay_rates.company_id));
+
+revoke all on table pay_rates from anon;
+grant select, insert, update, delete on table pay_rates to authenticated;
+
+-- Managers may change only a company's name and its pay switch.
+revoke update on table companies from authenticated;
+grant update (name, show_pay) on table companies to authenticated;
+
 commit;

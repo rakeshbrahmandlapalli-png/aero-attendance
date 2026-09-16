@@ -195,3 +195,16 @@
  Exports stay in one combined CSV. Completed shifts are selected by default;
  clear that checkbox to include running shifts. Print / PDF opens the
  browser's print dialogue, where Save as PDF is available on supported devices.
+
+──────────────────────────────────────────────────────────────────────
+ ESTIMATED PAY (optional, off by default)
+──────────────────────────────────────────────────────────────────────
+ 1. Run the "ESTIMATED PAY" block near the end of setup/schema.sql once.
+ 2. BEFORE switching pay on for a client, get your data processing
+    agreement signed with them. You will be holding their staff's wage
+    rates on their behalf.
+ 3. Manager board, Staff tab: "Set rate" for each person.
+ 4. Manager board, Company settings: tick "Show estimated pay".
+ Staff then see an estimate (completed hours x hourly rate) on their
+ Timesheet tab, and managers see a pay column on Timesheets and in the CSV.
+ It is not a payslip: no tax, breaks, holiday pay or overtime.

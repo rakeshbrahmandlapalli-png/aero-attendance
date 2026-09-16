@@ -139,6 +139,7 @@
   .site-caption a{display:inline-flex;align-items:center;min-height:48px;color:inherit;}
   dialog .field{margin:var(--s4) 0;}dialog .bar{justify-content:flex-end;margin:var(--s6) 0 0;}
   .print-heading{display:none;}
+  .no-pay .pay-col{display:none!important;}
   .hidden td::before,.hidden thead::before{content:none!important;}
   @media(max-width:767px){
     table,tbody{display:block;}
@@ -165,12 +166,14 @@
     #sheetBody td:nth-child(4){grid-column:1/-1;}
     .on #sheetBody td:nth-child(5)::before{content:"Site";}
     .on #sheetBody td:nth-child(6)::before{content:"Hours";}
-    .on #sheetBody td:nth-child(7)::before{content:"Location";}
-    .on #sheetBody td:nth-child(8)::before{content:"Note";}
+    .on #sheetBody td:nth-child(7)::before{content:"Est. pay";}
+    .on #sheetBody td:nth-child(8)::before{content:"Location";}
+    .on #sheetBody td:nth-child(9)::before{content:"Note";}
     #sheetBody td.note{grid-column:1/-1;}
     .on #staffBody td:nth-child(2)::before{content:"Role";}
     .on #staffBody td:nth-child(3)::before{content:"Status";}
     .on #staffBody td:nth-child(4)::before{content:"Added";}
+    .on #staffBody td:nth-child(5)::before{content:"Hourly rate";}
     #siteBody td:nth-child(2){grid-column:1/-1;}
     .on #siteBody td:nth-child(2)::before{content:"Coordinates";}
     .on #siteBody td:nth-child(3)::before{content:"Radius";}
@@ -265,7 +268,7 @@
       <div class="print-heading" id="printHeading"></div>
       <h2>Timesheets</h2>
       <div class="bar">
-        <label class="field">Date range<select id="datePreset"><option value="7">Last 7 days</option><option value="today">Today</option><option value="week">This week</option><option value="lastWeek">Last week</option><option value="custom">Custom dates</option></select></label>
+        <label class="field">Date range<select id="datePreset"><option value="7">Last 7 days</option><option value="today">Today</option><option value="week">This week</option><option value="lastWeek">Last week</option><option value="month">This month</option><option value="lastMonth">Last month</option><option value="custom">Custom dates</option></select></label>
         <label class="field">From<input type="date" id="from"></label>
         <label class="field">To<input type="date" id="to"></label>
         <label class="field">Staff<select id="who"><option value="">Everyone</option></select></label>
@@ -278,7 +281,7 @@
       <div class="panel"><table>
         <thead><tr>
           <th>Name</th><th>Date</th><th>In</th><th>Out</th><th>Site</th>
-          <th>Hours</th><th>Location</th><th>Note</th>
+          <th>Hours</th><th class="pay-col">Est. pay</th><th>Location</th><th>Note</th>
         </tr></thead>
         <tbody id="sheetBody"></tbody>
       </table></div>
@@ -294,7 +297,7 @@
       </div>
       <div class="panel"><table>
         <thead><tr>
-          <th>Name</th><th>Role</th><th>Status</th><th>Added</th><th></th>
+          <th>Name</th><th>Role</th><th>Status</th><th>Added</th><th>Hourly rate</th><th></th>
         </tr></thead>
         <tbody id="staffBody"></tbody>
       </table></div>
@@ -322,7 +325,8 @@
     <section id="tab-reviews"><h2>Correction requests</h2><div class="bar"><select id="reviewFilter" aria-label="Request status"><option value="pending">Awaiting review</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="all">All requests</option></select><label class="filter-check"><input type="checkbox" id="boardAlerts" checked>In-app alerts</label><span class="notify-state" id="reviewUpdated"></span></div><div id="reviews" aria-live="polite"></div></section>
   </main>
 </div>
-<dialog id="settingsDialog" aria-labelledby="settingsTitle"><form id="settingsForm"><h2 id="settingsTitle">Company settings</h2><label class="field">Company name<input id="companyName" required maxlength="120"></label><div id="settingsError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelSettings">Cancel</button><button class="b" id="saveSettings">Save changes</button></div></form></dialog>
+<dialog id="settingsDialog" aria-labelledby="settingsTitle"><form id="settingsForm"><h2 id="settingsTitle">Company settings</h2><label class="field">Company name<input id="companyName" required maxlength="120"></label><label class="filter-check" id="payToggleWrap"><input type="checkbox" id="showPay">Show estimated pay</label><p class="note" id="payToggleNote">Staff see an estimate from their own hourly rate; managers see everyone's on Timesheets. Switch this on only once the data processing agreement is signed.</p><div id="settingsError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelSettings">Cancel</button><button class="b" id="saveSettings">Save changes</button></div></form></dialog>
+<dialog id="rateDialog" aria-labelledby="rateTitle"><form id="rateForm"><h2 id="rateTitle">Hourly rate</h2><p class="note" id="rateWho"></p><label class="field">Pounds per hour<input id="rateValue" type="number" inputmode="decimal" min="0" max="1000" step="0.01"></label><p class="note">Used only to estimate pay from completed hours. Clear it and save to remove the rate.</p><div id="rateError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelRate">Cancel</button><button class="b" id="saveRate">Save rate</button></div></form></dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
@@ -336,6 +340,7 @@
   var poll = null;
   var REQUESTS = [], editingSite = null, requestsLoaded = false;
   var attentionIds = null;
+  var PAY_ON = false, PAY_READY = false, RATES = {}, rateUser = null;
   // Icon shapes from Lucide (ISC licence, LUCIDE-LICENSE.txt), inlined so no icon library has to load.
   function icon(shapes) {
     return '<svg class="lucide" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + shapes + '</svg>';
@@ -362,12 +367,13 @@
 
   function agoISO(h) { return new Date(Date.now() - h * 3600000).toISOString(); }
 
+  var DEMO_IDS = { "Sam Whitfield": "p1", "Marek Kowalski": "p2", "Danny Obi": "p3", "Priya Shah": "p4" };
   function demoSheetRow(name, daysAgo, inH, inM, outH, outM, ok) {
     var d = new Date(); d.setDate(d.getDate() - daysAgo);
     var a = new Date(d); a.setHours(inH, inM, 0, 0);
     var b = new Date(d); b.setHours(outH, outM, 0, 0);
     return {
-      id: name + daysAgo + inH, profiles: { full_name: name },
+      id: name + daysAgo + inH, user_id: DEMO_IDS[name], profiles: { full_name: name },
       worksites: { name: "Main yard" },
       clock_in_at: a.toISOString(), clock_out_at: b.toISOString(),
       clock_in_ok: ok === undefined ? true : ok,
@@ -377,6 +383,8 @@
 
   var D = {
     company: "Example Logistics Ltd",
+    showPay: true,
+    rates: { p1: 12.5, p2: 12.5, p3: 12.21, p4: 15 },
     now: [
       { shift_id: "n1", full_name: "Sam Whitfield", worksite: "Main yard",
         clock_in_at: agoISO(3.4), clock_in_ok: true, clock_in_metres: 24, hours_so_far: 3.4 },
@@ -448,6 +456,21 @@
   function hrs(h) { var m = Math.round(h * 60); return Math.floor(m / 60) + "h " + pad(m % 60) + "m"; }
   function isoDay(d) { return d.toISOString().slice(0, 10); }
   function localDay(v) { var d = new Date(v); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function money(n) { return Number(n).toLocaleString("en-GB", { style: "currency", currency: "GBP" }); }
+
+  // Estimated pay is optional and off by default. PAY_READY is false until the
+  // pay SQL has been run, so the board keeps working without it.
+  async function loadPay() {
+    if (DEMO) { PAY_READY = true; PAY_ON = D.showPay; RATES = D.rates; return; }
+    var co = await sb.from("companies").select("show_pay").eq("id", ME.company_id).maybeSingle();
+    if (co.error) { PAY_READY = false; PAY_ON = false; RATES = {}; return; }
+    PAY_READY = true;
+    PAY_ON = !!(co.data && co.data.show_pay);
+    var r = await sb.from("pay_rates").select("user_id, hourly_rate");
+    RATES = {};
+    if (r.error) { toast(r.error.message); return; }
+    (r.data || []).forEach(function (x) { RATES[x.user_id] = Number(x.hourly_rate); });
+  }
 
   // ── NOW ──────────────────────────────────
   function needsAttention(s) { return s.hours_so_far > 13 || s.clock_in_ok !== true; }
@@ -578,7 +601,7 @@
     if (!shift || !confirm("Clock out " + shift.full_name + " now?")) return;
     return withLock(async function () {
       if (DEMO) {
-        D.sheet.unshift({id:shift.shift_id,profiles:{full_name:shift.full_name},worksites:{name:shift.worksite},clock_in_at:shift.clock_in_at,clock_out_at:new Date().toISOString(),clock_in_ok:shift.clock_in_ok,clock_out_ok:null,note:'Clocked out by manager'});
+        D.sheet.unshift({id:shift.shift_id,user_id:DEMO_IDS[shift.full_name],profiles:{full_name:shift.full_name},worksites:{name:shift.worksite},clock_in_at:shift.clock_in_at,clock_out_at:new Date().toISOString(),clock_in_ok:shift.clock_in_ok,clock_out_ok:null,note:'Clocked out by manager'});
         D.now = D.now.filter(function (x) { return x.shift_id !== id; });
         toast("Clocked out"); await loadNow(); await runSheet(); return;
       }
@@ -620,7 +643,8 @@
   function renderSheet() {
     var rows = visibleSheet();
     show("sheetEmpty", !rows.length);
-    var total = 0;
+    var total = 0, payTotal = 0;
+    $("sheetBody").closest("table").classList.toggle("no-pay", !PAY_ON);
     $("sheetBody").innerHTML = rows.map(function (s) {
       var h = shiftHours(s); total += h;
       var open = !s.clock_out_at;
@@ -635,12 +659,18 @@
         '<td class="num">' + (open ? '<span class="tiny">still on</span>' : (localDay(s.clock_out_at)!==localDay(s.clock_in_at)?dmy(s.clock_out_at)+' ':'')+hhmm(s.clock_out_at)) + "</td>" +
         '<td>' + esc(s.worksites && s.worksites.name || 'Removed site') + '</td>' +
         '<td class="num">' + hrs(h) + "</td>" +
+        '<td class="num pay-col">' + (function () {
+          var rate = RATES[s.user_id];
+          if (!s.clock_out_at || rate == null) return '<span class="tiny">—</span>';
+          payTotal += h * rate;
+          return money(h * rate);
+        })() + "</td>" +
         "<td>" + loc + "</td>" +
         '<td class="tiny note">' + esc(s.note) + "</td>" +
       "</tr>";
     }).join("");
     $("grandTotal").innerHTML = rows.length
-      ? rows.length + " shifts &nbsp;·&nbsp; <b>" + hrs(total) + "</b> total" + (rows.some(function(s){return !s.clock_out_at;})?' (includes running shifts)':'') : "";
+      ? rows.length + " shifts &nbsp;·&nbsp; <b>" + hrs(total) + "</b> total" + (rows.some(function(s){return !s.clock_out_at;})?' (includes running shifts)':'') + (PAY_ON ? " &nbsp;·&nbsp; <b>" + money(payTotal) + "</b> est. pay" : "") : "";
     $("printHeading").textContent = $("company").textContent + ' | ' + ($("from").value?dmy($("from").value+'T00:00:00'):'All dates') + ' - ' + ($("to").value?dmy($("to").value+'T00:00:00'):'Today') + ' | ' + rows.length + ' shifts | ' + hrs(total);
   }
 
@@ -648,7 +678,7 @@
   function exportCsv() {
     var rows = visibleSheet();
     if (!rows.length) { toast("Nothing to export"); return; }
-    var head = ["Name", "Start date", "In", "End date", "Out", "Hours", "In OK", "Out OK", "Site", "Note", "Status"];
+    var head = ["Name", "Start date", "In", "End date", "Out", "Hours", "In OK", "Out OK", "Site", "Note", "Status"].concat(PAY_ON ? ["Hourly rate", "Est. pay"] : []);
     var lines = [head.join(",")];
     rows.forEach(function (s) {
       // A cell starting with = + - @ is run as a formula by Excel/Sheets. Staff
@@ -667,7 +697,10 @@
         cell(s.clock_in_ok === null ? "" : s.clock_in_ok ? "yes" : "no"),
         cell(s.clock_out_ok === null ? "" : s.clock_out_ok ? "yes" : "no"),
         cell(s.worksites && s.worksites.name), cell(s.note), cell(s.clock_out_at?'Completed':'Running')
-      ].join(","));
+      ].concat(PAY_ON ? [
+        cell(RATES[s.user_id] != null ? RATES[s.user_id].toFixed(2) : ""),
+        cell(s.clock_out_at && RATES[s.user_id] != null ? (shiftHours(s) * RATES[s.user_id]).toFixed(2) : "")
+      ] : []).join(","));
     });
     var blob = new Blob(['\uFEFF' + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
     var a = document.createElement("a");
@@ -713,7 +746,9 @@
         "<td>" + (p.active ? '<span class="st ok"><i></i>Active</span>'
                            : '<span class="st none"><i></i>Inactive</span>') + "</td>" +
         '<td class="tiny num">' + dmy(p.created_at) + "</td>" +
+        '<td class="num">' + (!PAY_READY ? '<span class="tiny">—</span>' : RATES[p.id] != null ? money(RATES[p.id]) : '<span class="tiny">Not set</span>') + "</td>" +
         '<td style="text-align:right">' +
+          (PAY_READY ? '<button class="g sm" data-rate="' + p.id + '">Set rate</button> ' : "") +
           '<button class="g sm" data-toggle="' + p.id + '">' +
             (p.active ? "Deactivate" : "Reactivate") + "</button></td>" +
       "</tr>";
@@ -869,16 +904,48 @@
     });
   }
   $('reviewFilter').addEventListener('change',renderReviews);
-  $('settings').addEventListener('click',function(){$('companyName').value=$('company').textContent;show('settingsError',false);$('settingsDialog').showModal();});
+  $('settings').addEventListener('click',function(){$('companyName').value=$('company').textContent;$('showPay').checked=PAY_ON;show('payToggleWrap',PAY_READY);show('payToggleNote',PAY_READY);show('settingsError',false);$('settingsDialog').showModal();});
   $('cancelSettings').addEventListener('click',function(){$('settingsDialog').close();});
   $('settingsForm').addEventListener('submit',async function(e){
     e.preventDefault();var name=$('companyName').value.trim();if(!name)return;$('saveSettings').disabled=true;show('settingsError',false);
     try{
-      if(DEMO)D.company=name;
-      else{var r=await sb.from('companies').update({name:name}).eq('id',ME.company_id);if(r.error)throw r.error;}
-      $('company').textContent=name;$('settingsDialog').close();toast('Company name updated');
+      if(DEMO){D.company=name;D.showPay=$('showPay').checked;}
+      else{var values=PAY_READY?{name:name,show_pay:$('showPay').checked}:{name:name};var r=await sb.from('companies').update(values).eq('id',ME.company_id);if(r.error)throw r.error;}
+      PAY_ON=PAY_READY&&$('showPay').checked;
+      $('company').textContent=name;$('settingsDialog').close();toast('Settings saved');renderSheet();renderStaff();
     }catch(error){$('settingsError').textContent=error.message;show('settingsError',true);}
     finally{$('saveSettings').disabled=false;}
+  });
+  function openRate(id) {
+    var p = STAFF.find(function (x) { return x.id === id; }); if (!p) return;
+    rateUser = p;
+    $("rateWho").textContent = p.full_name;
+    $("rateValue").value = RATES[id] != null ? RATES[id].toFixed(2) : "";
+    show("rateError", false);
+    $("rateDialog").showModal();
+  }
+  $("cancelRate").addEventListener("click", function () { $("rateDialog").close(); });
+  $("rateForm").addEventListener("submit", async function (e) {
+    e.preventDefault(); if (!rateUser) return;
+    var raw = $("rateValue").value.trim();
+    var val = raw === "" ? null : Math.round(Number(raw) * 100) / 100;
+    if (val !== null && (!Number.isFinite(val) || val < 0 || val > 1000)) {
+      $("rateError").textContent = "Enter an hourly rate between £0 and £1,000."; show("rateError", true); return;
+    }
+    $("saveRate").disabled = true; show("rateError", false);
+    try {
+      if (!DEMO) {
+        var r = val === null
+          ? await sb.from("pay_rates").delete().eq("user_id", rateUser.id)
+          : await sb.from("pay_rates").upsert({ user_id: rateUser.id, company_id: ME.company_id, hourly_rate: val, updated_at: new Date().toISOString() });
+        if (r.error) throw r.error;
+      }
+      if (val === null) delete RATES[rateUser.id]; else RATES[rateUser.id] = val;
+      $("rateDialog").close();
+      toast(val === null ? "Rate removed" : "Rate saved");
+      renderStaff(); renderSheet();
+    } catch (error) { $("rateError").textContent = error.message; show("rateError", true); }
+    finally { $("saveRate").disabled = false; }
   });
   if('serviceWorker' in navigator && location.protocol==='https:' && !DEMO)navigator.serviceWorker.register('/sw.js').catch(function(error){toast(error.message);});
 
@@ -890,7 +957,7 @@
       $("from").value = localDay(new Date(Date.now() - 6 * 864e5));
       $("to").value   = localDay(new Date());
       show("login", false); show("app", true); show("demoBar", true);
-      loadNow(); loadStaff(); loadSites(); runSheet(); loadReviews();
+      loadPay(); loadNow(); loadStaff(); loadSites(); runSheet(); loadReviews();
       clearInterval(poll);
       poll = setInterval(function(){loadNow();loadReviews();}, 30000);
       return;
@@ -918,8 +985,9 @@
 
     show("login", false); show("app", true);
 
-    await Promise.all([loadNow(), loadStaff(), loadSites(), loadReviews()]);
+    await Promise.all([loadPay(), loadNow(), loadStaff(), loadSites(), loadReviews()]);
     await runSheet();
+    renderStaff();
 
     clearInterval(poll);
     poll = setInterval(function(){loadNow();loadReviews();}, 30000);
@@ -927,6 +995,7 @@
 
   function signedOut() {
     ME = null; REQUESTS=[];requestsLoaded=false;attentionIds=null;clearInterval(poll);
+    PAY_ON=false;PAY_READY=false;RATES={};
     show("app", false); show("login", true);
   }
 
@@ -969,6 +1038,7 @@
     if (t.dataset.delsite) removeSite(t.dataset.delsite);
     if (t.dataset.editsite) editSite(t.dataset.editsite);
     if (t.dataset.review) reviewRequest(t.dataset.review,t.dataset.approve==='true');
+    if (t.dataset.rate) openRate(t.dataset.rate);
   });
 
   function removeSite(id) {
@@ -1005,7 +1075,7 @@
   $("boardDate").textContent = new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});
   $("refresh").addEventListener("click", async function() {
     var button = $("refresh"); button.disabled = true; button.textContent = "Refreshing...";
-    try { await Promise.all([loadNow(),loadStaff(),loadSites(),loadReviews()]); await runSheet(); }
+    try { await Promise.all([loadPay(),loadNow(),loadStaff(),loadSites(),loadReviews()]); await runSheet(); renderStaff(); }
     catch(error) { toast(error.message); }
     finally { button.disabled = false; button.textContent = "Refresh"; }
   });
@@ -1015,6 +1085,8 @@
     if (preset === "7") start.setDate(start.getDate()-6);
     if (preset === "week" || preset === "lastWeek") start.setDate(start.getDate() - (start.getDay()+6)%7);
     if (preset === "lastWeek") { end = new Date(start); end.setDate(end.getDate()-1); start.setDate(start.getDate()-7); }
+    if (preset === "month") start = new Date(start.getFullYear(), start.getMonth(), 1);
+    if (preset === "lastMonth") { start = new Date(start.getFullYear(), start.getMonth() - 1, 1); end = new Date(start.getFullYear(), start.getMonth() + 1, 0); }
     $("from").value = localDay(start); $("to").value = localDay(end); runSheet();
   });
   ["from","to"].forEach(function(id) { $(id).addEventListener("change",function() { $("datePreset").value = "custom"; }); });
