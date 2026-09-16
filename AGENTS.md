@@ -175,7 +175,8 @@ Staff app structure — keep it:
   `must_change_password`, and both pages ask for a new password on first
   sign-in. No emails are sent.
 - Logins are created, blocked and unblocked ONLY by the `manage-staff` Edge
-  Function, which checks the caller is an active owner/admin of the same
+  Function (source in supabase/functions/manage-staff; deployed in Supabase
+  at the address `swift-responder`, see STAFF_FUNCTION in admin.html), which checks the caller is an active owner/admin of the same
   company and uses the service key Supabase gives it. Never create users or
   put the service key in the browser.
 - "Remove" never deletes: it bans the login and sets `profiles.active = false`.

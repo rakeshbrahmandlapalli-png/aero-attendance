@@ -883,8 +883,11 @@
 
   // Logins are created and blocked by the manage-staff Edge Function, which
   // holds the service key inside Supabase. Its error is shown as it is.
+  // The manage-staff code is deployed in Supabase under the address
+  // "swift-responder" (Supabase picked it; an address can never be renamed).
+  var STAFF_FUNCTION = "swift-responder";
   async function staffAction(body) {
-    var r = await sb.functions.invoke("manage-staff", { body: body });
+    var r = await sb.functions.invoke(STAFF_FUNCTION, { body: body });
     if (!r.error) return r.data;
     var msg = r.error.message;
     try { var j = await r.error.context.json(); if (j) msg = j.error || j.message || msg; } catch (e) {}
