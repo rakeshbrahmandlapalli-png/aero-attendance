@@ -78,8 +78,19 @@ its own CSS and JavaScript. The only external script is supabase-js from a CDN.
 ## Design
 
 Phone-first quiet premium. Design at 390 x 844, check 360 and 430px, then
-adapt to tablet and desktop. Keep the staff clock action in a fixed bottom
-dock above the safe-area-aware navigation; make it static from 768px upwards.
+adapt to tablet and desktop. The staff app stays a single 560px column.
+
+Staff app structure — keep it:
+- **Home**: greeting, a today card (status, running time while on shift, the
+  64px Clock in/out button), a Mon–Sun hours bar chart with the week total,
+  then recent shifts. Activity and Account are the other bottom tabs.
+- **Clock screen**: a separate full-screen view opened from Home. Full map
+  with back button and today's hours, position against the site zone, and a
+  bottom sheet with the worksite (or shift note), the clock action and the
+  location notice. The phone's back button closes it. Live position is only
+  watched while this screen is open.
+- Estimated pay stays out (see "Not in version 1") even though competitors
+  show it.
 
 - White surfaces, graphite header/ink `#171C24`, secondary text `#475467`,
   neutral surface `#F1F4F8`. Working cobalt `#1456C0`; attention amber `#805000` on
@@ -109,7 +120,7 @@ dock above the safe-area-aware navigation; make it static from 768px upwards.
   and database behaviour. Do not add fonts, libraries or asset downloads.
 - Before committing, run both script parse checks and click through staff
   and manager demos at phone width. Check 360/390/430px and desktop for
-  overflow, all navigation, forms, dialog errors, and the clock dock.
+  overflow, all navigation, forms, dialog errors, and the Clock screen.
   Calculate WCAG contrast ratios for text/background pairs.
 
 ## Not in version 1 — do not add without the owner asking
