@@ -25,6 +25,9 @@ admin.html            manager board: on shift now, stats, flags, timesheets, CSV
 setup/schema.sql      the whole database: tables, row-level security, clock_in/clock_out
 setup/update-2026-09-rota-and-staff.sql  the September update on its own (already inside schema.sql)
 supabase/functions/manage-staff/index.ts  Edge Function: add staff logins, remove/restore leavers
+supabase/functions/send-push/index.ts  Edge Function: phone notifications (web push)
+setup/update-2026-09-notifications.sql  the notifications update on its own (already inside schema.sql)
+sw.js                 service worker: offline page, and showing push notifications
 setup/SETUP-GUIDE.txt  step-by-step Supabase setup for the owner
 .vercelignore         keeps setup/, supabase/ and .env* OFF the public website — do not remove
 ```
@@ -183,6 +186,29 @@ Staff app structure — keep it:
   Their shifts stay for payroll and UK record-keeping. `current_company_id()`
   returns null for inactive people, so an open session shows nothing.
   Nobody can remove themselves or the owner from the app.
+
+## Phone notifications
+
+Web push to the home-screen app (no app stores, by the owner's choice).
+Android Chrome works directly; iPhone only when opened from the Home Screen
+(iOS 16.4+), and the permission prompt must come straight from a tap.
+
+- A person taps Turn on notifications (staff: Account tab; managers: the
+  Notifications button). The subscription is saved with
+  `save_push_subscription()`; signing out removes this device's one.
+- `notification_prefs` holds per-person choices; no row means everything on.
+  Managers: clock in, clock out, away from site, corrections, late/no-show
+  (rota only), 13-hour shifts. Staff: correction decisions, rota published,
+  reminder an hour before a shift (rota only).
+- Triggers on `shifts` and `shift_corrections`, `publish_rota()`, and a
+  pg_cron job every 5 minutes call `push_event()`, which posts {type, id} to
+  the send-push function through pg_net. The function re-reads the records
+  with the service key and claims a `push_log` key before sending, so every
+  notification goes out at most once and the call needs no secret. Keep it
+  that way: never trust anything else in the message.
+- `push_event()` never raises. A notification must never block a clock-in.
+- VAPID_PUBLIC_KEY is in both pages; VAPID_PRIVATE_KEY exists only as a
+  Supabase Edge Function secret. The function address lives in `push_config`.
 
 ## Rota & availability
 

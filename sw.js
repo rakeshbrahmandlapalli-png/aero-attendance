@@ -8,3 +8,25 @@ self.addEventListener('fetch', event => {
     {status:503,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'}}
   )));
 });
+
+// Phone notifications. send-push sends {title, body, url, tag}; iPhones
+// require every push to show a notification, so one is always shown.
+self.addEventListener('push', event => {
+  let note = {};
+  try { note = event.data ? event.data.json() : {}; } catch (e) { note = { body: event.data ? event.data.text() : '' }; }
+  event.waitUntil(self.registration.showNotification(note.title || 'Aero Attendance', {
+    body: note.body || '',
+    tag: note.tag || undefined,
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    data: { url: note.url || '/' }
+  }));
+});
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const target = new URL(event.notification.data && event.notification.data.url || '/', self.location.origin).href;
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    const open = list.find(c => c.url.split('#')[0].split('?')[0] === target);
+    return open ? open.focus() : self.clients.openWindow(target);
+  }));
+});

@@ -226,6 +226,11 @@
   .avail-times input{flex:1;}
   .avail-times span{font-size:var(--t1);color:var(--ink-2);}
   #saveAvail{width:100%;margin-top:var(--s4);}
+  .notify{padding:var(--s4) 0;border-bottom:1px solid var(--line-soft);}
+  .notify h3{font-size:var(--t2);}
+  .notify .note{margin-top:var(--s1);}
+  .notify .btn{width:100%;margin-top:var(--s3);}
+  .notify-pref{display:flex;align-items:center;gap:var(--s3);min-height:48px;color:var(--ink);font-size:var(--t2);}
 
   /* bottom tabs */
   .staff-nav{position:fixed;z-index:20;left:0;right:0;bottom:0;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);padding:0 max(var(--s2),calc((100vw - 560px) / 2)) env(safe-area-inset-bottom);background:var(--card);border-top:1px solid var(--line);}
@@ -342,7 +347,7 @@
         <section><div id="monthList" class="list"></div></section>
       </div>
       <div id="staff-inbox" class="hidden" role="tabpanel" aria-labelledby="nav-inbox"><div class="section-head"><h2>Activity</h2><button class="link" id="refreshActivity">Refresh</button></div><div id="activity" aria-live="polite"></div></div>
-      <div id="staff-account" class="hidden" role="tabpanel" aria-labelledby="nav-account"><div class="section-head"><h2>Your account</h2></div><div class="account-row"><span>Name</span><strong id="accountName"></strong></div><div class="account-row"><span>Company</span><strong id="accountCompany"></strong></div><label class="check"><input type="checkbox" id="shiftReminder" checked>Show long-shift reminders while the app is open</label><div class="account-row"><span>Location</span><strong>Clock-in and clock-out only</strong></div><button class="btn hidden" id="installApp">Install Aero</button><p class="note" id="installStatus"></p><button class="btn g signout" id="signout">Sign out</button></div>
+      <div id="staff-account" class="hidden" role="tabpanel" aria-labelledby="nav-account"><div class="section-head"><h2>Your account</h2></div><div class="account-row"><span>Name</span><strong id="accountName"></strong></div><div class="account-row"><span>Company</span><strong id="accountCompany"></strong></div><div id="notifyBox" class="notify hidden"><h3>Notifications</h3><p class="note" id="notifyState"></p><button type="button" class="btn" id="notifyOn">Turn on notifications</button><button type="button" class="btn g hidden" id="notifyOff">Turn off for this phone</button><div id="notifyPrefs"></div></div><label class="check"><input type="checkbox" id="shiftReminder" checked>Show long-shift reminders while the app is open</label><div class="account-row"><span>Location</span><strong>Clock-in and clock-out only</strong></div><button class="btn hidden" id="installApp">Install Aero</button><p class="note" id="installStatus"></p><button class="btn g signout" id="signout">Sign out</button></div>
     </main>
 
     <nav class="staff-nav" aria-label="Staff views"><button id="nav-work" aria-controls="staff-work" aria-selected="true" data-view="work"><span>Home</span></button><button id="nav-rota" class="hidden" aria-controls="staff-rota" aria-selected="false" data-view="rota"><span>Rota</span></button><button id="nav-sheet" aria-controls="staff-sheet" aria-selected="false" data-view="sheet"><span>Timesheet</span></button><button id="nav-inbox" aria-controls="staff-inbox" aria-selected="false" data-view="inbox"><span>Activity <span class="num" id="inboxCount"></span></span></button><button id="nav-account" aria-controls="staff-account" aria-selected="false" data-view="account"><span>Account</span></button></nav>
@@ -1006,7 +1011,7 @@
     refreshMap();
     PAY = { on: true, rate: 12.5 };
     ROTA.on = true; ROTA.shifts = D.rota; ROTA.avail = D.avail; ROTA.off = D.off;
-    renderRota();
+    renderRota(); loadPrefs();
     OPEN = D.open;
     renderHistory((D.open ? [D.open] : []).concat(D.history));
     renderStatus();
@@ -1070,6 +1075,7 @@
     renderHistory(hist.data || []);
     renderStatus();
     await loadRota();
+    loadPrefs();
 
     show("login", false);
     show("app", true);
@@ -1212,6 +1218,7 @@
       if(button.dataset.view==='inbox') loadActivity();
       if(button.dataset.view==='sheet') loadMonth();
       if(button.dataset.view==='rota') loadRota();
+      if(button.dataset.view==='account') renderNotify();
     });
     button.addEventListener('keydown',function(e){
       var tabs=Array.from(document.querySelectorAll('[data-view]')).filter(function(b){return !b.classList.contains('hidden');}),index=tabs.indexOf(button),next;
@@ -1349,6 +1356,106 @@
     } catch (error) { $("pwError").textContent = error.message; show("pwError", true); }
     finally { $("savePw").disabled = false; }
   });
+
+  // ── phone notifications ────────────────────
+  //
+  // Web push. Works on Android in Chrome, and on iPhone only when Aero is
+  // opened from the Home Screen (iOS 16.4+). This public key pairs with
+  // VAPID_PRIVATE_KEY, a secret held only by the send-push Edge Function.
+  var VAPID_PUBLIC_KEY = "BPdlsdSbtk_42k_Tny-htsB229uKzlffF_skV1dBLyNEVKMlGJynZhesoPvy5PkXtER7rmnyuJjIKXTH4i2kN3Q";
+  var PREFS = null, notifyBusy = false;
+  function pushSupported() { return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window; }
+  function iosOutsideHomeScreen() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) && !(navigator.standalone === true || matchMedia("(display-mode: standalone)").matches);
+  }
+  function keyBytes(s) {
+    var raw = atob((s + "=".repeat((4 - s.length % 4) % 4)).replace(/-/g, "+").replace(/_/g, "/"));
+    return Uint8Array.from(raw, function (c) { return c.charCodeAt(0); });
+  }
+  async function currentSubscription() {
+    if (!pushSupported()) return null;
+    var reg = await navigator.serviceWorker.getRegistration("/");
+    return reg ? reg.pushManager.getSubscription() : null;
+  }
+  // PREFS stays null when the notifications SQL hasn't been run: then the
+  // controls stay hidden and nothing else changes.
+  async function loadPrefs() {
+    if (DEMO) { PREFS = PREFS || {}; return renderNotify(); }
+    if (!ME) return;
+    var r = await sb.from("notification_prefs").select("*").eq("user_id", ME.id).maybeSingle();
+    PREFS = r.error ? null : (r.data || {});
+    renderNotify();
+  }
+  async function renderNotify() {
+    notifyAvailable(PREFS !== null);
+    if (PREFS === null) return;
+    var sub = null;
+    try { if (!DEMO) sub = await currentSubscription(); } catch (e) {}
+    var granted = pushSupported() && Notification.permission === "granted", text, canOn = false;
+    if (DEMO) { text = "Demo: nothing is sent. On the real app this turns on notifications for this phone."; canOn = true; }
+    else if (iosOutsideHomeScreen()) text = "On iPhone, add Aero to your Home Screen (Share, then Add to Home Screen) and open it from there to get notifications.";
+    else if (!pushSupported()) text = "This browser can't show notifications. On Android use Chrome; on iPhone open Aero from your Home Screen.";
+    else if (Notification.permission === "denied") text = "Notifications are blocked for Aero. Allow them in your phone's settings, then come back here.";
+    else if (sub && granted) text = "On for this device.";
+    else { text = "Off for this device."; canOn = true; }
+    $("notifyState").textContent = text;
+    show("notifyOn", canOn);
+    show("notifyOff", !!sub && granted);
+    $("notifyPrefs").innerHTML = notifyPrefList().map(function (p) {
+      return '<label class="notify-pref"><input type="checkbox" data-pref="' + p[0] + '"' + (PREFS[p[0]] === false ? "" : " checked") + ">" + p[1] + "</label>";
+    }).join("");
+  }
+  async function turnOnNotifications() {
+    if (notifyBusy) return;
+    if (DEMO) { toast("Demo only: nothing is sent. On the real app this device would now get notifications."); return; }
+    if (!pushSupported()) { renderNotify(); return; }
+    notifyBusy = true; $("notifyOn").disabled = true;
+    try {
+      // Keep this the first await: iPhones only show the permission prompt straight after a tap.
+      var permission = await Notification.requestPermission();
+      if (permission !== "granted") throw new Error(permission === "denied" ? "Notifications are blocked. Allow them for Aero in your phone's settings." : "Notifications weren't allowed.");
+      var reg = await navigator.serviceWorker.register("/sw.js");
+      await navigator.serviceWorker.ready;
+      var sub = (await reg.pushManager.getSubscription()) ||
+        (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(VAPID_PUBLIC_KEY) }));
+      var j = sub.toJSON();
+      var r = await sb.rpc("save_push_subscription", { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth });
+      if (r.error) throw r.error;
+      toast("Notifications are on for this device");
+    } catch (error) { toast(error.message); }
+    finally { notifyBusy = false; $("notifyOn").disabled = false; renderNotify(); }
+  }
+  // Also run quietly on sign-out, so a shared phone stops getting the last person's notifications.
+  async function turnOffNotifications(quiet) {
+    try {
+      var sub = DEMO ? null : await currentSubscription();
+      if (sub) {
+        if (sb && ME) await sb.rpc("remove_push_subscription", { p_endpoint: sub.endpoint });
+        await sub.unsubscribe();
+      }
+      if (!quiet) toast("Notifications are off for this device");
+    } catch (error) { if (!quiet) toast(error.message); }
+    if (!quiet) renderNotify();
+  }
+  $("notifyOn").addEventListener("click", turnOnNotifications);
+  $("notifyOff").addEventListener("click", function () { turnOffNotifications(false); });
+  $("notifyPrefs").addEventListener("change", async function (e) {
+    var box = e.target.closest("[data-pref]"); if (!box) return;
+    var key = box.dataset.pref;
+    PREFS[key] = box.checked;
+    if (DEMO) return;
+    var row = { user_id: ME.id, company_id: ME.company_id, updated_at: new Date().toISOString() };
+    row[key] = box.checked;
+    var r = await sb.from("notification_prefs").upsert(row);
+    if (r.error) { box.checked = !box.checked; PREFS[key] = box.checked; toast(r.error.message); }
+  });
+
+  function notifyAvailable(on) { show("notifyBox", on); }
+  function notifyPrefList() {
+    var list = [["correction_decisions", "When a correction is approved or rejected"]];
+    if (ROTA.on) list.push(["rota", "When a new rota is published"], ["reminders", "An hour before each shift"]);
+    return list;
+  }
   $("saveAvail").addEventListener("click", saveAvail);
   $("addOff").addEventListener("click", openOff);
   $("cancelOff").addEventListener("click", function () { if (!offBusy) $("offDialog").close(); });
@@ -1406,6 +1513,7 @@
   $("signin").addEventListener("click", signIn);
   $("pw").addEventListener("keydown", function (e) { if (e.key === "Enter") signIn(); });
   $("signout").addEventListener("click", async function () {
+    await turnOffNotifications(true);
     await sb.auth.signOut(); signedOut();
   });
 
