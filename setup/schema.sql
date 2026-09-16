@@ -625,4 +625,19 @@ revoke execute on function publish_rota(timestamptz, timestamptz) from public, a
 grant execute on function publish_rota(timestamptz, timestamptz) to authenticated;
 
 
+-- ── LEAVERS LOSE ACCESS ─────────────────────────────────────────────────
+-- A removed (inactive) person belongs to no company as far as the policies
+-- are concerned, so a session they still have open shows nothing. Managers
+-- remove people through the manage-staff Edge Function, which also blocks
+-- their sign-in. Still security definer: see WHO AM I? in schema.sql.
+create or replace function current_company_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select company_id from profiles where id = auth.uid() and active
+$$;
+
 commit;

@@ -1,3 +1,6 @@
+-- Update for September 2026: rota & availability, and leavers losing access.
+-- Run it once in the Supabase SQL editor. Safe to run again.
+
 -- ── ROTA & AVAILABILITY (optional, off by default) ─────────────────────
 -- A company switches this on in Company settings. Staff keep a usual week
 -- and book days off; managers draft shifts and publish a week when it's
@@ -144,5 +147,20 @@ end;
 $$;
 revoke execute on function publish_rota(timestamptz, timestamptz) from public, anon;
 grant execute on function publish_rota(timestamptz, timestamptz) to authenticated;
+
+-- ── LEAVERS LOSE ACCESS ─────────────────────────────────────────────────
+-- A removed (inactive) person belongs to no company as far as the policies
+-- are concerned, so a session they still have open shows nothing. Managers
+-- remove people through the manage-staff Edge Function, which also blocks
+-- their sign-in. Still security definer: see WHO AM I? in schema.sql.
+create or replace function current_company_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select company_id from profiles where id = auth.uid() and active
+$$;
 
 commit;

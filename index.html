@@ -370,6 +370,7 @@
 
 <dialog id="offDialog" aria-labelledby="offTitle"><form id="offForm"><h2 id="offTitle">Add days off</h2><p class="note">Your manager sees these when making the rota.</p><label for="offFrom">First day</label><input id="offFrom" type="date" required><label for="offTo">Last day</label><input id="offTo" type="date" required><label for="offReason">Reason (optional)</label><input id="offReason" maxlength="200"><div class="err hidden" id="offError" role="alert"></div><div class="dialog-actions"><button type="button" class="link" id="cancelOff">Cancel</button><button class="btn" id="saveOff">Add days off</button></div></form></dialog>
 
+<dialog id="pwDialog" aria-labelledby="pwTitle"><form id="pwForm" novalidate><h2 id="pwTitle">Choose your password</h2><p class="note">You signed in with a starting password. Choose your own to keep your account private.</p><label for="newPw">New password</label><input id="newPw" type="password" autocomplete="new-password"><label for="newPw2">Type it again</label><input id="newPw2" type="password" autocomplete="new-password"><div class="err hidden" id="pwError" role="alert"></div><div class="dialog-actions"><button class="btn" id="savePw">Save password</button></div></form></dialog>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 (function () {
@@ -1074,6 +1075,7 @@
     show("app", true);
     refreshMap();
     updateAccount(); loadActivity();
+    if (user.user_metadata && user.user_metadata.must_change_password) askNewPassword();
   }
 
   async function onAction() {
@@ -1325,6 +1327,27 @@
     availDirty = true;
     var kind = e.target.closest("[data-kind]");
     if (kind) kind.parentElement.querySelector(".avail-times").classList.toggle("hidden", kind.value !== "between");
+  });
+
+  // First sign-in with a starting password set by a manager: ask for their own.
+  // The flag lives in the login's metadata and is cleared with the new password.
+  function askNewPassword() {
+    $("newPw").value = ""; $("newPw2").value = ""; show("pwError", false);
+    if (!$("pwDialog").open) $("pwDialog").showModal();
+  }
+  $("pwDialog").addEventListener("cancel", function (e) { e.preventDefault(); });
+  $("pwForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var a = $("newPw").value, b = $("newPw2").value;
+    var fail = a.length < 8 ? "Use at least 8 characters." : a !== b ? "The two passwords don't match." : "";
+    if (fail) { $("pwError").textContent = fail; show("pwError", true); return; }
+    $("savePw").disabled = true; show("pwError", false);
+    try {
+      var r = await sb.auth.updateUser({ password: a, data: { must_change_password: false } });
+      if (r.error) throw r.error;
+      $("pwDialog").close(); toast("Password saved");
+    } catch (error) { $("pwError").textContent = error.message; show("pwError", true); }
+    finally { $("savePw").disabled = false; }
   });
   $("saveAvail").addEventListener("click", saveAvail);
   $("addOff").addEventListener("click", openOff);

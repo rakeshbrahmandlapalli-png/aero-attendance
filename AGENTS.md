@@ -23,9 +23,10 @@ see who is on shift, exceptions, timesheets, staff and worksites.
 index.html            staff app: sign in, clock in/out, site map, shift history
 admin.html            manager board: on shift now, stats, flags, timesheets, CSV, staff, sites
 setup/schema.sql      the whole database: tables, row-level security, clock_in/clock_out
-setup/rota-and-availability.sql  the rota block on its own (already inside schema.sql)
+setup/update-2026-09-rota-and-staff.sql  the September update on its own (already inside schema.sql)
+supabase/functions/manage-staff/index.ts  Edge Function: add staff logins, remove/restore leavers
 setup/SETUP-GUIDE.txt  step-by-step Supabase setup for the owner
-.vercelignore         keeps setup/ and .env* OFF the public website — do not remove
+.vercelignore         keeps setup/, supabase/ and .env* OFF the public website — do not remove
 ```
 
 There is no build step, no framework and no package.json. Each HTML file holds
@@ -166,6 +167,21 @@ Staff app structure — keep it:
   and manager demos at phone width. Check 360/390/430px and desktop for
   overflow, all navigation, forms, dialog errors, and the Clock screen.
   Calculate WCAG contrast ratios for text/background pairs.
+
+## Staff accounts
+
+- Managers add staff on the Staff tab: name, email, role (Staff or Manager)
+  and a starting password they pass on in person. The login is flagged
+  `must_change_password`, and both pages ask for a new password on first
+  sign-in. No emails are sent.
+- Logins are created, blocked and unblocked ONLY by the `manage-staff` Edge
+  Function, which checks the caller is an active owner/admin of the same
+  company and uses the service key Supabase gives it. Never create users or
+  put the service key in the browser.
+- "Remove" never deletes: it bans the login and sets `profiles.active = false`.
+  Their shifts stay for payroll and UK record-keeping. `current_company_id()`
+  returns null for inactive people, so an open session shows nothing.
+  Nobody can remove themselves or the owner from the app.
 
 ## Rota & availability
 

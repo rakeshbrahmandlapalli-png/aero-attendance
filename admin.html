@@ -164,6 +164,8 @@
   .rota-shift.draft em,.rota-shift.changed em{color:var(--accent);}
   .rota-shift.removed{border-left-color:var(--line);color:var(--ink-2);}
   .rota-shift.removed span{text-decoration:line-through;}
+  #staffFields .note{margin-top:var(--s2);}
+  #staffDone{margin-top:var(--s4);}
   .time-pair{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3);}
   .time-pair .field{margin:0;}
   .warn-line{margin-top:var(--s4);padding:var(--s3) var(--s4);background:var(--warn-soft);color:var(--warn);border-left:4px solid var(--warn);}
@@ -338,7 +340,8 @@
       <h2>Staff</h2>
       <div class="bar">
         <input type="search" id="staffSearch" placeholder="Search staff" aria-label="Search staff">
-        <select id="staffStatus" aria-label="Staff status"><option value="">All staff</option><option value="active">Active</option><option value="inactive">Inactive</option></select>
+        <select id="staffStatus" aria-label="Staff status"><option value="active" selected>Current staff</option><option value="inactive">Removed</option><option value="">Everyone</option></select>
+        <button type="button" class="b" id="addStaff">Add staff</button>
       </div>
       <div class="panel"><table>
         <thead><tr>
@@ -374,6 +377,8 @@
 <dialog id="rateDialog" aria-labelledby="rateTitle"><form id="rateForm"><h2 id="rateTitle">Hourly rate</h2><p class="note" id="rateWho"></p><label class="field">Pounds per hour<input id="rateValue" type="number" inputmode="decimal" min="0" max="1000" step="0.01"></label><p class="note">Used only to estimate pay from completed hours. Clear it and save to remove the rate.</p><div id="rateError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelRate">Cancel</button><button class="b" id="saveRate">Save rate</button></div></form></dialog>
 
 <dialog id="rotaDialog" aria-labelledby="rotaTitle"><form id="rotaForm"><h2 id="rotaTitle">Add shift</h2><label class="field">Staff member<select id="rotaWho" required></select></label><label class="field">Date<input id="rotaDate" type="date" required></label><div class="time-pair"><label class="field">Start<input id="rotaStart" type="time" required></label><label class="field">Finish<input id="rotaEnd" type="time" required></label></div><p class="note" id="rotaHint"></p><label class="field">Worksite<select id="rotaSite"></select></label><label class="field">Note for staff (optional)<input id="rotaNote" maxlength="300"></label><div id="rotaWarn" class="warn-line hidden" role="status"></div><div id="rotaError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g hidden" id="deleteRota">Remove shift</button><button type="button" class="g" id="cancelRota">Cancel</button><button class="b" id="saveRota">Save shift</button></div></form></dialog>
+<dialog id="staffDialog" aria-labelledby="staffTitle"><form id="staffForm" novalidate><h2 id="staffTitle">Add staff</h2><div id="staffFields"><label class="field">Full name<input id="newName" maxlength="120" autocomplete="off"></label><label class="field">Email<input id="newEmail" type="email" inputmode="email" autocomplete="off"></label><label class="field">Role<select id="newRole"><option value="staff">Staff</option><option value="admin">Manager</option></select></label><label class="field">Starting password<input id="newPassword" maxlength="72" autocomplete="new-password" spellcheck="false"></label><button type="button" class="g sm" id="suggestPassword">Suggest a password</button><p class="note">Give it to them in person or by text. They choose their own password the first time they sign in.</p></div><p id="staffDone" class="hidden"></p><div id="staffError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelStaff">Cancel</button><button class="b" id="saveStaff">Add staff</button></div></form></dialog>
+<dialog id="pwDialog" aria-labelledby="pwTitle"><form id="pwForm" novalidate><h2 id="pwTitle">Choose your password</h2><p class="note">You signed in with a starting password. Choose your own to keep your account private.</p><label class="field">New password<input id="newPw" type="password" autocomplete="new-password"></label><label class="field">Type it again<input id="newPw2" type="password" autocomplete="new-password"></label><div class="err hidden" id="pwError" role="alert"></div><div class="bar"><button class="b" id="savePw">Save password</button></div></form></dialog>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 (function () {
@@ -848,32 +853,107 @@
         nameCell(p.full_name) +
         '<td><span class="role">' + esc(p.role) + "</span></td>" +
         "<td>" + (p.active ? '<span class="st ok"><i></i>Active</span>'
-                           : '<span class="st none"><i></i>Inactive</span>') + "</td>" +
+                           : '<span class="st none"><i></i>Removed</span>') + "</td>" +
         '<td class="tiny num">' + dmy(p.created_at) + "</td>" +
         '<td class="num">' + (!PAY_READY ? '<span class="tiny">—</span>' : RATES[p.id] != null ? money(RATES[p.id]) : '<span class="tiny">Not set</span>') + "</td>" +
         '<td style="text-align:right">' +
           (PAY_READY ? '<button class="g sm" data-rate="' + p.id + '">Set rate</button> ' : "") +
-          '<button class="g sm" data-toggle="' + p.id + '">' +
-            (p.active ? "Deactivate" : "Reactivate") + "</button></td>" +
+          (p.id === ME.id || p.role === "owner" ? "" : '<button class="g sm" data-toggle="' + p.id + '">' +
+            (p.active ? "Remove" : "Restore") + "</button>") + "</td>" +
       "</tr>";
     }).join("");
   }
 
+  // Removing someone blocks their sign-in but keeps every shift they worked:
+  // UK employers must keep working-time and pay records for years.
   function toggleStaff(id) {
+    var p = STAFF.find(function (x) { return x.id === id; });
+    if (!p) return;
+    if (p.id === ME.id) { toast("You cannot remove yourself."); return; }
+    var removing = p.active;
+    if (removing && !confirm("Remove " + p.full_name + "? They won't be able to sign in. Their past hours stay on timesheets.")) return;
     return withLock(async function () {
-      var p = STAFF.find(function (x) { return x.id === id; });
-      if (!p) return;
-      if (p.id === ME.id) { toast("You cannot deactivate yourself."); return; }
-      if (DEMO) {
-        p.active = !p.active;
-        toast(p.active ? "Reactivated" : "Deactivated");
-        await loadStaff(); return;
-      }
-      var r = await sb.from("profiles").update({ active: !p.active }).eq("id", id);
-      if (r.error) { toast(r.error.message); return; }
+      if (DEMO) p.active = !removing;
+      else await staffAction({ action: removing ? "remove" : "restore", user_id: id });
+      toast(p.full_name + (removing ? " removed" : " restored"));
       await loadStaff();
+      if (USE_ROTA && ROTA_WEEK) await loadRotaWeek();
     });
   }
+
+  // Logins are created and blocked by the manage-staff Edge Function, which
+  // holds the service key inside Supabase. Its error is shown as it is.
+  async function staffAction(body) {
+    var r = await sb.functions.invoke("manage-staff", { body: body });
+    if (!r.error) return r.data;
+    var msg = r.error.message;
+    try { var j = await r.error.context.json(); if (j) msg = j.error || j.message || msg; } catch (e) {}
+    if (/function was not found|Failed to send a request/i.test(msg)) msg = "Staff management isn't set up in Supabase yet (" + msg + ").";
+    throw new Error(msg);
+  }
+
+  function openStaff() {
+    ["newName", "newEmail", "newPassword"].forEach(function (id) { $(id).value = ""; });
+    $("newRole").value = "staff";
+    show("staffFields", true); show("staffDone", false); show("staffError", false); show("cancelStaff", true);
+    $("saveStaff").textContent = "Add staff";
+    $("staffDialog").showModal(); $("newName").focus();
+  }
+  // Easy to read out or text: no 0/O or 1/l/I.
+  function suggestPassword() {
+    var chars = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789", a = new Uint32Array(10), out = "";
+    crypto.getRandomValues(a);
+    a.forEach(function (n) { out += chars[n % chars.length]; });
+    $("newPassword").value = out;
+  }
+  $("addStaff").addEventListener("click", openStaff);
+  $("suggestPassword").addEventListener("click", suggestPassword);
+  $("cancelStaff").addEventListener("click", function () { $("staffDialog").close(); });
+  $("staffForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    if (!$("staffDone").classList.contains("hidden")) { $("staffDialog").close(); return; }
+    var body = { action: "create", full_name: $("newName").value.trim(), email: $("newEmail").value.trim().toLowerCase(), role: $("newRole").value, password: $("newPassword").value };
+    var fail = !body.full_name ? "Enter the person's name."
+      : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email) ? "Enter a valid email address."
+      : body.password.length < 8 ? "The starting password needs at least 8 characters." : "";
+    show("staffError", false);
+    if (fail) { $("staffError").textContent = fail; show("staffError", true); return; }
+    $("saveStaff").disabled = true;
+    try {
+      if (DEMO) {
+        if (D.staff.some(function (p) { return p.email === body.email; })) throw new Error("That email already has a login.");
+        D.staff.push({ id: "p" + Date.now(), full_name: body.full_name, email: body.email, role: body.role, active: true, created_at: new Date().toISOString() });
+      } else await staffAction(body);
+      $("staffDone").textContent = body.full_name + " can now sign in to the staff app at " + location.host + " with " + body.email +
+        " and the starting password you set. They'll choose their own password straight away.";
+      show("staffFields", false); show("staffDone", true); show("cancelStaff", false);
+      $("saveStaff").textContent = "Done";
+      await loadStaff();
+    } catch (error) { $("staffError").textContent = error.message; show("staffError", true); }
+    finally { $("saveStaff").disabled = false; }
+  });
+
+  // First sign-in with a starting password set by a manager: ask for their own.
+  // The flag lives in the login's metadata and is cleared with the new password.
+  function askNewPassword() {
+    $("newPw").value = ""; $("newPw2").value = ""; show("pwError", false);
+    if (!$("pwDialog").open) $("pwDialog").showModal();
+  }
+  $("pwDialog").addEventListener("cancel", function (e) { e.preventDefault(); });
+  $("pwForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var a = $("newPw").value, b = $("newPw2").value;
+    var fail = a.length < 8 ? "Use at least 8 characters." : a !== b ? "The two passwords don't match." : "";
+    if (fail) { $("pwError").textContent = fail; show("pwError", true); return; }
+    $("savePw").disabled = true; show("pwError", false);
+    try {
+      var r = await sb.auth.updateUser({ password: a, data: { must_change_password: false } });
+      if (r.error) throw r.error;
+      $("pwDialog").close(); toast("Password saved");
+    } catch (error) { $("pwError").textContent = error.message; show("pwError", true); }
+    finally { $("savePw").disabled = false; }
+  });
+
 
   // ── SITES ────────────────────────────────
   async function loadSites() {
@@ -1144,7 +1224,7 @@
     var people = STAFF.filter(function (p) { return p.active || ROTA_SHIFTS.some(function (s) { return s.user_id === p.id && localDay(s.starts_at) === key; }); });
     $("rotaPeople").innerHTML = people.length ? people.map(function (p) {
       var mine = ROTA_SHIFTS.filter(function (s) { return s.user_id === p.id && localDay(s.starts_at) === key; });
-      var av = availFor(p.id, day);
+      var av = p.active ? availFor(p.id, day) : { no: true, text: "Removed from staff. Remove or reassign these shifts." };
       return '<div class="rota-person"><div class="rota-who"><div class="name"><span class="av">' + esc(initials(p.full_name)) + "</span>" + esc(p.full_name) +
         '</div><div class="avail' + (av.no ? " no" : "") + '">' + esc(av.text) + '</div></div><div class="rota-shifts">' +
         mine.map(function (s) {
@@ -1398,6 +1478,7 @@
 
     show("login", false); show("app", true);
 
+    if (user.user_metadata && user.user_metadata.must_change_password) askNewPassword();
     await loadRotaFlag();
     await Promise.all([loadPay(), loadNow(), loadStaff(), loadSites(), loadReviews()]);
     await runSheet();
