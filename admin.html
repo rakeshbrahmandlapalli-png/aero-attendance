@@ -82,7 +82,7 @@
   header{display:flex;align-items:center;justify-content:space-between;gap:var(--s4);padding:var(--s4);background:var(--ink);color:#fff;}
   header .co,header>.link{color:#D5DBE3;}header>.link:focus-visible{outline-color:#fff;}
   header>div{min-width:0;}.brand{font-size:var(--t4);font-weight:600;}
-  header nav{position:fixed;z-index:30;inset:auto 0 0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:var(--s2) var(--s1) calc(8px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line);}
+  header nav{position:fixed;z-index:30;inset:auto 0 0;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);padding:var(--s2) var(--s1) calc(8px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line);}
   nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s1);min-height:64px;min-width:0;padding:var(--s1) 0;border:0;border-bottom:2px solid transparent;background:none;color:var(--ink-2);font-size:var(--t1);font-weight:500;}
   nav button.on{color:var(--ink);border-bottom-color:var(--brand);}
   main{max-width:1280px;margin:auto;padding:var(--s6) var(--s4) calc(112px + env(safe-area-inset-bottom));}
@@ -138,6 +138,37 @@
   .site-caption{position:absolute;bottom:0;left:0;right:0;background:var(--card);padding:var(--s2);font-size:var(--t1);}
   .site-caption a{display:inline-flex;align-items:center;min-height:48px;color:inherit;}
   dialog .field{margin:var(--s4) 0;}dialog .bar{justify-content:flex-end;margin:var(--s6) 0 0;}
+  /* rota */
+  .rota-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--s3);}
+  .week-nav{display:flex;align-items:center;gap:var(--s2);min-width:0;}
+  .week-nav h2{margin:0;font-size:var(--t3);}
+  .icon-btn{display:grid;place-items:center;flex:none;width:44px;height:44px;padding:0;border:1px solid var(--line);border-radius:var(--r);background:var(--card);color:var(--ink);}
+  #rotaStatus{margin:var(--s3) 0 var(--s4);}
+  #rotaStatus.changes{color:var(--accent);}
+  #publishRota:disabled{cursor:default;background:var(--card);color:var(--ink-2);border-color:var(--line);}
+  .day-tabs{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border:1px solid var(--line);border-radius:var(--r);overflow:hidden;}
+  .day-tab{display:flex;flex-direction:column;align-items:center;min-width:0;min-height:72px;padding:var(--s2) 0;border:0;border-left:1px solid var(--line-soft);background:var(--card);color:var(--ink-2);font-size:var(--t1);}
+  .day-tab:first-child{border-left:0;}
+  .day-tab strong{font-size:var(--t3);font-weight:600;line-height:1.2;color:var(--ink);}
+  .day-tab.on{background:var(--ink);color:#D5DBE3;}
+  .day-tab.on strong{color:#fff;}
+  .rota-day-title{margin:var(--s6) 0 var(--s2);}
+  .rota-person{display:grid;gap:var(--s3);padding:var(--s4) 0;border-bottom:1px solid var(--line-soft);}
+  .rota-who .avail{margin-top:var(--s1);padding-left:44px;font-size:var(--t1);color:var(--ink-2);}
+  .rota-who .avail.no{color:var(--warn);}
+  .rota-shifts{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2);}
+  .rota-shift{display:flex;flex-wrap:wrap;align-items:center;gap:0 var(--s3);min-height:48px;padding:var(--s2) var(--s3);border:1px solid var(--line);border-left:4px solid var(--ink);border-radius:var(--r);background:var(--card);color:var(--ink);font-size:var(--t2);text-align:left;}
+  .rota-shift span:first-child{font-weight:600;}
+  .rota-shift em{font-style:normal;font-size:var(--t1);color:var(--ink-2);}
+  .rota-shift.draft,.rota-shift.changed{border-left-color:var(--brand);}
+  .rota-shift.draft em,.rota-shift.changed em{color:var(--accent);}
+  .rota-shift.removed{border-left-color:var(--line);color:var(--ink-2);}
+  .rota-shift.removed span{text-decoration:line-through;}
+  .time-pair{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3);}
+  .time-pair .field{margin:0;}
+  .warn-line{margin-top:var(--s4);padding:var(--s3) var(--s4);background:var(--warn-soft);color:var(--warn);border-left:4px solid var(--warn);}
+  .label-short{display:none;}
+  @media(max-width:419px){header nav:has(#navRota:not(.hidden)) .label-long{display:none;}header nav:has(#navRota:not(.hidden)) .label-short{display:inline;}}
   .print-heading{display:none;}
   .no-pay .pay-col{display:none!important;}
   .hidden td::before,.hidden thead::before{content:none!important;}
@@ -192,6 +223,7 @@
     .flag{display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap;}.flag .act{margin:0 0 0 auto;}
     .panel{overflow-x:auto;}
     .review-times{grid-template-columns:1fr 1fr;}
+    .rota-person{grid-template-columns:minmax(220px,300px) minmax(0,1fr);align-items:center;}
     .toast{bottom:var(--s6);}
   }
   @media(min-width:1100px){header nav{order:0;flex-basis:auto;}header{flex-wrap:nowrap;}}
@@ -230,7 +262,8 @@
     </div>
     <nav>
       <button data-tab="now" class="on">Now</button>
-      <button data-tab="sheets">Timesheets</button>
+      <button data-tab="rota" id="navRota" class="hidden">Rota</button>
+      <button data-tab="sheets"><span class="label-long">Timesheets</span><span class="label-short">Hours</span></button>
       <button data-tab="staff">Staff</button>
       <button data-tab="sites">Sites</button>
       <button data-tab="reviews"><span>Review <span id="reviewCount" class="review-count"></span></span></button>
@@ -261,6 +294,18 @@
         <tbody id="nowBody"></tbody>
       </table></div>
       <div id="nowEmpty" class="empty hidden">No shifts match these filters.</div>
+    </section>
+
+    <!-- ── ROTA ───────────────────────────── -->
+    <section id="tab-rota">
+      <div class="rota-head">
+        <div class="week-nav"><button type="button" class="icon-btn" id="rotaPrev" aria-label="Previous week"></button><h2 id="rotaWeek">This week</h2><button type="button" class="icon-btn" id="rotaNext" aria-label="Next week"></button></div>
+        <div class="toolbar-actions"><button type="button" class="g hidden" id="copyWeek">Copy last week</button><button type="button" class="b" id="publishRota">Publish week</button></div>
+      </div>
+      <p class="note" id="rotaStatus" aria-live="polite"></p>
+      <div class="day-tabs" id="rotaDays" role="group" aria-label="Day of the week"></div>
+      <h3 class="rota-day-title" id="rotaDayTitle"></h3>
+      <div id="rotaPeople"></div>
     </section>
 
     <!-- ── TIMESHEETS ─────────────────────── -->
@@ -325,9 +370,10 @@
     <section id="tab-reviews"><h2>Correction requests</h2><div class="bar"><select id="reviewFilter" aria-label="Request status"><option value="pending">Awaiting review</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="all">All requests</option></select><label class="filter-check"><input type="checkbox" id="boardAlerts" checked>In-app alerts</label><span class="notify-state" id="reviewUpdated"></span></div><div id="reviews" aria-live="polite"></div></section>
   </main>
 </div>
-<dialog id="settingsDialog" aria-labelledby="settingsTitle"><form id="settingsForm"><h2 id="settingsTitle">Company settings</h2><label class="field">Company name<input id="companyName" required maxlength="120"></label><label class="filter-check" id="payToggleWrap"><input type="checkbox" id="showPay">Show estimated pay</label><p class="note" id="payToggleNote">Staff see an estimate from their own hourly rate; managers see everyone's on Timesheets. Switch this on only once the data processing agreement is signed.</p><div id="settingsError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelSettings">Cancel</button><button class="b" id="saveSettings">Save changes</button></div></form></dialog>
+<dialog id="settingsDialog" aria-labelledby="settingsTitle"><form id="settingsForm"><h2 id="settingsTitle">Company settings</h2><label class="field">Company name<input id="companyName" required maxlength="120"></label><label class="filter-check" id="payToggleWrap"><input type="checkbox" id="showPay">Show estimated pay</label><p class="note" id="payToggleNote">Staff see an estimate from their own hourly rate; managers see everyone's on Timesheets. Switch this on only once the data processing agreement is signed.</p><label class="filter-check" id="rotaToggleWrap"><input type="checkbox" id="useRota">Use rota &amp; availability</label><p class="note" id="rotaToggleNote">Staff give their usual week and days off. You build and publish the rota on the Rota tab, and Now flags late starts and no-shows.</p><div id="settingsError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelSettings">Cancel</button><button class="b" id="saveSettings">Save changes</button></div></form></dialog>
 <dialog id="rateDialog" aria-labelledby="rateTitle"><form id="rateForm"><h2 id="rateTitle">Hourly rate</h2><p class="note" id="rateWho"></p><label class="field">Pounds per hour<input id="rateValue" type="number" inputmode="decimal" min="0" max="1000" step="0.01"></label><p class="note">Used only to estimate pay from completed hours. Clear it and save to remove the rate.</p><div id="rateError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelRate">Cancel</button><button class="b" id="saveRate">Save rate</button></div></form></dialog>
 
+<dialog id="rotaDialog" aria-labelledby="rotaTitle"><form id="rotaForm"><h2 id="rotaTitle">Add shift</h2><label class="field">Staff member<select id="rotaWho" required></select></label><label class="field">Date<input id="rotaDate" type="date" required></label><div class="time-pair"><label class="field">Start<input id="rotaStart" type="time" required></label><label class="field">Finish<input id="rotaEnd" type="time" required></label></div><p class="note" id="rotaHint"></p><label class="field">Worksite<select id="rotaSite"></select></label><label class="field">Note for staff (optional)<input id="rotaNote" maxlength="300"></label><div id="rotaWarn" class="warn-line hidden" role="status"></div><div id="rotaError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g hidden" id="deleteRota">Remove shift</button><button type="button" class="g" id="cancelRota">Cancel</button><button class="b" id="saveRota">Save shift</button></div></form></dialog>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 (function () {
@@ -341,6 +387,8 @@
   var REQUESTS = [], editingSite = null, requestsLoaded = false;
   var attentionIds = null;
   var PAY_ON = false, PAY_READY = false, RATES = {}, rateUser = null;
+  var USE_ROTA = false, ROTA_READY = false, ROTA_SHIFTS = [], AVAIL = {}, OFF = [], ROTA_WEEK = null, ROTA_DAY = null, rotaToken = 0;
+  var TODAY_ROTA = [], RECENT = [], editingRota = null, lastRota = { start: "06:00", end: "14:00", site: "" };
   // Icon shapes from Lucide (ISC licence, LUCIDE-LICENSE.txt), inlined so no icon library has to load.
   function icon(shapes) {
     return '<svg class="lucide" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + shapes + '</svg>';
@@ -353,6 +401,9 @@
     reviews: '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',
     csv: '<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>',
     printSheet: '<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/>',
+    rota: '<path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h5"/><path d="M17.5 17.5 16 16.3V14"/><circle cx="16" cy="16" r="6"/>',
+    prev: '<path d="m15 18-6-6 6-6"/>',
+    next: '<path d="m9 18 6-6-6-6"/>',
     settings: '<path d="M14 17H5"/><path d="M19 7h-9"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/>'
   };
   document.querySelectorAll('nav button').forEach(function(b){ b.insertAdjacentHTML('afterbegin', icon(ICONS[b.dataset.tab])); });
@@ -367,7 +418,7 @@
 
   function agoISO(h) { return new Date(Date.now() - h * 3600000).toISOString(); }
 
-  var DEMO_IDS = { "Sam Whitfield": "p1", "Marek Kowalski": "p2", "Danny Obi": "p3", "Priya Shah": "p4" };
+  var DEMO_IDS = { "Sam Whitfield": "p1", "Marek Kowalski": "p2", "Danny Obi": "p3", "Priya Shah": "p4", "Aisha Khan": "p6" };
   function demoSheetRow(name, daysAgo, inH, inM, outH, outM, ok) {
     var d = new Date(); d.setDate(d.getDate() - daysAgo);
     var a = new Date(d); a.setHours(inH, inM, 0, 0);
@@ -384,15 +435,16 @@
   var D = {
     company: "Example Logistics Ltd",
     showPay: true,
+    useRota: true, rota: [], avail: {}, off: [],
     rates: { p1: 12.5, p2: 12.5, p3: 12.21, p4: 15 },
     now: [
-      { shift_id: "n1", full_name: "Sam Whitfield", worksite: "Main yard",
+      { shift_id: "n1", user_id: "p1", full_name: "Sam Whitfield", worksite: "Main yard",
         clock_in_at: agoISO(3.4), clock_in_ok: true, clock_in_metres: 24, hours_so_far: 3.4 },
-      { shift_id: "n2", full_name: "Marek Kowalski", worksite: "Terminal drop-off",
+      { shift_id: "n2", user_id: "p2", full_name: "Marek Kowalski", worksite: "Terminal drop-off",
         clock_in_at: agoISO(5.1), clock_in_ok: true, clock_in_metres: 61, hours_so_far: 5.1 },
-      { shift_id: "n3", full_name: "Danny Obi", worksite: "Main yard",
+      { shift_id: "n3", user_id: "p3", full_name: "Danny Obi", worksite: "Main yard",
         clock_in_at: agoISO(1.2), clock_in_ok: false, clock_in_metres: 840, hours_so_far: 1.2 },
-      { shift_id: "n4", full_name: "Priya Shah", worksite: "Main yard",
+      { shift_id: "n4", user_id: "p4", full_name: "Priya Shah", worksite: "Main yard",
         clock_in_at: agoISO(14.6), clock_in_ok: true, clock_in_metres: 18, hours_so_far: 14.6 }
     ],
     staff: [
@@ -400,6 +452,7 @@
       { id: "p2", full_name: "Marek Kowalski", role: "staff", active: true,  created_at: agoISO(3100) },
       { id: "p3", full_name: "Danny Obi", role: "staff", active: true,  created_at: agoISO(900) },
       { id: "p4", full_name: "Priya Shah", role: "admin", active: true,  created_at: agoISO(5200) },
+      { id: "p6", full_name: "Aisha Khan", role: "staff", active: true,  created_at: agoISO(600) },
       { id: "p5", full_name: "Tomas Nagy", role: "staff", active: false, created_at: agoISO(7000) }
     ],
     sites: [
@@ -416,6 +469,47 @@
       demoSheetRow("Priya Shah", 3, 13, 55, 22, 2)
     ]
   };
+
+  // Demo rota: this week published, next week still in draft. Today's shifts
+  // line up with the demo board so its flags read sensibly: Aisha is late,
+  // Danny is working without a rota'd shift, and Marek has booked time off
+  // on days he's rota'd.
+  (function seedDemoRota() {
+    function key(n) { var d = new Date(); d.setDate(d.getDate() + n); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+    function week(p) { var o = {}; p.forEach(function (v, i) { o[i] = v === "any" || v === "off" ? { kind: v } : { kind: "between", start_time: v.slice(0, 5), end_time: v.slice(6) }; }); return o; }
+    D.avail = {
+      p1: week(["any", "any", "any", "any", "any", "06:00-14:00", "off"]),
+      p2: week(["any", "any", "any", "any", "any", "any", "off"]),
+      p3: week(["14:00-23:00", "14:00-23:00", "14:00-23:00", "14:00-23:00", "14:00-23:00", "off", "off"]),
+      p4: week(["any", "any", "any", "any", "any", "off", "off"])
+    };
+    D.off = [{ id: "o1", user_id: "p2", first_day: key(1), last_day: key(2), reason: "Family wedding" }];
+    var monday = new Date(); monday.setHours(0, 0, 0, 0); monday.setDate(monday.getDate() - (monday.getDay() + 6) % 7);
+    var todayIdx = (new Date().getDay() + 6) % 7, n = 0;
+    function add(user, a, b, site, published) {
+      var r = { id: "r" + (++n), user_id: user, worksite_id: site, starts_at: a.toISOString(), ends_at: b.toISOString(), note: "", removed: false,
+        published_starts_at: null, published_ends_at: null, published_worksite_id: null, published_note: null };
+      if (published) { r.published_starts_at = r.starts_at; r.published_ends_at = r.ends_at; r.published_worksite_id = site; r.published_note = ""; }
+      D.rota.push(r);
+    }
+    var plan = [["p1", 6, 14, "s1"], ["p2", 6, 14, "s2"], ["p3", 14, 22, "s1"], ["p4", 9, 17, "s1"], ["p6", 6, 14, "s2"]];
+    for (var w = 0; w < 2; w++) for (var d = 0; d < 6; d++) {
+      if (w === 0 && d === todayIdx) continue;
+      plan.forEach(function (p) {
+        if (d === 5 && p[0] !== "p1") return;
+        var a = new Date(monday); a.setDate(a.getDate() + w * 7 + d); a.setHours(p[1], 0, 0, 0);
+        var b = new Date(a); b.setHours(p[2], 0, 0, 0);
+        add(p[0], a, b, p[3], w === 0);
+      });
+    }
+    D.now.forEach(function (s) {
+      if (s.user_id === "p3") return;
+      var a = new Date(new Date(s.clock_in_at).getTime() - 5 * 60000); a.setSeconds(0, 0);
+      add(s.user_id, a, new Date(a.getTime() + 8 * 36e5), s.user_id === "p2" ? "s2" : "s1", true);
+    });
+    var late = new Date(Date.now() - 40 * 60000); late.setSeconds(0, 0);
+    add("p6", late, new Date(late.getTime() + 8 * 36e5), "s2", true);
+  })();
 
   var $ = function (id) { return document.getElementById(id); };
   var show = function (id, on) { $(id).classList.toggle("hidden", !on); };
@@ -478,6 +572,7 @@
   // Today's counts get their own query so they stay right whatever dates the
   // Timesheets tab is showing.
   async function loadNow() {
+    try { await loadRotaToday(); } catch (error) { toast(error.message); }
     var midnight = new Date(); midnight.setHours(0, 0, 0, 0);
     if (DEMO) {
       NOW = D.now;
@@ -533,10 +628,10 @@
   }
 
   // What actually needs a manager's attention, surfaced above the board.
-  function renderFlags() {
+  function renderFlags(quiet) {
     var ids=NOW.filter(needsAttention).map(function(s){return s.shift_id;});
-    if(attentionIds && $('boardAlerts').checked && ids.some(function(id){return !attentionIds.includes(id);}))toast('An attendance exception needs attention.');
-    attentionIds=ids;
+    if(!quiet && attentionIds && $('boardAlerts').checked && ids.some(function(id){return !attentionIds.includes(id);}))toast('An attendance exception needs attention.');
+    if(!quiet)attentionIds=ids;
     var out = [];
     NOW.forEach(function (s) {
       // 13h is past any legitimate shift — almost always a forgotten clock-out,
@@ -553,6 +648,7 @@
       }
       if (s.clock_in_ok == null) out.push('<div class="flag"><b>' + esc(s.full_name) + '</b> has no verified clock-in location.</div>');
     });
+    out = out.concat(rotaFlags());
     $("flags").innerHTML = out.join("");
   }
 
@@ -719,7 +815,7 @@
         return '<option value="' + p.id + '">' + esc(p.full_name) + "</option>";
       }).join("");
       if (STAFF.some(function(p) { return p.id === selected; })) $("who").value = selected;
-      renderStaff(); renderStats(); return;
+      renderStaff(); renderStats(); renderFlags(true); if (USE_ROTA && ROTA_WEEK) renderRota(); return;
     }
     var r = await sb.from("profiles").select("*").order("full_name");
     if (r.error) { toast(r.error.message); return; }
@@ -730,6 +826,8 @@
     if (STAFF.some(function(p) { return p.id === selected; })) $("who").value = selected;
     renderStaff();
     renderStats();
+    renderFlags(true);
+    if (USE_ROTA && ROTA_WEEK) renderRota();
   }
 
   function renderStaff() {
@@ -904,14 +1002,15 @@
     });
   }
   $('reviewFilter').addEventListener('change',renderReviews);
-  $('settings').addEventListener('click',function(){$('companyName').value=$('company').textContent;$('showPay').checked=PAY_ON;show('payToggleWrap',PAY_READY);show('payToggleNote',PAY_READY);show('settingsError',false);$('settingsDialog').showModal();});
+  $('settings').addEventListener('click',function(){$('companyName').value=$('company').textContent;$('showPay').checked=PAY_ON;show('payToggleWrap',PAY_READY);show('payToggleNote',PAY_READY);$('useRota').checked=USE_ROTA;show('rotaToggleWrap',ROTA_READY);show('rotaToggleNote',ROTA_READY);show('settingsError',false);$('settingsDialog').showModal();});
   $('cancelSettings').addEventListener('click',function(){$('settingsDialog').close();});
   $('settingsForm').addEventListener('submit',async function(e){
     e.preventDefault();var name=$('companyName').value.trim();if(!name)return;$('saveSettings').disabled=true;show('settingsError',false);
     try{
-      if(DEMO){D.company=name;D.showPay=$('showPay').checked;}
-      else{var values=PAY_READY?{name:name,show_pay:$('showPay').checked}:{name:name};var r=await sb.from('companies').update(values).eq('id',ME.company_id);if(r.error)throw r.error;}
+      if(DEMO){D.company=name;D.showPay=$('showPay').checked;D.useRota=$('useRota').checked;}
+      else{var values={name:name};if(PAY_READY)values.show_pay=$('showPay').checked;if(ROTA_READY)values.use_rota=$('useRota').checked;var r=await sb.from('companies').update(values).eq('id',ME.company_id);if(r.error)throw r.error;}
       PAY_ON=PAY_READY&&$('showPay').checked;
+      var rotaWas=USE_ROTA;USE_ROTA=ROTA_READY&&$('useRota').checked;applyRota();if(USE_ROTA!==rotaWas){loadNow();if(USE_ROTA)loadRotaWeek();}
       $('company').textContent=name;$('settingsDialog').close();toast('Settings saved');renderSheet();renderStaff();
     }catch(error){$('settingsError').textContent=error.message;show('settingsError',true);}
     finally{$('saveSettings').disabled=false;}
@@ -947,6 +1046,314 @@
     } catch (error) { $("rateError").textContent = error.message; show("rateError", true); }
     finally { $("saveRate").disabled = false; }
   });
+  // ── ROTA ─────────────────────────────────
+  // Optional for each company (companies.use_rota). ROTA_READY stays false
+  // until the rota SQL has been run, so the board keeps working without it.
+  async function loadRotaFlag() {
+    if (DEMO) { ROTA_READY = true; USE_ROTA = D.useRota; applyRota(); return; }
+    var co = await sb.from("companies").select("use_rota").eq("id", ME.company_id).maybeSingle();
+    ROTA_READY = !co.error;
+    USE_ROTA = !!(ROTA_READY && co.data && co.data.use_rota);
+    applyRota();
+  }
+  function applyRota() {
+    show("navRota", USE_ROTA);
+    if (!USE_ROTA && $("tab-rota").classList.contains("on")) document.querySelector('nav button[data-tab="now"]').click();
+  }
+
+  function weekStart(d) { var x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return x; }
+  function addDays(d, n) { var x = new Date(d); x.setDate(x.getDate() + n); return x; }
+  function siteLabel(id) { var w = SITES.find(function (s) { return s.id === id; }); return w ? w.name : ""; }
+  function staffName(id) { var p = STAFF.find(function (x) { return x.id === id; }); return p ? p.full_name : "A staff member"; }
+
+  async function loadRotaWeek() {
+    if (!USE_ROTA) return;
+    if (!ROTA_WEEK) ROTA_WEEK = weekStart(new Date());
+    if (ROTA_DAY === null) ROTA_DAY = (new Date().getDay() + 6) % 7;
+    var from = ROTA_WEEK, to = addDays(ROTA_WEEK, 7), token = ++rotaToken;
+    if (DEMO) {
+      ROTA_SHIFTS = D.rota.filter(function (s) { var t = new Date(s.starts_at); return t >= from && t < to; })
+        .sort(function (a, b) { return new Date(a.starts_at) - new Date(b.starts_at); });
+      AVAIL = D.avail; OFF = D.off; renderRota(); return;
+    }
+    var res = await Promise.all([
+      sb.from("rota_shifts").select("*").gte("starts_at", from.toISOString()).lt("starts_at", to.toISOString()).order("starts_at"),
+      sb.from("availability").select("*"),
+      sb.from("time_off").select("*").lte("first_day", localDay(addDays(to, -1))).gte("last_day", localDay(from))
+    ]);
+    if (token !== rotaToken) return;
+    var err = res[0].error || res[1].error || res[2].error;
+    if (err) { toast(err.message); return; }
+    ROTA_SHIFTS = res[0].data || [];
+    AVAIL = {};
+    (res[1].data || []).forEach(function (a) { (AVAIL[a.user_id] = AVAIL[a.user_id] || {})[a.weekday] = a; });
+    OFF = res[2].data || [];
+    renderRota();
+  }
+
+  // draft = never published, changed = edited since publishing,
+  // removed = deleted but staff still see it until the next publish.
+  function rotaState(s) {
+    if (s.removed) return "removed";
+    if (!s.published_starts_at) return "draft";
+    var same = function (a, b) { return +new Date(a) === +new Date(b); };
+    if (!same(s.published_starts_at, s.starts_at) || !same(s.published_ends_at, s.ends_at) ||
+        (s.published_worksite_id || null) !== (s.worksite_id || null) || (s.published_note || "") !== (s.note || "")) return "changed";
+    return "published";
+  }
+
+  function availFor(uid, day) {
+    var key = localDay(day);
+    var off = OFF.find(function (o) { return o.user_id === uid && o.first_day <= key && o.last_day >= key; });
+    if (off) return { no: true, text: "Day off" + (off.reason ? ": " + off.reason : "") };
+    var a = (AVAIL[uid] || {})[(day.getDay() + 6) % 7];
+    if (!a) return { text: "No availability given" };
+    if (a.kind === "off") return { no: true, text: "Not available" };
+    if (a.kind === "between") return { text: "Available " + String(a.start_time).slice(0, 5) + "–" + String(a.end_time).slice(0, 5), from: String(a.start_time).slice(0, 5), to: String(a.end_time).slice(0, 5) };
+    return { text: "Available all day" };
+  }
+
+  function renderRota() {
+    if (!ROTA_WEEK) return;
+    var days = [0, 1, 2, 3, 4, 5, 6].map(function (i) { return addDays(ROTA_WEEK, i); });
+    var short = function (d) { return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" }); };
+    $("rotaWeek").textContent = short(days[0]) + " – " + short(days[6]);
+    var changes = ROTA_SHIFTS.filter(function (s) { return rotaState(s) !== "published"; }).length;
+    $("publishRota").disabled = !changes;
+    $("publishRota").textContent = changes ? "Publish week (" + changes + ")" : ROTA_SHIFTS.length ? "Week published" : "Publish week";
+    $("rotaStatus").textContent = !ROTA_SHIFTS.length ? "No shifts this week yet."
+      : changes ? changes + (changes === 1 ? " change" : " changes") + " staff can't see yet. Publish the week when it's ready."
+      : "Staff can see everything on this week's rota.";
+    $("rotaStatus").className = "note" + (changes ? " changes" : "");
+    show("copyWeek", !ROTA_SHIFTS.length);
+    $("rotaDays").innerHTML = days.map(function (d, i) {
+      var n = ROTA_SHIFTS.filter(function (s) { return !s.removed && localDay(s.starts_at) === localDay(d); }).length;
+      return '<button type="button" class="day-tab' + (i === ROTA_DAY ? " on" : "") + '" data-rotaday="' + i + '" aria-pressed="' + (i === ROTA_DAY) +
+        '" aria-label="' + esc(d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })) + ", " + n + (n === 1 ? " shift" : " shifts") + '">' +
+        '<span aria-hidden="true">' + d.toLocaleDateString("en-GB", { weekday: "short" }) + '</span><strong class="num" aria-hidden="true">' + d.getDate() +
+        '</strong><span class="num" aria-hidden="true">' + (n || "–") + "</span></button>";
+    }).join("");
+    var day = days[ROTA_DAY], key = localDay(day);
+    $("rotaDayTitle").textContent = day.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+    var people = STAFF.filter(function (p) { return p.active || ROTA_SHIFTS.some(function (s) { return s.user_id === p.id && localDay(s.starts_at) === key; }); });
+    $("rotaPeople").innerHTML = people.length ? people.map(function (p) {
+      var mine = ROTA_SHIFTS.filter(function (s) { return s.user_id === p.id && localDay(s.starts_at) === key; });
+      var av = availFor(p.id, day);
+      return '<div class="rota-person"><div class="rota-who"><div class="name"><span class="av">' + esc(initials(p.full_name)) + "</span>" + esc(p.full_name) +
+        '</div><div class="avail' + (av.no ? " no" : "") + '">' + esc(av.text) + '</div></div><div class="rota-shifts">' +
+        mine.map(function (s) {
+          var st = rotaState(s), site = siteLabel(s.worksite_id);
+          return '<button type="button" class="rota-shift ' + st + '" data-rotaedit="' + esc(s.id) + '"><span class="num">' + hhmm(s.starts_at) + "–" + hhmm(s.ends_at) + "</span>" +
+            (site ? "<span>" + esc(site) + "</span>" : "") + "<em>" + { draft: "Draft", changed: "Changed", removed: "Removed", published: "Published" }[st] + "</em></button>";
+        }).join("") +
+        (p.active ? '<button type="button" class="g sm" data-rotaadd="' + esc(p.id) + '">Add shift</button>' : "") + "</div></div>";
+    }).join("") : '<div class="empty">No active staff yet.</div>';
+  }
+
+  function openRota(uid, id) {
+    var s = id ? ROTA_SHIFTS.find(function (x) { return x.id === id; }) : null;
+    if (s && s.removed) { restoreRota(s); return; }
+    editingRota = s;
+    $("rotaTitle").textContent = s ? "Edit shift" : "Add shift";
+    $("rotaWho").innerHTML = STAFF.filter(function (p) { return p.active || (s && p.id === s.user_id); }).map(function (p) {
+      return '<option value="' + esc(p.id) + '">' + esc(p.full_name) + "</option>";
+    }).join("");
+    $("rotaWho").value = s ? s.user_id : uid;
+    $("rotaWho").disabled = !!s;
+    $("rotaSite").innerHTML = '<option value="">No worksite</option>' + SITES.map(function (w) { return '<option value="' + esc(w.id) + '">' + esc(w.name) + "</option>"; }).join("");
+    if (s) {
+      $("rotaDate").value = localDay(s.starts_at); $("rotaStart").value = hhmm(s.starts_at); $("rotaEnd").value = hhmm(s.ends_at);
+      $("rotaSite").value = s.worksite_id || ""; $("rotaNote").value = s.note || "";
+    } else {
+      $("rotaDate").value = localDay(addDays(ROTA_WEEK, ROTA_DAY)); $("rotaStart").value = lastRota.start; $("rotaEnd").value = lastRota.end;
+      $("rotaSite").value = SITES.some(function (w) { return w.id === lastRota.site; }) ? lastRota.site : (SITES[0] ? SITES[0].id : "");
+      $("rotaNote").value = "";
+    }
+    show("deleteRota", !!s); show("rotaError", false);
+    updateRotaHint();
+    $("rotaDialog").showModal();
+  }
+  function rotaTimes() {
+    var date = $("rotaDate").value, a = $("rotaStart").value, b = $("rotaEnd").value;
+    if (!date || !a || !b) return null;
+    var start = new Date(date + "T" + a), end = new Date(date + "T" + b);
+    if (end <= start) end.setDate(end.getDate() + 1);   // finishes after midnight
+    return { start: start, end: end };
+  }
+  // Warn, don't block: the manager may have agreed something the app can't know.
+  function updateRotaHint() {
+    var t = rotaTimes();
+    $("rotaHint").textContent = t ? hrs((t.end - t.start) / 36e5) + (localDay(t.end) !== localDay(t.start) ? ", finishing the next day" : "") : "";
+    var warn = [];
+    if (t) {
+      var uid = $("rotaWho").value, day = new Date(t.start); day.setHours(0, 0, 0, 0);
+      var av = availFor(uid, day);
+      if (av.no) warn.push(av.text + " on this day.");
+      if (av.from && av.from < av.to && (hhmm(t.start) < av.from || hhmm(t.end) > av.to || localDay(t.end) !== localDay(t.start))) warn.push("Outside their availability (" + av.from + "–" + av.to + ").");
+      if (ROTA_SHIFTS.some(function (s) { return s !== editingRota && !s.removed && s.user_id === uid && new Date(s.starts_at) < t.end && new Date(s.ends_at) > t.start; })) warn.push("Overlaps another shift for this person.");
+    }
+    $("rotaWarn").textContent = warn.join(" ");
+    show("rotaWarn", warn.length > 0);
+  }
+
+  function restoreRota(s) {
+    if (!confirm("Put this shift back on the rota?")) return;
+    return withLock(async function () {
+      if (DEMO) s.removed = false;
+      else { var r = await sb.from("rota_shifts").update({ removed: false, updated_at: new Date().toISOString() }).eq("id", s.id); if (r.error) throw r.error; }
+      toast("Shift restored"); await loadRotaWeek();
+    });
+  }
+
+  function publishRota() {
+    return withLock(async function () {
+      var from = ROTA_WEEK, to = addDays(ROTA_WEEK, 7);
+      if (DEMO) {
+        D.rota = D.rota.filter(function (s) { var t = new Date(s.published_starts_at || s.starts_at); return !(s.removed && t >= from && t < to); });
+        D.rota.forEach(function (s) {
+          var t = new Date(s.starts_at);
+          if (!s.removed && t >= from && t < to) { s.published_starts_at = s.starts_at; s.published_ends_at = s.ends_at; s.published_worksite_id = s.worksite_id; s.published_note = s.note; }
+        });
+      } else {
+        var r = await sb.rpc("publish_rota", { p_from: from.toISOString(), p_to: to.toISOString() });
+        if (r.error) throw r.error;
+      }
+      toast("Rota published. Staff can see this week.");
+      await loadRotaWeek(); await loadNow();
+    });
+  }
+
+  function copyWeek() {
+    return withLock(async function () {
+      var prev = addDays(ROTA_WEEK, -7), src;
+      if (DEMO) src = D.rota.filter(function (s) { var t = new Date(s.starts_at); return !s.removed && t >= prev && t < ROTA_WEEK; });
+      else {
+        var r = await sb.from("rota_shifts").select("user_id, worksite_id, starts_at, ends_at, note").eq("removed", false)
+          .gte("starts_at", prev.toISOString()).lt("starts_at", ROTA_WEEK.toISOString());
+        if (r.error) throw r.error;
+        src = r.data || [];
+      }
+      var rows = src.filter(function (s) { return STAFF.some(function (p) { return p.id === s.user_id && p.active; }); }).map(function (s) {
+        var a = new Date(s.starts_at), b = new Date(s.ends_at);
+        a.setDate(a.getDate() + 7); b.setDate(b.getDate() + 7);   // same wall-clock times, even across a clock change
+        return { user_id: s.user_id, worksite_id: s.worksite_id, starts_at: a.toISOString(), ends_at: b.toISOString(), note: s.note || "" };
+      });
+      if (!rows.length) { toast("Last week has no shifts to copy."); return; }
+      if (DEMO) rows.forEach(function (x, i) { D.rota.push(Object.assign({ id: "c" + Date.now() + i, removed: false, published_starts_at: null, published_ends_at: null, published_worksite_id: null, published_note: null }, x)); });
+      else {
+        var ins = await sb.from("rota_shifts").insert(rows.map(function (x) { return Object.assign({ company_id: ME.company_id }, x); }));
+        if (ins.error) throw ins.error;
+      }
+      toast(rows.length + (rows.length === 1 ? " shift" : " shifts") + " copied as drafts");
+      await loadRotaWeek();
+    });
+  }
+
+  // Published shifts from the last day or so, and clock-ins to match them against.
+  async function loadRotaToday() {
+    if (!USE_ROTA) { TODAY_ROTA = []; RECENT = []; return; }
+    var since = new Date(Date.now() - 30 * 36e5), until = new Date(Date.now() + 2 * 36e5);
+    if (DEMO) {
+      TODAY_ROTA = D.rota.filter(function (r) { var t = r.published_starts_at && new Date(r.published_starts_at); return t && !r.removed && t >= since && t <= until; });
+      RECENT = D.now.map(function (s) { return { user_id: s.user_id, clock_in_at: s.clock_in_at, clock_out_at: null }; }).concat(D.sheet);
+      return;
+    }
+    var res = await Promise.all([
+      sb.from("rota_shifts").select("id, user_id, published_starts_at, published_ends_at, published_worksite_id").eq("removed", false)
+        .gte("published_starts_at", since.toISOString()).lte("published_starts_at", until.toISOString()),
+      sb.from("shifts").select("user_id, clock_in_at, clock_out_at").gte("clock_in_at", new Date(Date.now() - 32 * 36e5).toISOString())
+    ]);
+    var err = res[0].error || res[1].error;
+    if (err) throw err;
+    TODAY_ROTA = res[0].data || [];
+    RECENT = res[1].data || [];
+  }
+
+  // Rota against reality: people who should be here and aren't, and people
+  // working a shift nobody put on the rota.
+  function rotaFlags() {
+    if (!USE_ROTA) return [];
+    var now = Date.now(), out = [];
+    TODAY_ROTA.forEach(function (r) {
+      var start = +new Date(r.published_starts_at), end = +new Date(r.published_ends_at);
+      if (now < start + 10 * 60000 || now > end + 12 * 36e5) return;
+      var came = RECENT.some(function (s) { var t = +new Date(s.clock_in_at); return s.user_id === r.user_id && t >= start - 2 * 36e5 && t <= end; });
+      if (came) return;
+      var site = siteLabel(r.published_worksite_id);
+      out.push('<div class="flag"><b>' + esc(staffName(r.user_id)) + "</b> " +
+        (now < end ? "hasn't clocked in. Their shift started at " + hhmm(r.published_starts_at)
+                   : "didn't clock in for their " + hhmm(r.published_starts_at) + "–" + hhmm(r.published_ends_at) + " shift") +
+        (site ? " at " + esc(site) : "") + ".</div>");
+    });
+    NOW.forEach(function (s) {
+      var t = +new Date(s.clock_in_at);
+      var planned = TODAY_ROTA.some(function (r) { return r.user_id === s.user_id && t >= +new Date(r.published_starts_at) - 2 * 36e5 && t <= +new Date(r.published_ends_at); });
+      if (!planned) out.push('<div class="flag"><b>' + esc(s.full_name) + "</b> is working but isn't on the rota.</div>");
+    });
+    return out;
+  }
+
+  $("rotaPrev").innerHTML = icon(ICONS.prev);
+  $("rotaNext").innerHTML = icon(ICONS.next);
+  $("rotaPrev").addEventListener("click", function () { ROTA_WEEK = addDays(ROTA_WEEK, -7); loadRotaWeek(); });
+  $("rotaNext").addEventListener("click", function () { ROTA_WEEK = addDays(ROTA_WEEK, 7); loadRotaWeek(); });
+  $("rotaDays").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-rotaday]"); if (!b) return;
+    ROTA_DAY = Number(b.dataset.rotaday); renderRota();
+    $("rotaDays").querySelector('[data-rotaday="' + ROTA_DAY + '"]').focus();
+  });
+  $("rotaPeople").addEventListener("click", function (e) {
+    var add = e.target.closest("[data-rotaadd]"), edit = e.target.closest("[data-rotaedit]");
+    if (add) openRota(add.dataset.rotaadd, null);
+    if (edit) openRota(null, edit.dataset.rotaedit);
+  });
+  $("publishRota").addEventListener("click", publishRota);
+  $("copyWeek").addEventListener("click", copyWeek);
+  $("cancelRota").addEventListener("click", function () { $("rotaDialog").close(); });
+  ["rotaWho", "rotaDate", "rotaStart", "rotaEnd"].forEach(function (id) { $(id).addEventListener("input", updateRotaHint); $(id).addEventListener("change", updateRotaHint); });
+  $("rotaForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var t = rotaTimes(); show("rotaError", false);
+    if (!t) return;
+    if (t.end - t.start > 16 * 36e5) { $("rotaError").textContent = "A shift can be at most 16 hours."; show("rotaError", true); return; }
+    var values = { user_id: $("rotaWho").value, worksite_id: $("rotaSite").value || null, starts_at: t.start.toISOString(), ends_at: t.end.toISOString(), note: $("rotaNote").value.trim(), updated_at: new Date().toISOString() };
+    lastRota = { start: $("rotaStart").value, end: $("rotaEnd").value, site: values.worksite_id };
+    $("saveRota").disabled = true;
+    try {
+      if (DEMO) {
+        if (editingRota) Object.assign(editingRota, values);
+        else D.rota.push(Object.assign({ id: "r" + Date.now(), removed: false, published_starts_at: null, published_ends_at: null, published_worksite_id: null, published_note: null }, values));
+      } else {
+        var r;
+        if (editingRota) { delete values.user_id; r = await sb.from("rota_shifts").update(values).eq("id", editingRota.id); }
+        else r = await sb.from("rota_shifts").insert(Object.assign({ company_id: ME.company_id }, values));
+        if (r.error) throw r.error;
+      }
+      $("rotaDialog").close();
+      toast(editingRota ? "Shift updated" : "Shift added");
+      var day = new Date(t.start); day.setHours(0, 0, 0, 0);
+      ROTA_WEEK = weekStart(day); ROTA_DAY = (day.getDay() + 6) % 7;
+      await loadRotaWeek();
+    } catch (error) { $("rotaError").textContent = error.message; show("rotaError", true); }
+    finally { $("saveRota").disabled = false; }
+  });
+  $("deleteRota").addEventListener("click", async function () {
+    var s = editingRota;
+    if (!s || !confirm("Remove this shift?")) return;
+    try {
+      if (DEMO) { if (s.published_starts_at) s.removed = true; else D.rota = D.rota.filter(function (x) { return x !== s; }); }
+      else {
+        var r = s.published_starts_at
+          ? await sb.from("rota_shifts").update({ removed: true, updated_at: new Date().toISOString() }).eq("id", s.id)
+          : await sb.from("rota_shifts").delete().eq("id", s.id);
+        if (r.error) throw r.error;
+      }
+      $("rotaDialog").close();
+      toast(s.published_starts_at ? "Shift removed. Publish the week to tell staff." : "Shift removed");
+      await loadRotaWeek();
+    } catch (error) { $("rotaError").textContent = error.message; show("rotaError", true); }
+  });
+
   if('serviceWorker' in navigator && location.protocol==='https:' && !DEMO)navigator.serviceWorker.register('/sw.js').catch(function(error){toast(error.message);});
 
   // ── boot ─────────────────────────────────
@@ -957,7 +1364,7 @@
       $("from").value = localDay(new Date(Date.now() - 6 * 864e5));
       $("to").value   = localDay(new Date());
       show("login", false); show("app", true); show("demoBar", true);
-      loadPay(); loadNow(); loadStaff(); loadSites(); runSheet(); loadReviews();
+      loadRotaFlag(); loadPay(); loadNow(); loadStaff(); loadSites(); runSheet(); loadReviews();
       clearInterval(poll);
       poll = setInterval(function(){loadNow();loadReviews();}, 30000);
       return;
@@ -985,6 +1392,7 @@
 
     show("login", false); show("app", true);
 
+    await loadRotaFlag();
     await Promise.all([loadPay(), loadNow(), loadStaff(), loadSites(), loadReviews()]);
     await runSheet();
     renderStaff();
@@ -996,6 +1404,7 @@
   function signedOut() {
     ME = null; REQUESTS=[];requestsLoaded=false;attentionIds=null;clearInterval(poll);
     PAY_ON=false;PAY_READY=false;RATES={};
+    USE_ROTA=false;ROTA_READY=false;ROTA_SHIFTS=[];AVAIL={};OFF=[];ROTA_WEEK=null;ROTA_DAY=null;TODAY_ROTA=[];RECENT=[];
     show("app", false); show("login", true);
   }
 
@@ -1016,8 +1425,9 @@
       document.querySelectorAll("section").forEach(function (x) { x.classList.remove("on"); });
       b.classList.add("on");
       $("tab-" + b.dataset.tab).classList.add("on");
-      $("pageTitle").textContent = {now:"Attendance overview",sheets:"Timesheets",staff:"Your team",sites:"Worksites",reviews:"Review & activity"}[b.dataset.tab];
+      $("pageTitle").textContent = {now:"Attendance overview",rota:"Rota",sheets:"Timesheets",staff:"Your team",sites:"Worksites",reviews:"Review & activity"}[b.dataset.tab];
       if(b.dataset.tab==='reviews') loadReviews();
+      if(b.dataset.tab==='rota') loadRotaWeek();
       if(b.dataset.tab==='sites') previewSite();
       document.querySelectorAll("nav button").forEach(function(x) { x.setAttribute("aria-current", x === b ? "page" : "false"); });
     });
@@ -1075,7 +1485,7 @@
   $("boardDate").textContent = new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});
   $("refresh").addEventListener("click", async function() {
     var button = $("refresh"); button.disabled = true; button.textContent = "Refreshing...";
-    try { await Promise.all([loadPay(),loadNow(),loadStaff(),loadSites(),loadReviews()]); await runSheet(); renderStaff(); }
+    try { await loadRotaFlag(); await Promise.all([loadPay(),loadNow(),loadStaff(),loadSites(),loadReviews()]); await runSheet(); renderStaff(); if (USE_ROTA && ROTA_WEEK) await loadRotaWeek(); }
     catch(error) { toast(error.message); }
     finally { button.disabled = false; button.textContent = "Refresh"; }
   });

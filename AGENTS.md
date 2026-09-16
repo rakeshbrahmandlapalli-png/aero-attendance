@@ -23,6 +23,7 @@ see who is on shift, exceptions, timesheets, staff and worksites.
 index.html            staff app: sign in, clock in/out, site map, shift history
 admin.html            manager board: on shift now, stats, flags, timesheets, CSV, staff, sites
 setup/schema.sql      the whole database: tables, row-level security, clock_in/clock_out
+setup/rota-and-availability.sql  the rota block on its own (already inside schema.sql)
 setup/SETUP-GUIDE.txt  step-by-step Supabase setup for the owner
 .vercelignore         keeps setup/ and .env* OFF the public website — do not remove
 ```
@@ -88,6 +89,10 @@ Staff app structure — keep it:
   months), totals for hours, shifts and days worked, estimated pay when the
   company has it on, and every shift (tap one to request a correction).
   Activity and Account are the other bottom tabs.
+- **Rota** (optional, only when `companies.use_rota` is on): Home gets a
+  "Next shift" section under the navy block, and a Rota tab appears after
+  Home with the person's published shifts, their usual week (Available /
+  Available between / Not available per weekday) and their days off.
 - **Clock screen**: a separate full-screen view opened from Home. Full map
   with back button and today's hours, position against the site zone, and a
   bottom sheet with the worksite (picked automatically from GPS: the site
@@ -161,6 +166,33 @@ Staff app structure — keep it:
   and manager demos at phone width. Check 360/390/430px and desktop for
   overflow, all navigation, forms, dialog errors, and the Clock screen.
   Calculate WCAG contrast ratios for text/background pairs.
+
+## Rota & availability
+
+Optional for each company, off by default (`companies.use_rota`, switched in
+Company settings). Pages treat a failed `use_rota` query as "rota off", so
+they keep working before the rota SQL has been run.
+
+- Staff keep a usual week (`availability`, one row per weekday, 0 = Monday)
+  and book days off (`time_off`). They write only their own rows; managers
+  read them while planning.
+- Managers draft shifts in `rota_shifts` (starts_at, ends_at, worksite_id,
+  note). **Staff only see the published copy** (`published_*` columns), which
+  `publish_rota(from, to)` copies across for one week. Never let staff read
+  drafts. Deleting a published shift sets `removed`, so staff keep seeing it
+  until the next publish; a never-published draft is deleted outright.
+- The manager's Rota tab: week arrows, Mon–Sun day tabs, every active person
+  with that day's availability and shifts (Draft / Changed / Published /
+  Removed), Add shift, Copy last week (as drafts), Publish week. Availability,
+  days off and overlaps are warnings in the shift dialog, never blocks.
+- A finish time earlier than the start means the shift ends the next day.
+  Shifts are at most 16 hours.
+- Now flags, from published shifts only: not clocked in 10+ minutes after the
+  start, no clock-in for a shift that has ended (for 12 hours afterwards), and
+  anyone on shift with no rota'd shift around their clock-in (from 2 hours
+  before the start to the finish).
+- Clock-in itself is unchanged by the rota: nobody is ever blocked from
+  clocking in because they are not on it.
 
 ## Not in version 1 — do not add without the owner asking
 

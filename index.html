@@ -95,7 +95,7 @@
   .top .co{margin-top:0;}
   .signout{width:100%;margin-top:var(--s6);}
   .wrap{display:block;max-width:560px;margin:0 auto;padding:0 0 calc(80px + env(safe-area-inset-bottom));}
-  #staff-sheet,#staff-inbox,#staff-account{margin-top:var(--s2);}
+  #staff-rota,#staff-sheet,#staff-inbox,#staff-account{margin-top:var(--s2);}
   .wrap section,#staff-inbox,#staff-account{padding:var(--s4);background:var(--card);}
   .wrap section+section{margin-top:var(--s2);}
   .section-head{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);margin-bottom:var(--s3);}
@@ -210,8 +210,25 @@
   .check{display:flex;align-items:center;gap:var(--s3);min-height:48px;margin-top:var(--s4);}
   #staff-inbox .note{padding:var(--s6) 0;}
 
+  /* rota & availability */
+  .rota-row{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3);padding:var(--s3) 0;border-bottom:1px solid var(--line-soft);}
+  .rota-row:last-child{border-bottom:0;}
+  .rota-row>div:first-child{min-width:0;}
+  .rota-row .d{font-weight:500;}
+  .rota-row .t,.rota-row .shift-note{margin-top:var(--s1);font-size:var(--t1);color:var(--ink-2);overflow-wrap:anywhere;}
+  .rota-row .h{font-weight:500;white-space:nowrap;}
+  .rota-row .link{min-height:44px;padding:0 var(--s1);}
+  #nextShift .rota-row{padding:0;}
+  .section-head .link{min-height:44px;padding:0 var(--s1);color:var(--accent);font-weight:500;}
+  .avail-row{display:grid;grid-template-columns:104px minmax(0,1fr);align-items:center;gap:var(--s2) var(--s3);padding:var(--s3) 0;border-bottom:1px solid var(--line-soft);}
+  .avail-day{color:var(--ink);font-weight:500;}
+  .avail-times{grid-column:2;display:flex;align-items:center;gap:var(--s2);}
+  .avail-times input{flex:1;}
+  .avail-times span{font-size:var(--t1);color:var(--ink-2);}
+  #saveAvail{width:100%;margin-top:var(--s4);}
+
   /* bottom tabs */
-  .staff-nav{position:fixed;z-index:20;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:0 max(var(--s2),calc((100vw - 560px) / 2)) env(safe-area-inset-bottom);background:var(--card);border-top:1px solid var(--line);}
+  .staff-nav{position:fixed;z-index:20;left:0;right:0;bottom:0;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);padding:0 max(var(--s2),calc((100vw - 560px) / 2)) env(safe-area-inset-bottom);background:var(--card);border-top:1px solid var(--line);}
   .staff-nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;border:0;background:none;color:var(--ink-2);font-size:var(--t1);font-weight:400;}
   .staff-nav button .lucide{width:22px;height:22px;}
   .staff-nav button{position:relative;}
@@ -296,11 +313,21 @@
           <p class="note" id="locNote"></p>
         </section>
 
+        <section id="nextShift" class="hidden" aria-labelledby="nextTitle">
+          <div class="section-head"><h2 id="nextTitle">Next shift</h2></div>
+          <div id="nextShiftBody"></div>
+        </section>
+
         <section aria-labelledby="weekTitle">
           <div class="section-head"><h2 id="weekTitle">This week</h2><strong class="num" id="weekHours">0h 00m</strong></div>
           <div class="bars" id="weekBars" role="group" aria-label="Hours this week. Choose a day to see its shifts."></div>
           <div class="day-detail" id="dayDetail" aria-live="polite"></div>
         </section>
+      </div>
+      <div id="staff-rota" class="hidden" role="tabpanel" aria-labelledby="nav-rota">
+        <section aria-labelledby="rotaTitle"><div class="section-head"><h2 id="rotaTitle">Your shifts</h2></div><div id="rotaList"></div></section>
+        <section aria-labelledby="availTitle"><div class="section-head"><h2 id="availTitle">Your usual week</h2></div><div id="availRows"></div><button type="button" class="btn" id="saveAvail">Save availability</button></section>
+        <section aria-labelledby="offTitleHead"><div class="section-head"><h2 id="offTitleHead">Days off</h2><button type="button" class="link" id="addOff">Add days off</button></div><div id="offList"></div></section>
       </div>
       <div id="staff-sheet" class="hidden" role="tabpanel" aria-labelledby="nav-sheet">
         <section>
@@ -318,7 +345,7 @@
       <div id="staff-account" class="hidden" role="tabpanel" aria-labelledby="nav-account"><div class="section-head"><h2>Your account</h2></div><div class="account-row"><span>Name</span><strong id="accountName"></strong></div><div class="account-row"><span>Company</span><strong id="accountCompany"></strong></div><label class="check"><input type="checkbox" id="shiftReminder" checked>Show long-shift reminders while the app is open</label><div class="account-row"><span>Location</span><strong>Clock-in and clock-out only</strong></div><button class="btn hidden" id="installApp">Install Aero</button><p class="note" id="installStatus"></p><button class="btn g signout" id="signout">Sign out</button></div>
     </main>
 
-    <nav class="staff-nav" aria-label="Staff views"><button id="nav-work" aria-controls="staff-work" aria-selected="true" data-view="work"><span>Home</span></button><button id="nav-sheet" aria-controls="staff-sheet" aria-selected="false" data-view="sheet"><span>Timesheet</span></button><button id="nav-inbox" aria-controls="staff-inbox" aria-selected="false" data-view="inbox"><span>Activity <span class="num" id="inboxCount"></span></span></button><button id="nav-account" aria-controls="staff-account" aria-selected="false" data-view="account"><span>Account</span></button></nav>
+    <nav class="staff-nav" aria-label="Staff views"><button id="nav-work" aria-controls="staff-work" aria-selected="true" data-view="work"><span>Home</span></button><button id="nav-rota" class="hidden" aria-controls="staff-rota" aria-selected="false" data-view="rota"><span>Rota</span></button><button id="nav-sheet" aria-controls="staff-sheet" aria-selected="false" data-view="sheet"><span>Timesheet</span></button><button id="nav-inbox" aria-controls="staff-inbox" aria-selected="false" data-view="inbox"><span>Activity <span class="num" id="inboxCount"></span></span></button><button id="nav-account" aria-controls="staff-account" aria-selected="false" data-view="account"><span>Account</span></button></nav>
   </div>
 
   <section id="clock" class="clock hidden" aria-labelledby="clockTitle">
@@ -341,6 +368,8 @@
 </div>
 <dialog id="correctionDialog" aria-labelledby="correctionTitle"><form id="correctionForm"><h2 id="correctionTitle">Request a correction</h2><p class="note" id="correctionOriginal"></p><label for="correctIn">Start</label><input id="correctIn" type="datetime-local" required><label for="correctOut">End</label><input id="correctOut" type="datetime-local" required><label for="correctReason">Reason</label><textarea id="correctReason" maxlength="1000" required></textarea><div class="err hidden" id="correctionError" role="alert"></div><div class="dialog-actions"><button type="button" class="link" id="cancelCorrection">Cancel</button><button class="btn" id="submitCorrection">Send request</button></div></form></dialog>
 
+<dialog id="offDialog" aria-labelledby="offTitle"><form id="offForm"><h2 id="offTitle">Add days off</h2><p class="note">Your manager sees these when making the rota.</p><label for="offFrom">First day</label><input id="offFrom" type="date" required><label for="offTo">Last day</label><input id="offTo" type="date" required><label for="offReason">Reason (optional)</label><input id="offReason" maxlength="200"><div class="err hidden" id="offError" role="alert"></div><div class="dialog-actions"><button type="button" class="link" id="cancelOff">Cancel</button><button class="btn" id="saveOff">Add days off</button></div></form></dialog>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 (function () {
@@ -355,6 +384,7 @@
   var MONTH_ROWS = [], SHEET_MONTH = null, monthToken = 0, PAY = { on: false, rate: null };
   var SELECTED_DAY = null, WEEK_SHIFTS = [], WEEK_START = null, siteChosen = false;
   var REQUESTS = [], correctionShift = null, correctionBusy = false, activityBusy = false;
+  var ROTA = { on: false, shifts: [], avail: {}, off: [] }, availDirty = false, offBusy = false;
   // Icon shapes from Lucide (ISC licence, LUCIDE-LICENSE.txt), inlined so no icon library has to load.
   function icon(shapes) {
     return '<svg class="lucide" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + shapes + '</svg>';
@@ -369,7 +399,8 @@
     sheet: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/>',
     pin: '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
     inbox: '<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>',
-    account: '<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>'
+    account: '<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>',
+    rota: '<path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h5"/><path d="M17.5 17.5 16 16.3V14"/><circle cx="16" cy="16" r="6"/>'
   };
   document.querySelectorAll('[data-view]').forEach(function(b){ b.insertAdjacentHTML('afterbegin', icon(ICONS[b.dataset.view])); });
   function esc(v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function(c) { return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
@@ -424,6 +455,21 @@
     if (demoDay.getDay() === 0 || demoDay.getDay() === 6) continue;
     D.history.push(demoShift(ago, 6, (ago * 7) % 10, 14, (ago * 13) % 20));
   }
+
+  // Demo rota for Sam: published shifts over the next week, a usual week and
+  // one booked holiday.
+  function demoRota(daysAhead, inH, outH, site, note) {
+    var a = new Date(); a.setDate(a.getDate() + daysAhead); a.setHours(inH, 0, 0, 0);
+    var b = new Date(a); b.setHours(outH, 0, 0, 0);
+    return { id: "rota-" + daysAhead, starts_at: a.toISOString(), ends_at: b.toISOString(), worksite_id: site, note: note || "" };
+  }
+  function demoDateKey(daysAhead) {
+    var d = new Date(); d.setDate(d.getDate() + daysAhead);
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  D.rota = [demoRota(1, 6, 14, "s1"), demoRota(2, 6, 14, "s1"), demoRota(4, 14, 22, "s2", "Covering the late shift at the terminal"), demoRota(5, 6, 14, "s1"), demoRota(8, 6, 14, "s1")];
+  D.avail = { 0: { kind: "any" }, 1: { kind: "any" }, 2: { kind: "any" }, 3: { kind: "any" }, 4: { kind: "any" }, 5: { kind: "between", start_time: "06:00", end_time: "14:00" }, 6: { kind: "off" } };
+  D.off = [{ id: "off-1", first_day: demoDateKey(19), last_day: demoDateKey(21), reason: "Family wedding" }];
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -819,6 +865,131 @@
     $("monthList").innerHTML = MONTH_ROWS.length ? MONTH_ROWS.map(shiftRow).join("") : '<p class="note">No shifts this month.</p>';
   }
 
+  // ── rota & availability ────────────────────
+  //
+  // Optional for each company. Staff see only the shifts their manager has
+  // published, keep a usual week, and book days off the manager sees while
+  // planning. If the rota SQL hasn't been run, the tab simply stays hidden.
+  var DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  function localDay(v) { var d = new Date(v); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+
+  async function loadRota() {
+    if (DEMO) { renderRota(); return; }
+    if (!ME) return;
+    var co = await sb.from("companies").select("use_rota").eq("id", ME.company_id).maybeSingle();
+    if (co.error || !co.data || !co.data.use_rota) { ROTA = { on: false, shifts: [], avail: {}, off: [] }; renderRota(); return; }
+    var midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+    var res = await Promise.all([
+      sb.from("rota_shifts").select("id, published_starts_at, published_ends_at, published_worksite_id, published_note")
+        .eq("user_id", ME.id).gte("published_ends_at", midnight.toISOString()).order("published_starts_at").limit(60),
+      sb.from("availability").select("weekday, kind, start_time, end_time").eq("user_id", ME.id),
+      sb.from("time_off").select("id, first_day, last_day, reason").eq("user_id", ME.id)
+        .gte("last_day", localDay(new Date())).order("first_day")
+    ]);
+    var err = res[0].error || res[1].error || res[2].error;
+    if (err) { toast(err.message); return; }
+    ROTA.on = true;
+    ROTA.shifts = (res[0].data || []).map(function (r) {
+      return { id: r.id, starts_at: r.published_starts_at, ends_at: r.published_ends_at, worksite_id: r.published_worksite_id, note: r.published_note || "" };
+    });
+    ROTA.avail = {};
+    (res[1].data || []).forEach(function (a) { ROTA.avail[a.weekday] = a; });
+    ROTA.off = res[2].data || [];
+    renderRota();
+  }
+
+  function siteName(id) { var w = (MAP.sites || []).filter(function (x) { return x.id === id; })[0]; return w ? w.name : ""; }
+  function shiftDay(iso) {
+    var d = new Date(iso), day = new Date(iso), today = new Date();
+    day.setHours(0, 0, 0, 0); today.setHours(0, 0, 0, 0);
+    var diff = Math.round((day - today) / 864e5);
+    var label = d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+    return diff === 0 ? "Today, " + label : diff === 1 ? "Tomorrow, " + label : label;
+  }
+  function rotaLine(s) {
+    var site = siteName(s.worksite_id);
+    return '<div class="rota-row"><div><div class="d">' + esc(shiftDay(s.starts_at)) + '</div><div class="t num">' +
+      hhmm(s.starts_at) + " – " + hhmm(s.ends_at) + (site ? " · " + esc(site) : "") + "</div>" +
+      (s.note ? '<div class="shift-note">' + esc(s.note) + "</div>" : "") +
+      '</div><div class="h num">' + hoursText(hoursBetween(s.starts_at, s.ends_at)) + "</div></div>";
+  }
+
+  function renderRota() {
+    show("nav-rota", ROTA.on);
+    show("nextShift", ROTA.on);
+    if (!ROTA.on) {
+      if (!$("staff-rota").classList.contains("hidden")) $("nav-work").click();
+      return;
+    }
+    var now = Date.now();
+    var upcoming = ROTA.shifts.filter(function (s) { return new Date(s.ends_at) > now; })
+      .sort(function (a, b) { return new Date(a.starts_at) - new Date(b.starts_at); });
+    $("nextShiftBody").innerHTML = upcoming.length ? rotaLine(upcoming[0]) : '<p class="note">Nothing on the rota yet</p>';
+    $("rotaList").innerHTML = upcoming.length ? upcoming.map(rotaLine).join("") : '<p class="note">No shifts published yet.</p>';
+    renderAvail(); renderOff();
+  }
+
+  function renderAvail() {
+    if (availDirty) return;
+    var t5 = function (v) { return String(v).slice(0, 5); };
+    var sel = function (on) { return on ? " selected" : ""; };
+    $("availRows").innerHTML = DAY_NAMES.map(function (name, i) {
+      var a = ROTA.avail[i] || { kind: "any" }, between = a.kind === "between";
+      return '<div class="avail-row" data-weekday="' + i + '"><label class="avail-day" for="av-kind-' + i + '">' + name + "</label>" +
+        '<select id="av-kind-' + i + '" data-kind><option value="any"' + sel(a.kind === "any") + '>Available</option><option value="between"' + sel(between) +
+        '>Available between</option><option value="off"' + sel(a.kind === "off") + ">Not available</option></select>" +
+        '<div class="avail-times' + (between ? "" : " hidden") + '"><input type="time" data-start aria-label="' + name + ' from" value="' + t5(a.start_time || "09:00") +
+        '"><span>to</span><input type="time" data-end aria-label="' + name + ' until" value="' + t5(a.end_time || "17:00") + '"></div></div>';
+    }).join("");
+  }
+
+  async function saveAvail() {
+    var btn = $("saveAvail");
+    if (btn.disabled) return;
+    var rows = Array.from(document.querySelectorAll("#availRows .avail-row")).map(function (el) {
+      var kind = el.querySelector("[data-kind]").value;
+      return { weekday: Number(el.dataset.weekday), kind: kind,
+        start_time: kind === "between" ? el.querySelector("[data-start]").value : null,
+        end_time: kind === "between" ? el.querySelector("[data-end]").value : null };
+    });
+    var bad = rows.filter(function (r) { return r.kind === "between" && (!r.start_time || !r.end_time || r.start_time === r.end_time); })[0];
+    if (bad) { toast("Enter different start and end times for " + DAY_NAMES[bad.weekday] + "."); return; }
+    btn.disabled = true;
+    try {
+      if (!DEMO) {
+        var r = await sb.from("availability").upsert(rows.map(function (x) {
+          return Object.assign({ user_id: ME.id, company_id: ME.company_id, updated_at: new Date().toISOString() }, x);
+        }));
+        if (r.error) throw r.error;
+      }
+      ROTA.avail = {};
+      rows.forEach(function (x) { ROTA.avail[x.weekday] = x; });
+      if (DEMO) D.avail = ROTA.avail;
+      availDirty = false; renderAvail();
+      toast("Availability saved");
+    } catch (error) { toast(error.message); }
+    finally { btn.disabled = false; }
+  }
+
+  function dayRange(a, b) {
+    var f = function (d) { return new Date(d + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }); };
+    return a === b ? f(a) : f(a) + " – " + f(b);
+  }
+  function renderOff() {
+    $("offList").innerHTML = ROTA.off.length ? ROTA.off.map(function (o) {
+      return '<div class="rota-row"><div><div class="d">' + esc(dayRange(o.first_day, o.last_day)) + "</div>" +
+        (o.reason ? '<div class="t">' + esc(o.reason) + "</div>" : "") +
+        '</div><button type="button" class="link" data-off="' + esc(o.id) + '">Remove</button></div>';
+    }).join("") : '<p class="note">No days off booked.</p>';
+  }
+  function openOff() {
+    var today = localDay(new Date());
+    $("offFrom").value = today; $("offTo").value = today;
+    $("offFrom").min = today; $("offTo").min = today;
+    $("offReason").value = ""; show("offError", false);
+    $("offDialog").showModal();
+  }
+
   // ── data ───────────────────────────────────
   function loadDemo() {
     ME = { full_name: D.profile.full_name };
@@ -833,6 +1004,8 @@
     if (!MAP.me) MAP.me = { lat: 51.87950, lng: -0.37600, accuracy: 22 };
     refreshMap();
     PAY = { on: true, rate: 12.5 };
+    ROTA.on = true; ROTA.shifts = D.rota; ROTA.avail = D.avail; ROTA.off = D.off;
+    renderRota();
     OPEN = D.open;
     renderHistory((D.open ? [D.open] : []).concat(D.history));
     renderStatus();
@@ -895,6 +1068,7 @@
     if (sites.error || open.error || hist.error) { toast((sites.error || open.error || hist.error).message); return; }
     renderHistory(hist.data || []);
     renderStatus();
+    await loadRota();
 
     show("login", false);
     show("app", true);
@@ -1035,9 +1209,10 @@
       document.querySelectorAll('[data-view]').forEach(function(b){b.setAttribute('aria-selected',String(b===button));b.setAttribute('tabindex',b===button?'0':'-1');show('staff-'+b.dataset.view,b===button);});
       if(button.dataset.view==='inbox') loadActivity();
       if(button.dataset.view==='sheet') loadMonth();
+      if(button.dataset.view==='rota') loadRota();
     });
     button.addEventListener('keydown',function(e){
-      var tabs=Array.from(document.querySelectorAll('[data-view]')),index=tabs.indexOf(button),next;
+      var tabs=Array.from(document.querySelectorAll('[data-view]')).filter(function(b){return !b.classList.contains('hidden');}),index=tabs.indexOf(button),next;
       if(e.key==='ArrowRight')next=(index+1)%tabs.length;else if(e.key==='ArrowLeft')next=(index+tabs.length-1)%tabs.length;else if(e.key==='Home')next=0;else if(e.key==='End')next=tabs.length-1;else return;
       e.preventDefault();tabs[next].click();tabs[next].focus();
     });
@@ -1061,6 +1236,7 @@
     ME = null; OPEN = null; REQUESTS=[];HISTORY=[];clearInterval(tick);
     stopWatch(); MAP.me = null;
     MONTH_ROWS = []; SHEET_MONTH = null; PAY = { on: false, rate: null }; SELECTED_DAY = null;
+    ROTA = { on: false, shifts: [], avail: {}, off: [] }; availDirty = false; renderRota();
     show("clock", false); show("main", true);
     show("app", false);
     show("login", true);
@@ -1145,6 +1321,53 @@
     if (e.key === "Escape" && !$("clock").classList.contains("hidden") && !$("correctionDialog").open) $("closeClock").click();
   });
   $("site").addEventListener("change", function () { siteChosen = true; refreshMap(); });
+  $("availRows").addEventListener("change", function (e) {
+    availDirty = true;
+    var kind = e.target.closest("[data-kind]");
+    if (kind) kind.parentElement.querySelector(".avail-times").classList.toggle("hidden", kind.value !== "between");
+  });
+  $("saveAvail").addEventListener("click", saveAvail);
+  $("addOff").addEventListener("click", openOff);
+  $("cancelOff").addEventListener("click", function () { if (!offBusy) $("offDialog").close(); });
+  $("offFrom").addEventListener("change", function () {
+    $("offTo").min = $("offFrom").value;
+    if ($("offTo").value < $("offFrom").value) $("offTo").value = $("offFrom").value;
+  });
+  $("offForm").addEventListener("submit", async function (e) {
+    e.preventDefault(); if (offBusy) return;
+    var a = $("offFrom").value, b = $("offTo").value, reason = $("offReason").value.trim();
+    show("offError", false);
+    var fail = !a || !b || b < a || a < localDay(new Date()) ? "Choose dates from today onwards, with the last day on or after the first."
+      : (new Date(b + "T12:00:00") - new Date(a + "T12:00:00")) / 864e5 > 60 ? "Book up to 60 days at a time." : "";
+    if (fail) { $("offError").textContent = fail; show("offError", true); return; }
+    offBusy = true; $("saveOff").disabled = true;
+    try {
+      var row = { first_day: a, last_day: b, reason: reason };
+      if (DEMO) { row.id = "off-" + Date.now(); }
+      else {
+        var r = await sb.from("time_off").insert(Object.assign({ user_id: ME.id, company_id: ME.company_id }, row))
+          .select("id, first_day, last_day, reason").single();
+        if (r.error) throw r.error;
+        row = r.data;
+      }
+      ROTA.off = ROTA.off.concat([row]).sort(function (x, y) { return x.first_day < y.first_day ? -1 : 1; });
+      if (DEMO) D.off = ROTA.off;
+      renderOff(); $("offDialog").close(); toast("Days off added");
+    } catch (error) { $("offError").textContent = error.message; show("offError", true); }
+    finally { offBusy = false; $("saveOff").disabled = false; }
+  });
+  $("offList").addEventListener("click", async function (e) {
+    var b = e.target.closest("[data-off]");
+    if (!b || offBusy || !confirm("Remove these days off?")) return;
+    offBusy = true;
+    try {
+      if (!DEMO) { var r = await sb.from("time_off").delete().eq("id", b.dataset.off); if (r.error) throw r.error; }
+      ROTA.off = ROTA.off.filter(function (o) { return o.id !== b.dataset.off; });
+      if (DEMO) D.off = ROTA.off;
+      renderOff(); toast("Days off removed");
+    } catch (error) { toast(error.message); }
+    finally { offBusy = false; }
+  });
   window.addEventListener("resize", function () { if (MAP.site) drawMap(); });
 
   if (DEMO) {
