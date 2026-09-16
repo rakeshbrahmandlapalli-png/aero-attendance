@@ -77,22 +77,40 @@ its own CSS and JavaScript. The only external script is supabase-js from a CDN.
 
 ## Design
 
-It must look like a serious tool a company pays for, not an AI template.
+Phone-first quiet premium. Design at 390 x 844, check 360 and 430px, then
+adapt to tablet and desktop. Keep the staff clock action in a fixed bottom
+dock above the safe-area-aware navigation; make it static from 768px upwards.
 
-- Light theme on warm neutrals (page `#F4F3EF`) under a deep green-ink header
-  band (`#10251F`, mint `#8FD1B3` for the wordmark dot and active tab). The
-  palette lives in the `palette` block at the end of each `<style>` — change
-  colours there, not scattered through the file.
-- Colour carries meaning: accent `#0A6E4E` = working, warning `#9A5B0A` =
-  needs attention. People's initials use the six muted `.t0`–`.t5` tints.
-  No bright default colours such as `#10B981` or `#EF4444`.
-- Hairline 1px borders. **No drop shadows** and no gradients.
-- Font: Instrument Sans, not Inter. Slightly tight letter-spacing on headings.
-- Every number that changes gets `font-variant-numeric: tabular-nums` (`.num`).
-- Status = a 6px dot plus text. Never coloured pill badges.
-- Green button to start a shift, near-black to end it. Never red for ending.
-- Table cells never wrap. Narrow screens scroll the table sideways instead.
-- British English in all text ("Clock in", "colour", dates as dd/mm/yyyy).
+- White surfaces, graphite header/ink `#171C24`, secondary text `#475467`,
+  neutral surface `#F1F4F8`. Working cobalt `#1456C0`; attention amber `#805000` on
+  `#FFF3D9`. Colour indicates state, not decoration. Neutral initials.
+- Verified WCAG text contrast: ink on white 17.10:1, secondary on white
+  7.69:1 (6.97:1 on the neutral surface), white on cobalt 6.73:1,
+  amber on its attention surface 6.22:1. Recalculate after palette changes.
+- Instrument Sans, weights 400/500/600 only. Six sizes: 14/16/20/24/32/48px,
+  defined as `--t1` through `--t6`. Headings use 1.2 line-height, body 1.5.
+  Use zero letter-spacing, sentence case, and tabular changing numbers.
+- Spacing: 4/8/12/16/24/32/48px, via `--s*` tokens. Component dimensions,
+  map coordinates, hairlines and safe-area offsets are not spacing tokens.
+- One white surface level, open sections separated by space or hairlines.
+  No nested panels, coloured pill badges, gradients or drop shadows.
+  Corners at most 8px; circular location/status dots are the exception.
+- Controls at least 48px high; clock action 64px. Inputs at least 16px.
+  Checkbox labels provide the full touch target. No hover-only controls.
+  Every control has a visible focus ring.
+- Under 768px, manager table records stack into labelled two-column rows.
+  Names and notes get full width; time values stay together. Retain real
+  tables above that breakpoint and in print. Keep mobile labels in CSS in
+  sync with the table headings and preserve table semantics in markup.
+- Empty states use readable text and open spacing; errors use attention
+  colour and a left rule; busy controls keep legible text and stable size.
+- Transitions are 160ms colour changes only; honour reduced motion.
+- British English throughout. Preserve existing attendance, demo, security
+  and database behaviour. Do not add fonts, libraries or asset downloads.
+- Before committing, run both script parse checks and click through staff
+  and manager demos at phone width. Check 360/390/430px and desktop for
+  overflow, all navigation, forms, dialog errors, and the clock dock.
+  Calculate WCAG contrast ratios for text/background pairs.
 
 ## Not in version 1 — do not add without the owner asking
 
