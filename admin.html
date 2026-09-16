@@ -353,7 +353,7 @@
     <section id="tab-sites">
       <h2>Worksites</h2>
       <div class="bar">
-        <label class="field">Site name<input id="siteName" placeholder="Main yard"></label>
+        <label class="field">Site name<input id="siteName"></label>
         <label class="field">Latitude<input id="siteLat" class="num" inputmode="decimal"></label>
         <label class="field">Longitude<input id="siteLng" class="num" inputmode="decimal"></label>
         <label class="field">Radius (metres)<input id="siteRad" class="num" type="number" min="1" value="150"></label>
@@ -425,7 +425,7 @@
     var b = new Date(d); b.setHours(outH, outM, 0, 0);
     return {
       id: name + daysAgo + inH, user_id: DEMO_IDS[name], profiles: { full_name: name },
-      worksites: { name: "Main yard" },
+      worksite_id: "s1", worksites: { name: "Main yard" },
       clock_in_at: a.toISOString(), clock_out_at: b.toISOString(),
       clock_in_ok: ok === undefined ? true : ok,
       clock_out_ok: true, note: ok === false ? "Called in, went straight to T2" : ""
@@ -714,7 +714,13 @@
     if (from && to && from > to) { toast("The start date must be before the end date."); return; }
     if (DEMO) {
       var person = D.staff.find(function(p) { return p.id === who; });
-      SHEET = D.sheet.filter(function(s) { var day = localDay(s.clock_in_at); return (!from || day >= from) && (!to || day <= to) && (!person || s.profiles.full_name === person.full_name); });
+      SHEET = D.sheet.filter(function(s) { var day = localDay(s.clock_in_at); return (!from || day >= from) && (!to || day <= to) && (!person || s.profiles.full_name === person.full_name); })
+        .map(function (s) {
+          // Demo rows point at a site by id, so a renamed or removed site shows the way it would for real.
+          if (!s.worksite_id) return s;
+          var site = D.sites.find(function (w) { return w.id === s.worksite_id; });
+          return Object.assign({}, s, { worksites: site ? { name: site.name } : null });
+        });
       renderSheet(); renderStats(); return;
     }
     var q = sb.from("shifts")
@@ -907,7 +913,7 @@
         if(site) { var oldName=site.name; Object.assign(site,{name:name,lat:lat,lng:lng,radius_m:rad});D.now.forEach(function(s){if(s.worksite===oldName)s.worksite=name;}); }
         else D.sites.push({ id: "s" + Date.now(), name: name, lat: lat, lng: lng, radius_m: rad });
         toast(editingSite ? "Site updated" : "Site added"); resetSite();
-        await loadSites(); return;
+        await loadSites(); await runSheet(); await loadNow(); return;
       }
       var values = {company_id:ME.company_id,name:name,lat:lat,lng:lng,radius_m:rad};
       var r = editingSite ? await sb.from('worksites').update(values).eq('id',editingSite) : await sb.from('worksites').insert(values);
@@ -1456,7 +1462,7 @@
     return withLock(async function () {
       if (DEMO) {
         D.sites = D.sites.filter(function (w) { return w.id !== id; });
-        await loadSites(); return;
+        await loadSites(); await runSheet(); return;
       }
       var r = await sb.from("worksites").delete().eq("id", id);
       if (r.error) { toast(r.error.message); return; }
