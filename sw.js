@@ -14,11 +14,13 @@ self.addEventListener('fetch', event => {
 self.addEventListener('push', event => {
   let note = {};
   try { note = event.data ? event.data.json() : {}; } catch (e) { note = { body: event.data ? event.data.text() : '' }; }
+  const manager = /admin|manager/.test(note.url || '');
   event.waitUntil(self.registration.showNotification(note.title || 'Aero Attendance', {
     body: note.body || '',
     tag: note.tag || undefined,
-    icon: '/icons/icon-192.png',
-    badge: '/icons/icon-192.png',
+    // Android draws the badge as a flat silhouette in the status bar, so it must be see-through.
+    icon: manager ? '/icons/manager-192.png' : '/icons/icon-192.png',
+    badge: manager ? '/icons/badge-manager.png' : '/icons/badge-staff.png',
     data: { url: note.url || '/' }
   }));
 });
