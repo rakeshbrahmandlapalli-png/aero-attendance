@@ -139,6 +139,7 @@
   .slide.done .slide-fill{display:none;}
   .slide-knob:focus-visible{outline:2px solid #fff;outline-offset:2px;}
   @keyframes spin{to{transform:rotate(360deg);}}
+  .clock-error{margin:var(--s2) 0;padding:var(--s3);border-left:4px solid #F5A3A3;background:rgb(245 163 163 / .12);color:#F5A3A3;font-size:var(--t1);overflow-wrap:anywhere;}
   .zone-line{text-align:center;font-size:var(--t1);color:var(--on-navy-2);}
   .zone-line:empty{display:none;}
   .zone-line.ok{color:#6FD39A;}
@@ -365,6 +366,7 @@
       <div class="sheet-head"><span>Today</span><strong class="num" id="todayHours">0h 00m</strong></div>
       <div id="siteWrap"><div class="site-auto"><span class="pin" aria-hidden="true"></span><span id="siteAuto"></span><button type="button" class="note-toggle" id="changeSite">Change</button></div><div id="sitePick" class="hidden"><label for="site">Worksite</label><select id="site"></select></div></div>
       <div id="noteWrap" class="hidden"><button type="button" class="note-toggle" id="addNote">Add a note for your manager</button><div id="noteField" class="hidden"><label for="shiftNote">Shift note (optional)</label><textarea id="shiftNote" maxlength="1000" placeholder="Anything your manager needs to know"></textarea></div></div>
+      <div id="clockError" class="clock-error hidden" role="alert"></div>
       <div class="slide in" id="slide"><span class="slide-fill" aria-hidden="true"></span><span class="slide-label" id="slideLabel" aria-hidden="true">Slide to clock in</span><button type="button" class="slide-knob" id="action" aria-label="Clock in"></button></div>
       <p class="zone-line" id="zoneLine" aria-live="polite"></p>
       <p class="note" id="clockNote"></p>
@@ -668,7 +670,7 @@
   // The clock screen is its own view so the map and the action get the whole
   // phone. Live position is only watched while it is open.
   function openClock() {
-    show("main", false); show("clock", true);
+    show("main", false); show("clock", true); show("clockError", false);
     renderStatus(); renderToday();
     show("noteField", !!$("shiftNote").value); show("addNote", !$("shiftNote").value);
     refreshMap();
@@ -850,7 +852,7 @@
         .gte("clock_in_at", start.toISOString()).lt("clock_in_at", end.toISOString())
         .order("clock_in_at", { ascending: false });
       if (token !== monthToken) return;
-      if (r.error) { toast(r.error.message); return; }
+      if (r.error) { fail(r.error); return; }
       MONTH_ROWS = r.data || [];
     }
     renderMonth();
@@ -898,7 +900,7 @@
         .gte("last_day", localDay(new Date())).order("first_day")
     ]);
     var err = res[0].error || res[1].error || res[2].error;
-    if (err) { toast(err.message); return; }
+    if (err) { fail(err); return; }
     ROTA.on = true;
     ROTA.shifts = (res[0].data || []).map(function (r) {
       return { id: r.id, starts_at: r.published_starts_at, ends_at: r.published_ends_at, worksite_id: r.published_worksite_id, note: r.published_note || "" };
@@ -978,7 +980,7 @@
       if (DEMO) D.avail = ROTA.avail;
       availDirty = false; renderAvail();
       toast("Availability saved");
-    } catch (error) { toast(error.message); }
+    } catch (error) { fail(error); }
     finally { btn.disabled = false; }
   }
 
@@ -1031,7 +1033,9 @@
   async function load() {
     if (DEMO) return loadDemo();
 
-    var user = (await sb.auth.getUser()).data.user;
+    var got = await sb.auth.getUser();
+    if (got.error && isNetworkError(got.error)) return bootProblem();
+    var user = got.data.user;
     if (!user) return signedOut();
 
     var prof = await sb.from("profiles")
@@ -1041,6 +1045,8 @@
     // Surface the real error. A crash rendered as "not allowed" is how an
     // evening got lost on another project — never hide the database's answer.
     if (prof.error) {
+      if (isAuthError(prof.error)) { signedOut(); $("loginErr").textContent = "You've been signed out. Please sign in again."; show("loginErr", true); return; }
+      if (isNetworkError(prof.error)) return bootProblem();
       alert("Could not load your profile: " + prof.error.message);
       return;
     }
@@ -1094,8 +1100,9 @@
 
   async function onAction() {
     if ($("action").disabled) return;
-    if (!DEMO && !navigator.onLine) { toast("You're offline. Reconnect and try again."); return; }
-    var btn = $("action");
+    show("clockError", false);
+    if (!DEMO && !navigator.onLine) { clockProblem("You're offline. Reconnect, then try again. Nothing was recorded."); return; }
+    var btn = $("action"), wasOpen = !!OPEN;
     btn.disabled = true;
     setSlide((OPEN ? "out" : "in") + " busy", OPEN ? "Clocking out…" : "Locating…", knobMax());
     btn.innerHTML = "";
@@ -1145,15 +1152,40 @@
 
     btn.disabled = false;
 
-    if (res.error) { toast(res.error.message); renderStatus(); return; }
+    if (res.error) {
+      if (isAuthError(res.error)) return sessionEnded();
+      if (isNetworkError(res.error)) return await confirmClock(wasOpen);
+      // A retry after an unconfirmed clock-out: the first one got through.
+      if (wasOpen && /not clocked in/i.test(res.error.message)) { await load(); showDone("Clocked out"); return; }
+      clockProblem(res.error.message); return;
+    }
     $("shiftNote").value = "";
 
     var doneLabel = OPEN ? "Clocked out" : "Clocked in";
     if (!pos) toast("No location — recorded as unverified");
     await load();
     showDone(doneLabel);
-    } catch (error) { toast(error.message); }
+    } catch (error) { if (isAuthError(error)) sessionEnded(); else clockProblem(problemText(error)); }
     finally { btn.disabled = false; renderStatus(); }
+  }
+
+  function clockProblem(message) {
+    $("clockError").textContent = message;
+    show("clockError", true);
+  }
+  // The request timed out or the signal dropped, so it may or may not have
+  // reached the database. Ask again before telling staff anything. Retrying
+  // is always safe: clock_in() never opens a second shift.
+  async function confirmClock(wasOpen) {
+    setSlide((wasOpen ? "out" : "in") + " busy", "Checking…", knobMax());
+    var check = await sb.from("shifts").select("id").eq("user_id", ME.id).is("clock_out_at", null).limit(1);
+    if (check.error) {
+      clockProblem("We couldn't confirm your " + (wasOpen ? "clock-out" : "clock-in") +
+        ": the connection is too weak. Move to better signal and try again. You won't be clocked in twice.");
+      return;
+    }
+    if (((check.data || []).length > 0) !== wasOpen) { await load(); showDone(wasOpen ? "Clocked out" : "Clocked in"); return; }
+    clockProblem("It didn't go through: the connection is too slow. Nothing was recorded. Try again.");
   }
 
   function localInput(iso) {
@@ -1238,7 +1270,7 @@
     });
   });
   $("refreshActivity").addEventListener('click',loadActivity);
-  setInterval(function(){if(ME && !DEMO && document.visibilityState!=='hidden')loadActivity();},30000);
+  setInterval(function(){if(ME && !DEMO && navigator.onLine && document.visibilityState!=='hidden')loadActivity();},30000);
   var remindedShift = null;
   setInterval(function(){
     if(ME && OPEN && $("shiftReminder").checked && hoursBetween(OPEN.clock_in_at) > 13 && remindedShift !== OPEN.id) {
@@ -1433,7 +1465,7 @@
       var r = await sb.rpc("save_push_subscription", { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth });
       if (r.error) throw r.error;
       toast("Notifications are on for this device");
-    } catch (error) { toast(error.message); }
+    } catch (error) { fail(error); }
     finally { notifyBusy = false; $("notifyOn").disabled = false; renderNotify(); }
   }
   // Also run quietly on sign-out, so a shared phone stops getting the last person's notifications.
@@ -1445,7 +1477,7 @@
         await sub.unsubscribe();
       }
       if (!quiet) toast("Notifications are off for this device");
-    } catch (error) { if (!quiet) toast(error.message); }
+    } catch (error) { if (!quiet) fail(error); }
     if (!quiet) renderNotify();
   }
   $("notifyOn").addEventListener("click", turnOnNotifications);
@@ -1458,7 +1490,7 @@
     var row = { user_id: ME.id, company_id: ME.company_id, updated_at: new Date().toISOString() };
     row[key] = box.checked;
     var r = await sb.from("notification_prefs").upsert(row);
-    if (r.error) { box.checked = !box.checked; PREFS[key] = box.checked; toast(r.error.message); }
+    if (r.error) { box.checked = !box.checked; PREFS[key] = box.checked; fail(r.error); }
   });
 
   function notifyAvailable(on) { show("notifyBox", on); }
@@ -1506,7 +1538,7 @@
       ROTA.off = ROTA.off.filter(function (o) { return o.id !== b.dataset.off; });
       if (DEMO) D.off = ROTA.off;
       renderOff(); toast("Days off removed");
-    } catch (error) { toast(error.message); }
+    } catch (error) { fail(error); }
     finally { offBusy = false; }
   });
   window.addEventListener("resize", function () { if (MAP.site) drawMap(); });
@@ -1519,13 +1551,65 @@
     return;
   }
 
-  sb = window.supabase.createClient(CFG.url, CFG.key);
+
+  // ── connection problems ────────────────────
+  //
+  // Every request gives up after 20 seconds, so a weak signal ends in a clear
+  // message instead of a spinner that never stops.
+  var REQUEST_TIMEOUT_MS = 20000, signingOut = false;
+  function timedFetch(input, init) {
+    var ctrl = new AbortController(), outer = init && init.signal;
+    if (outer) { if (outer.aborted) ctrl.abort(); else outer.addEventListener("abort", function () { ctrl.abort(); }); }
+    var timer = setTimeout(function () { ctrl.abort(); }, REQUEST_TIMEOUT_MS);
+    return fetch(input, Object.assign({}, init, { signal: ctrl.signal })).finally(function () { clearTimeout(timer); });
+  }
+  function isNetworkError(err) {
+    var text = String((err && (err.message || err.name)) || err || "");
+    return !navigator.onLine || /Failed to fetch|NetworkError|Load failed|network|AbortError|TimeoutError|aborted/i.test(text);
+  }
+  function isAuthError(err) {
+    return !!err && (err.status === 401 || err.code === "PGRST301" ||
+      /JWT expired|invalid jwt|refresh token|Auth session missing|not authenticated/i.test(String(err.message || "")));
+  }
+  // One place for errors: a lost sign-in goes back to the sign-in screen,
+  // connection problems get plain words, anything else shows the real message.
+  function problemText(err) {
+    if (!navigator.onLine) return "You're offline. Reconnect and try again.";
+    if (isNetworkError(err)) return "Can't reach the server. The connection may be slow or down; try again.";
+    return (err && err.message) || String(err);
+  }
+  function fail(err) {
+    if (isAuthError(err)) return sessionEnded();
+    toast(problemText(err));
+  }
+  function sessionEnded() {
+    if (signingOut) return;
+    signedOut();
+    $("loginErr").textContent = "You've been signed out. Please sign in again.";
+    show("loginErr", true);
+  }
+  // Nothing loaded at start-up because the server can't be reached.
+  function bootProblem() {
+    if (!$("app").classList.contains("hidden")) { toast(problemText(new Error("network"))); return; }
+    var box = document.querySelector(".boot-status");
+    box.innerHTML = "<strong>Can't reach the server.</strong><br>Check your signal or Wi-Fi, then try again.<br>";
+    var again = document.createElement("button");
+    again.className = "btn"; again.textContent = "Try again"; again.style.marginTop = "16px";
+    again.addEventListener("click", function () { box.textContent = "Loading attendance..."; load(); });
+    box.appendChild(again);
+  }
+
+  sb = window.supabase.createClient(CFG.url, CFG.key, { global: { fetch: timedFetch } });
+  sb.auth.onAuthStateChange(function (event) { if (event === "SIGNED_OUT" && ME) sessionEnded(); });
+  window.addEventListener("online", function () { if (ME) load(); });
 
   $("signin").addEventListener("click", signIn);
   $("pw").addEventListener("keydown", function (e) { if (e.key === "Enter") signIn(); });
   $("signout").addEventListener("click", async function () {
+    signingOut = true;
     await turnOffNotifications(true);
     await sb.auth.signOut(); signedOut();
+    signingOut = false;
   });
 
   sb.auth.getSession().then(function (s) {

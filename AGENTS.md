@@ -68,6 +68,11 @@ its own CSS and JavaScript. The only external script is supabase-js from a CDN.
    instead of opening a second one.
 8. **Show the real error.** Display Supabase's error message as it is. Never
    replace it with a vague "not allowed".
+   Errors go through `fail()`: a lost sign-in returns to the sign-in screen,
+   a timeout or dropped connection gets plain words (every request gives up
+   after 20s via `timedFetch`), and anything else shows the real message.
+   A clock-in or clock-out that times out is checked against the database
+   (`confirmClock`) before staff are told whether it worked.
 9. **Demo mode must keep working.** With `APP_CONFIG.url` / `.key` empty,
    both pages run on sample data in memory with no network calls. Every new
    feature needs a demo-mode path too. Clients are sent the demo link.

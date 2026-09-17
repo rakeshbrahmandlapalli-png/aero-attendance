@@ -246,6 +246,7 @@
 </head>
 <body>
 <div class="boot-status" role="status">Loading attendance...</div>
+<div id="connection" class="connection hidden" role="status">You're offline. Nothing can be loaded or saved until you reconnect.</div>
 
 <div id="login" class="login hidden">
   <h1>Shift board</h1>
@@ -575,7 +576,7 @@
     PAY_ON = !!(co.data && co.data.show_pay);
     var r = await sb.from("pay_rates").select("user_id, hourly_rate");
     RATES = {};
-    if (r.error) { toast(r.error.message); return; }
+    if (r.error) { fail(r.error); return; }
     (r.data || []).forEach(function (x) { RATES[x.user_id] = Number(x.hourly_rate); });
   }
 
@@ -585,7 +586,7 @@
   // Today's counts get their own query so they stay right whatever dates the
   // Timesheets tab is showing.
   async function loadNow() {
-    try { await loadRotaToday(); } catch (error) { toast(error.message); }
+    try { await loadRotaToday(); } catch (error) { fail(error); }
     var midnight = new Date(); midnight.setHours(0, 0, 0, 0);
     if (DEMO) {
       NOW = D.now;
@@ -600,7 +601,7 @@
         .or("clock_in_at.gte." + since + ",clock_out_at.gte." + since)
     ]);
     var err = res[0].error || res[1].error;
-    if (err) { toast(err.message); return; }
+    if (err) { fail(err); return; }
     NOW = res[0].data || [];
     TODAY = res[1].data || [];
     renderNow();
@@ -702,7 +703,7 @@
   async function withLock(fn) {
     if (writing) return;
     writing = true;
-    try { await fn(); } catch(error) { toast(error.message); } finally { writing = false; }
+    try { await fn(); } catch(error) { fail(error); } finally { writing = false; }
   }
 
   function closeShift(id) {
@@ -715,7 +716,7 @@
         toast("Clocked out"); await loadNow(); await runSheet(); return;
       }
       var r = await sb.from("shifts").update({ clock_out_at: new Date().toISOString() }).eq("id", id);
-      if (r.error) { toast(r.error.message); return; }
+      if (r.error) { fail(r.error); return; }
       toast("Clocked out");
       await loadNow();
     });
@@ -744,7 +745,7 @@
     if (who)  q = q.eq("user_id", who);
 
     var r = await q;
-    if (r.error) { toast(r.error.message); return; }
+    if (r.error) { fail(r.error); return; }
     SHEET = r.data || [];
     renderSheet();
     renderStats();
@@ -837,7 +838,7 @@
       renderStaff(); renderStats(); renderFlags(true); if (USE_ROTA && ROTA_WEEK) renderRota(); return;
     }
     var r = await sb.from("profiles").select("*").order("full_name");
-    if (r.error) { toast(r.error.message); return; }
+    if (r.error) { fail(r.error); return; }
     STAFF = r.data || [];
     $("who").innerHTML = '<option value="">Everyone</option>' + STAFF.map(function (p) {
       return '<option value="' + p.id + '">' + esc(p.full_name) + "</option>";
@@ -970,7 +971,7 @@
   async function loadSites() {
     if (DEMO) { SITES = D.sites; renderSites(); renderStats(); return; }
     var r = await sb.from("worksites").select("*").order("name");
-    if (r.error) { toast(r.error.message); return; }
+    if (r.error) { fail(r.error); return; }
     SITES = r.data || [];
     renderSites();
     renderStats();
@@ -1008,7 +1009,7 @@
       }
       var values = {company_id:ME.company_id,name:name,lat:lat,lng:lng,radius_m:rad};
       var r = editingSite ? await sb.from('worksites').update(values).eq('id',editingSite) : await sb.from('worksites').insert(values);
-      if (r.error) { toast(r.error.message); return; }
+      if (r.error) { fail(r.error); return; }
       toast(editingSite ? "Site updated" : "Site added"); resetSite();
       await loadSites();
     });
@@ -1071,7 +1072,7 @@
       if(requestsLoaded && $('boardAlerts').checked && REQUESTS.some(function(r){return r.status==='pending'&&!previous.includes(r.id);}))toast('A new shift correction needs review.');
       var changed=!requestsLoaded || before!==JSON.stringify(REQUESTS);
       requestsLoaded=true;if(changed)renderReviews();$('reviewUpdated').textContent='Updated '+hhmm(new Date());
-    }catch(error){$('reviewUpdated').textContent='Could not refresh';if(!requestsLoaded)$('reviews').textContent=error.message;else toast(error.message);}
+    }catch(error){$('reviewUpdated').textContent='Could not refresh';if(!requestsLoaded)$('reviews').textContent=error.message;else fail(error);}
   }
   function renderReviews() {
     var drafts={};document.querySelectorAll('#reviews textarea').forEach(function(el){drafts[el.id]=el.value;});
@@ -1183,7 +1184,7 @@
     ]);
     if (token !== rotaToken) return;
     var err = res[0].error || res[1].error || res[2].error;
-    if (err) { toast(err.message); return; }
+    if (err) { fail(err); return; }
     ROTA_SHIFTS = res[0].data || [];
     AVAIL = {};
     (res[1].data || []).forEach(function (a) { (AVAIL[a.user_id] = AVAIL[a.user_id] || {})[a.weekday] = a; });
@@ -1520,7 +1521,7 @@
       var r = await sb.rpc("save_push_subscription", { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth });
       if (r.error) throw r.error;
       toast("Notifications are on for this device");
-    } catch (error) { toast(error.message); }
+    } catch (error) { fail(error); }
     finally { notifyBusy = false; $("notifyOn").disabled = false; renderNotify(); }
   }
   // Also run quietly on sign-out, so a shared phone stops getting the last person's notifications.
@@ -1532,7 +1533,7 @@
         await sub.unsubscribe();
       }
       if (!quiet) toast("Notifications are off for this device");
-    } catch (error) { if (!quiet) toast(error.message); }
+    } catch (error) { if (!quiet) fail(error); }
     if (!quiet) renderNotify();
   }
   $("notifyOn").addEventListener("click", turnOnNotifications);
@@ -1545,7 +1546,7 @@
     var row = { user_id: ME.id, company_id: ME.company_id, updated_at: new Date().toISOString() };
     row[key] = box.checked;
     var r = await sb.from("notification_prefs").upsert(row);
-    if (r.error) { box.checked = !box.checked; PREFS[key] = box.checked; toast(r.error.message); }
+    if (r.error) { box.checked = !box.checked; PREFS[key] = box.checked; fail(r.error); }
   });
 
   function notifyAvailable(on) { show("notifications", on); }
@@ -1558,7 +1559,7 @@
   $("notifications").addEventListener("click", function () { renderNotify(); $("notifyDialog").showModal(); });
   $("closeNotify").addEventListener("click", function () { $("notifyDialog").close(); });
 
-  if('serviceWorker' in navigator && location.protocol==='https:' && !DEMO)navigator.serviceWorker.register('/sw.js').catch(function(error){toast(error.message);});
+  if('serviceWorker' in navigator && location.protocol==='https:' && !DEMO)navigator.serviceWorker.register('/sw.js').catch(function(error){fail(error);});
 
   // ── boot ─────────────────────────────────
   async function load() {
@@ -1570,16 +1571,22 @@
       show("login", false); show("app", true); show("demoBar", true);
       loadRotaFlag(); loadPrefs(); loadPay(); loadNow(); loadStaff(); loadSites(); runSheet(); loadReviews();
       clearInterval(poll);
-      poll = setInterval(function(){loadNow();loadReviews();}, 30000);
+      poll = setInterval(function(){if(!navigator.onLine)return;loadNow();loadReviews();}, 30000);
       return;
     }
-    var user = (await sb.auth.getUser()).data.user;
+    var got = await sb.auth.getUser();
+    if (got.error && isNetworkError(got.error)) return bootProblem();
+    var user = got.data.user;
     if (!user) return signedOut();
 
     var prof = await sb.from("profiles")
       .select("id, full_name, role, company_id, companies(name)")
       .eq("id", user.id).maybeSingle();
-    if (prof.error) { alert("Could not load profile: " + prof.error.message); return; }
+    if (prof.error) {
+      if (isAuthError(prof.error)) { signedOut(); $("loginErr").textContent = "You've been signed out. Please sign in again."; show("loginErr", true); return; }
+      if (isNetworkError(prof.error)) return bootProblem();
+      alert("Could not load profile: " + prof.error.message); return;
+    }
     if (!prof.data) { alert("You are not attached to a company yet."); return signedOut(); }
     if (prof.data.role === "staff") {
       alert("This screen is for managers. Use the staff app to clock in.");
@@ -1604,7 +1611,7 @@
     renderStaff();
 
     clearInterval(poll);
-    poll = setInterval(function(){loadNow();loadReviews();}, 30000);
+    poll = setInterval(function(){if(!navigator.onLine)return;loadNow();loadReviews();}, 30000);
   }
 
   function signedOut() {
@@ -1623,7 +1630,62 @@
     load();
   }
 
-  if (!DEMO) sb = window.supabase.createClient(CFG.url, CFG.key);
+
+  // ── connection problems ────────────────────
+  //
+  // Every request gives up after 20 seconds, so a weak signal ends in a clear
+  // message instead of a spinner that never stops.
+  var REQUEST_TIMEOUT_MS = 20000, signingOut = false;
+  function timedFetch(input, init) {
+    var ctrl = new AbortController(), outer = init && init.signal;
+    if (outer) { if (outer.aborted) ctrl.abort(); else outer.addEventListener("abort", function () { ctrl.abort(); }); }
+    var timer = setTimeout(function () { ctrl.abort(); }, REQUEST_TIMEOUT_MS);
+    return fetch(input, Object.assign({}, init, { signal: ctrl.signal })).finally(function () { clearTimeout(timer); });
+  }
+  function isNetworkError(err) {
+    var text = String((err && (err.message || err.name)) || err || "");
+    return !navigator.onLine || /Failed to fetch|NetworkError|Load failed|network|AbortError|TimeoutError|aborted/i.test(text);
+  }
+  function isAuthError(err) {
+    return !!err && (err.status === 401 || err.code === "PGRST301" ||
+      /JWT expired|invalid jwt|refresh token|Auth session missing|not authenticated/i.test(String(err.message || "")));
+  }
+  // One place for errors: a lost sign-in goes back to the sign-in screen,
+  // connection problems get plain words, anything else shows the real message.
+  function problemText(err) {
+    if (!navigator.onLine) return "You're offline. Reconnect and try again.";
+    if (isNetworkError(err)) return "Can't reach the server. The connection may be slow or down; try again.";
+    return (err && err.message) || String(err);
+  }
+  function fail(err) {
+    if (isAuthError(err)) return sessionEnded();
+    toast(problemText(err));
+  }
+  function sessionEnded() {
+    if (signingOut) return;
+    signedOut();
+    $("loginErr").textContent = "You've been signed out. Please sign in again.";
+    show("loginErr", true);
+  }
+  // Nothing loaded at start-up because the server can't be reached.
+  function bootProblem() {
+    if (!$("app").classList.contains("hidden")) { toast(problemText(new Error("network"))); return; }
+    var box = document.querySelector(".boot-status");
+    box.innerHTML = "<strong>Can't reach the server.</strong><br>Check your signal or Wi-Fi, then try again.<br>";
+    var again = document.createElement("button");
+    again.className = "b"; again.textContent = "Try again"; again.style.marginTop = "16px";
+    again.addEventListener("click", function () { box.textContent = "Loading attendance..."; load(); });
+    box.appendChild(again);
+  }
+
+  function connection() { show("connection", !navigator.onLine); }
+  window.addEventListener("offline", connection);
+  window.addEventListener("online", function () { connection(); if (ME && !DEMO) { loadNow(); loadReviews(); } });
+  connection();
+  if (!DEMO) {
+    sb = window.supabase.createClient(CFG.url, CFG.key, { global: { fetch: timedFetch } });
+    sb.auth.onAuthStateChange(function (event) { if (event === "SIGNED_OUT" && ME) sessionEnded(); });
+  }
 
   document.querySelectorAll("nav button").forEach(function (b) {
     b.addEventListener("click", function () {
@@ -1665,14 +1727,14 @@
         await loadSites(); await runSheet(); return;
       }
       var r = await sb.from("worksites").delete().eq("id", id);
-      if (r.error) { toast(r.error.message); return; }
+      if (r.error) { fail(r.error); return; }
       await loadSites();
     });
   }
 
   $("signin").addEventListener("click", signIn);
   $("pw").addEventListener("keydown", function (e) { if (e.key === "Enter") signIn(); });
-  $("signout").addEventListener("click", async function () { await turnOffNotifications(true); await sb.auth.signOut(); signedOut(); });
+  $("signout").addEventListener("click", async function () { signingOut = true; await turnOffNotifications(true); await sb.auth.signOut(); signedOut(); signingOut = false; });
   $("run").addEventListener("click", runSheet);
   $("csv").addEventListener("click", exportCsv);
   $("completedOnly").addEventListener('change',renderSheet);
@@ -1692,7 +1754,7 @@
   $("refresh").addEventListener("click", async function() {
     var button = $("refresh"); button.disabled = true; button.textContent = "Refreshing...";
     try { await loadRotaFlag(); await Promise.all([loadPay(),loadNow(),loadStaff(),loadSites(),loadReviews()]); await runSheet(); renderStaff(); if (USE_ROTA && ROTA_WEEK) await loadRotaWeek(); }
-    catch(error) { toast(error.message); }
+    catch(error) { fail(error); }
     finally { button.disabled = false; button.textContent = "Refresh"; }
   });
   $("datePreset").addEventListener("change",function() {
