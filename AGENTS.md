@@ -11,6 +11,10 @@ A staff attendance app sold to several client companies (the first two are
 see who is on shift, exceptions, timesheets, staff and worksites.
 
 - Live: https://aero-attendance.vercel.app (manager board at `/admin.html`)
+- Two home-screen apps from the same files: **Aero** (staff, `manifest.webmanifest`,
+  navy icon) at `/`, and **Aero Manager** (`manager.webmanifest`, orange icon) at
+  `/manager` (a rewrite of admin.html). Each page must keep its own manifest,
+  or the manager icon opens the staff app.
 - Sales demo: https://aero-attendance.vercel.app/demo (manager: `/demo/admin`).
   Same files; `/demo` or `?demo` forces demo mode (rewrites in `vercel.json`).
   Demo data must use made-up names only — never a real client's company name.
