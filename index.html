@@ -391,6 +391,9 @@
   var SELECTED_DAY = null, WEEK_SHIFTS = [], WEEK_START = null, siteChosen = false;
   var REQUESTS = [], correctionShift = null, correctionBusy = false, activityBusy = false;
   var ROTA = { on: false, shifts: [], avail: {}, off: [] }, availDirty = false, offBusy = false;
+  // null until the on-site SQL has been run; then true when the company only
+  // allows clock-in inside a site zone (the database enforces it either way).
+  var ON_SITE_ONLY = null;
   // Icon shapes from Lucide (ISC licence, LUCIDE-LICENSE.txt), inlined so no icon library has to load.
   function icon(shapes) {
     return '<svg class="lucide" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + shapes + '</svg>';
@@ -609,14 +612,16 @@
       $("zoneLine").className = "zone-line " + (inside ? "ok" : "warn");
       $("zoneLine").textContent = inside
         ? "You're inside the " + site.name + " zone"
-        : d + "m from " + site.name + ". You can still " + verb + "; your manager will see it flagged.";
+        : ON_SITE_ONLY && !OPEN
+          ? d + "m from " + site.name + ". Move inside the zone to clock in."
+          : d + "m from " + site.name + ". You can still " + verb + "; your manager will see it flagged.";
     } else {
       tag.hidden = false;
       tag.className = "mapTag";
       $("mapTagText").textContent = site.name + " · " + site.radius_m + "m zone";
       $("zoneLine").className = "zone-line";
       $("zoneLine").textContent = MAP.noFix
-        ? "Location is unavailable. You can still " + verb + "; it will be marked unverified."
+        ? (ON_SITE_ONLY && !OPEN ? "Location is off. Turn it on to clock in." : "Location is unavailable. You can still " + verb + "; it will be marked unverified.")
         : "Finding your location…";
     }
   }
@@ -651,7 +656,7 @@
   function watchMe() {
     if (!navigator.geolocation || watchId !== null) return;
     watchId = navigator.geolocation.watchPosition(function (p) {
-      MAP.me = { lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy };
+      MAP.me = { lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy, at: Date.now() };
       refreshMap();
     }, function () { MAP.noFix = true; drawMap(); }, { enableHighAccuracy: true, maximumAge: 15000, timeout: 20000 });
   }
@@ -756,7 +761,7 @@
       var done = false;
       var finish = function (v) { if (!done) { done = true; resolve(v); } };
       navigator.geolocation.getCurrentPosition(
-        function (p) { finish({ lat: p.coords.latitude, lng: p.coords.longitude }); },
+        function (p) { finish({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy }); },
         function () { finish(null); },
         { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
       );
@@ -1010,6 +1015,7 @@
     if (!MAP.me) MAP.me = { lat: 51.87950, lng: -0.37600, accuracy: 22 };
     refreshMap();
     PAY = { on: true, rate: 12.5 };
+    ON_SITE_ONLY = true;
     ROTA.on = true; ROTA.shifts = D.rota; ROTA.avail = D.avail; ROTA.off = D.off;
     renderRota(); loadPrefs();
     OPEN = D.open;
@@ -1050,6 +1056,8 @@
     // Estimated pay is optional. If the pay tables aren't set up yet, or the
     // company hasn't switched it on, the app simply shows no money.
     PAY = { on: false, rate: null };
+    var strict = await sb.from("companies").select("require_on_site").eq("id", ME.company_id).maybeSingle();
+    ON_SITE_ONLY = strict.error ? null : !!(strict.data && strict.data.require_on_site);
     var co = await sb.from("companies").select("show_pay").eq("id", ME.company_id).maybeSingle();
     if (!co.error && co.data && co.data.show_pay) {
       var rate = await sb.from("pay_rates").select("hourly_rate").eq("user_id", ME.id).maybeSingle();
@@ -1118,6 +1126,8 @@
 
     try {
     var pos = await getPosition();
+    // A slow fix indoors: use the position the map already has, if it's fresh.
+    if (!pos && MAP.me && MAP.me.at && Date.now() - MAP.me.at < 60000) pos = MAP.me;
 
     var res;
     if (OPEN) {
@@ -1127,9 +1137,10 @@
     } else {
       var siteId = $("site").value;
       if (!siteId) { toast("No worksite set up — ask your manager."); btn.disabled = false; renderStatus(); return; }
-      res = await sb.rpc("clock_in", {
-        p_worksite_id: siteId, p_lat: pos && pos.lat, p_lng: pos && pos.lng
-      });
+      var args = { p_worksite_id: siteId, p_lat: pos && pos.lat, p_lng: pos && pos.lng };
+      // Only the new clock_in (on-site SQL) accepts p_accuracy.
+      if (ON_SITE_ONLY !== null) args.p_accuracy = pos && pos.accuracy ? Math.round(pos.accuracy) : null;
+      res = await sb.rpc("clock_in", args);
     }
 
     btn.disabled = false;

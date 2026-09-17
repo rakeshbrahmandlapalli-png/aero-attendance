@@ -50,9 +50,14 @@ its own CSS and JavaScript. The only external script is supabase-js from a CDN.
 4. **Keep `current_company_id()` and `is_manager()` as `security definer`.**
    They look "simplifiable". They are not: removing `security definer` makes
    the policies on `profiles` query `profiles` and recurse forever.
-5. **A failed GPS reading never blocks a clock-in or clock-out.** It is saved
-   as unverified and flagged for the manager. Blocking someone who has already
-   driven off turns into a pay dispute.
+5. **Clock-in on site only, clock-out never blocked.** Owner's decision, 17
+   Sep 2026. When a company has `require_on_site` on (the default),
+   `clock_in()` refuses a clock-in with no location or outside the zone
+   (radius plus up to 50m of the accuracy the phone reports). Clock-out is
+   never blocked: it is recorded and flagged, because blocking someone who
+   has already driven off turns into a pay dispute. With `require_on_site`
+   off, clock-in is flagged instead of blocked, as before. The check lives
+   only in the database.
 6. **Location is recorded at clock-in and clock-out only.** Never track staff
    in between. The app is sold on exactly that promise.
 7. **`clock_in()` must stay idempotent.** A double tap returns the open shift
