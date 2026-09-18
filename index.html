@@ -247,9 +247,14 @@
   .tiles{position:absolute;inset:0;}
   .tiles img{position:absolute;width:256px;height:256px;max-width:none;user-select:none;}
   .zone,.youRing,.you{position:absolute;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;}
-  .zone{border:2px solid var(--brand);background:rgb(232 135 30 / .16);}
+  .zone{border:2px solid var(--brand);background:rgb(232 135 30 / .22);box-shadow:0 0 0 2px rgb(14 20 32 / .35);}
   .youRing{background:rgb(14 20 32 / .14);}
   .you{width:20px;height:20px;background:var(--navy);border:3px solid #fff;}
+  .slide.off{opacity:.6;}
+  .slide.off .slide-knob{background:#6B7280;}
+  .you.edge{box-shadow:0 0 0 3px #fff,0 0 0 5px #E8871E;}
+  .youTag.below{transform:translate(-50%,70%);}
+  .youTag{position:absolute;transform:translate(-50%,-170%);background:#0E1420;color:#fff;font:600 11px/1.6 inherit;padding:1px 7px;border-radius:10px;white-space:nowrap;pointer-events:none;}
   .back{position:absolute;z-index:2;top:calc(var(--s3) + env(safe-area-inset-top));left:var(--s3);display:grid;place-items:center;width:48px;height:48px;padding:0;border:0;border-radius:var(--r);background:var(--navy);color:#fff;}
   .back:focus-visible{outline-color:var(--brand);}
   .mapTag{position:absolute;z-index:2;left:var(--s3);bottom:var(--s3);max-width:calc(100% - 180px);display:flex;align-items:center;gap:var(--s2);min-height:40px;padding:var(--s2) var(--s3);border:1px solid var(--line);border-radius:var(--r);background:var(--card);font-size:var(--t1);font-weight:500;}
@@ -359,7 +364,7 @@
     <div class="map" id="map">
       <div class="tiles" id="tiles"></div>
       <div class="mapTag" id="mapTag" hidden><i></i><span id="mapTagText"></span></div>
-      <a class="mapAttr" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener"><span>&copy; OpenStreetMap</span></a>
+      <a class="mapAttr" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener"><span>&copy; MapTiler &copy; OpenStreetMap</span></a>
     </div>
     <div class="sheet">
       <h1 id="clockTitle" class="sr-only">Clock in</h1>
@@ -522,6 +527,38 @@
     var r = lat * Math.PI / 180;
     return (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * Math.pow(2, z);
   }
+  /** 850m up close, 35km once it is a journey. "35473m" is not a distance. */
+  function farWord(m) {
+    if (m < 1000) return m + "m";
+    var km = m / 1000;
+    return (km < 10 ? km.toFixed(1) : Math.round(km)) + "km";
+  }
+
+  // Out of the zone with on-site-only on, the slide is dead rather than
+  // failing at the server: nobody slides three times into the same red error.
+  var slideWord = "";
+  function blockSlide(off, why) {
+    var knob = $("action");
+    if (!knob) return;
+    if (off) {
+      if (!knob.disabled) slideWord = $("slideLabel").textContent;
+      knob.disabled = true;
+      $("slide").classList.add("off");
+      $("slideLabel").textContent = why;
+    } else if (knob.disabled) {
+      knob.disabled = false;
+      $("slide").classList.remove("off");
+      if (slideWord) { $("slideLabel").textContent = slideWord; slideWord = ""; }
+    }
+  }
+
+  // MapTiler: satellite with labels. Public by design, locked to this app's
+  // addresses. Empty it and the map falls back to plain OpenStreetMap.
+  var MAP_KEY = "XVEMgKJvG23BOfRYp8KQ";
+  // Retina tiles where the screen deserves them; plain ones elsewhere, so a
+  // weak signal is not made to carry four times the data.
+  var TILE_SHARP = (window.devicePixelRatio || 1) > 1.3 ? "@2x" : "";
+
   function metresPerPixel(lat, z) {
     return 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, z);
   }
@@ -572,8 +609,11 @@
       for (var ty = Math.floor(originY / 256); ty <= Math.floor((originY + H) / 256); ty++) {
         if (ty < 0 || ty >= n) continue;
         var wrapped = ((tx % n) + n) % n;   // wrap the world at the date line
-        html += '<img alt="" loading="lazy" src="https://tile.openstreetmap.org/' +
-                z + "/" + wrapped + "/" + ty + '.png" style="left:' +
+        var plain = "https://tile.openstreetmap.org/" + z + "/" + wrapped + "/" + ty + ".png";
+        var photo = "https://api.maptiler.com/maps/hybrid/" + z + "/" + wrapped + "/" + ty +
+                    TILE_SHARP + ".jpg?key=" + MAP_KEY;
+        html += '<img alt="" loading="lazy" src="' + (MAP_KEY ? photo : plain) +
+                '" onerror="this.onerror=null;this.src=\'' + plain + '\'" style="left:' +
                 (tx * 256 - originX) + "px;top:" + (ty * 256 - originY) + 'px">';
       }
     }
@@ -581,10 +621,12 @@
 
     // Clear the previous overlay pass first. Counting what to remove after
     // the fact was fragile — this is unambiguous.
-    el.querySelectorAll(".zone, .you, .youRing").forEach(function (o) { o.remove(); });
+    el.querySelectorAll(".zone, .you, .youRing, .youTag").forEach(function (o) { o.remove(); });
 
     // the zone
-    var rPx = site.radius_m / mpp;
+    // Zoomed right out, a 150m yard is thinner than a pixel. Keep the ring
+    // visible so there is still something to walk towards.
+    var rPx = Math.max(site.radius_m / mpp, 7);
     html = '<div class="zone" style="left:' + (W / 2) + "px;top:" + (H / 2) +
            "px;width:" + (rPx * 2) + "px;height:" + (rPx * 2) + 'px"></div>';
 
@@ -593,11 +635,25 @@
       var mx = (tileX(MAP.me.lng, z) * 256 - originX);
       var my = (tileY(MAP.me.lat, z) * 256 - originY);
       var acc = MAP.me.accuracy ? Math.max(MAP.me.accuracy / mpp, 8) : 0;
-      if (acc) {
-        html += '<div class="youRing" style="left:' + mx + "px;top:" + my +
-                "px;width:" + (acc * 2) + "px;height:" + (acc * 2) + 'px"></div>';
+      // Far enough out and the map cannot hold both of you: the zoom floor
+      // stops at whole counties. Rather than drawing you into thin air, pin
+      // you to the edge you are actually on, with how far away that is.
+      var offMap = mx < 10 || my < 10 || mx > W - 10 || my > H - 10;
+      if (offMap) {
+        var ex = Math.max(16, Math.min(W - 16, mx));
+        var ey = Math.max(16, Math.min(H - 16, my));
+        if (ey < 52 && ex < 108) ex = Math.max(ex, 108);     // clear of the back button
+        var below = ey < 46;                                 // label under the dot up top
+        html += '<div class="you edge" style="left:' + ex + "px;top:" + ey + 'px"></div>';
+        html += '<div class="youTag' + (below ? " below" : "") + '" style="left:' + ex + "px;top:" + ey + 'px">You · ' +
+                farWord(Math.round(metresBetween(MAP.me.lat, MAP.me.lng, site.lat, site.lng))) + "</div>";
+      } else {
+        if (acc) {
+          html += '<div class="youRing" style="left:' + mx + "px;top:" + my +
+                  "px;width:" + (acc * 2) + "px;height:" + (acc * 2) + 'px"></div>';
+        }
+        html += '<div class="you" style="left:' + mx + "px;top:" + my + 'px"></div>';
       }
-      html += '<div class="you" style="left:' + mx + "px;top:" + my + 'px"></div>';
     }
     el.insertAdjacentHTML("beforeend", html);
 
@@ -610,13 +666,14 @@
       tag.className = "mapTag" + (inside ? "" : " out");
       $("mapTagText").textContent = inside
         ? "You're at " + site.name
-        : d + "m outside the zone";
+        : farWord(d) + " outside the zone";
       $("zoneLine").className = "zone-line " + (inside ? "ok" : "warn");
       $("zoneLine").textContent = inside
         ? "You're inside the " + site.name + " zone"
         : ON_SITE_ONLY && !OPEN
-          ? d + "m from " + site.name + ". Move inside the zone to clock in."
-          : d + "m from " + site.name + ". You can still " + verb + "; your manager will see it flagged.";
+          ? farWord(d) + " from " + site.name + ". Move inside the zone to clock in."
+          : farWord(d) + " from " + site.name + ". You can still " + verb + "; your manager will see it flagged.";
+      blockSlide(!inside && ON_SITE_ONLY && !OPEN, "Too far to clock in");
     } else {
       tag.hidden = false;
       tag.className = "mapTag";
@@ -625,6 +682,7 @@
       $("zoneLine").textContent = MAP.noFix
         ? (ON_SITE_ONLY && !OPEN ? "Location is off. Turn it on to clock in." : "Location is unavailable. You can still " + verb + "; it will be marked unverified.")
         : "Finding your location…";
+      blockSlide(MAP.noFix && ON_SITE_ONLY && !OPEN, "Location needed to clock in");
     }
   }
 
@@ -781,6 +839,8 @@
     $("openClock").className = "act " + (on ? "out" : "in");
     $("openClock").innerHTML = icon(ICONS.timer) + "<span>" + label + "</span>";
     setSlide(on ? "out" : "in", on ? "Slide to clock out" : "Slide to clock in", 0);
+    slideWord = "";
+    blockSlide(false, "");
     $("action").innerHTML = icon(ICONS.slide);
     $("action").setAttribute("aria-label", label);
     $("clockTitle").textContent = label;
