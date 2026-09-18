@@ -10,6 +10,7 @@
 //   { action: "create",  full_name, email, role: "staff" | "admin", password }
 //   { action: "remove",  user_id }   can't sign in, hours kept
 //   { action: "restore", user_id }
+//   { action: "password", user_id, password }   forgotten password, set by the manager
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const cors = {
@@ -62,6 +63,28 @@ Deno.serve(async (req) => {
       return reply(400, { error: profileError.message });
     }
     return reply(200, { id: created.user.id });
+  }
+
+  // A forgotten password, fixed by the manager on the spot.
+  //
+  // Not an email link: plenty of staff sign in with an address they never read
+  // at work, the reset mail is rate limited and lands in spam, and somebody
+  // locked out at 5am needs it now. So the manager sets a new one, hands it
+  // over, and the app makes the person choose their own at the next sign-in —
+  // exactly how the account was created in the first place.
+  if (body.action === "password") {
+    const { data: target } = await admin.from("profiles").select("id, company_id, role, full_name").eq("id", String(body.user_id ?? "")).maybeSingle();
+    if (!target || target.company_id !== me.company_id) return reply(404, { error: "Staff member not found." });
+    if (target.role === "owner" && me.role !== "owner") return reply(403, { error: "Only the owner can change the owner's password." });
+    const password = String(body.password ?? "");
+    if (password.length < 8 || password.length > 72) return reply(400, { error: "The new password needs 8 to 72 characters." });
+
+    const { error } = await admin.auth.admin.updateUserById(target.id, {
+      password,
+      user_metadata: { must_change_password: true },
+    });
+    if (error) return reply(400, { error: error.message });
+    return reply(200, { ok: true, full_name: target.full_name });
   }
 
   if (body.action === "remove" || body.action === "restore") {

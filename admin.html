@@ -867,6 +867,8 @@
         '<td class="num">' + (!PAY_READY ? '<span class="tiny">—</span>' : RATES[p.id] != null ? money(RATES[p.id]) : '<span class="tiny">Not set</span>') + "</td>" +
         '<td style="text-align:right">' +
           (PAY_READY ? '<button class="g sm" data-rate="' + p.id + '">Set rate</button> ' : "") +
+          (p.active && p.id !== ME.id && (p.role !== "owner" || ME.role === "owner")
+            ? '<button class="g sm" data-pw="' + p.id + '">New password</button> ' : "") +
           (p.id === ME.id || p.role === "owner" ? "" : '<button class="g sm" data-toggle="' + p.id + '">' +
             (p.active ? "Remove" : "Restore") + "</button>") + "</td>" +
       "</tr>";
@@ -905,12 +907,34 @@
   }
 
   function openStaff() {
+    PW_FOR = null;
     ["newName", "newEmail", "newPassword"].forEach(function (id) { $(id).value = ""; });
+    ["newName", "newEmail", "newRole"].forEach(function (x) { $(x).closest("label,.field").classList.remove("hidden"); });
+    $("staffTitle").textContent = "Add staff";
     $("newRole").value = "staff";
     show("staffFields", true); show("staffDone", false); show("staffError", false); show("cancelStaff", true);
     $("saveStaff").textContent = "Add staff";
     $("staffDialog").showModal(); $("newName").focus();
   }
+  // Someone has forgotten their password. The manager sets a new one, reads it
+  // out or texts it, and the app makes them choose their own the moment they
+  // sign in — so the manager never ends up knowing the password they use.
+  function newPassword(id) {
+    var p = STAFF.find(function (x) { return x.id === id; });
+    if (!p) return;
+    PW_FOR = p;
+    ["newName", "newEmail"].forEach(function (x) { $(x).value = ""; });
+    show("staffFields", true); show("staffDone", false); show("staffError", false); show("cancelStaff", true);
+    // Only the password matters here; the rest of the form belongs to Add staff.
+    ["newName", "newEmail", "newRole"].forEach(function (x) { $(x).closest("label,.field").classList.add("hidden"); });
+    $("staffTitle").textContent = "New password for " + p.full_name;
+    $("saveStaff").textContent = "Set password";
+    suggestPassword();
+    $("staffDialog").showModal();
+    $("newPassword").focus();
+  }
+  var PW_FOR = null;
+
   // Easy to read out or text: no 0/O or 1/l/I.
   function suggestPassword() {
     var chars = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789", a = new Uint32Array(10), out = "";
@@ -924,6 +948,24 @@
   $("staffForm").addEventListener("submit", async function (e) {
     e.preventDefault();
     if (!$("staffDone").classList.contains("hidden")) { $("staffDialog").close(); return; }
+
+    // Same dialog, two jobs: a new person, or a new password for one who forgot.
+    if (PW_FOR) {
+      var pw = $("newPassword").value;
+      show("staffError", false);
+      if (pw.length < 8) { $("staffError").textContent = "The new password needs at least 8 characters."; show("staffError", true); return; }
+      $("saveStaff").disabled = true;
+      try {
+        if (!DEMO) await staffAction({ action: "password", user_id: PW_FOR.id, password: pw });
+        $("staffDone").textContent = "Give " + PW_FOR.full_name + " this password: " + pw +
+          ". They sign in with it once and then choose their own.";
+        show("staffFields", false); show("staffDone", true); show("cancelStaff", false);
+        $("saveStaff").textContent = "Done";
+      } catch (error) { $("staffError").textContent = error.message; show("staffError", true); }
+      finally { $("saveStaff").disabled = false; }
+      return;
+    }
+
     var body = { action: "create", full_name: $("newName").value.trim(), email: $("newEmail").value.trim().toLowerCase(), role: $("newRole").value, password: $("newPassword").value };
     var fail = !body.full_name ? "Enter the person's name."
       : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email) ? "Enter a valid email address."
@@ -1713,6 +1755,7 @@
     var t = e.target;
     if (t.dataset.close)   closeShift(t.dataset.close);
     if (t.dataset.toggle)  toggleStaff(t.dataset.toggle);
+    if (t.dataset.pw)      newPassword(t.dataset.pw);
     if (t.dataset.delsite) removeSite(t.dataset.delsite);
     if (t.dataset.editsite) editSite(t.dataset.editsite);
     if (t.dataset.review) reviewRequest(t.dataset.review,t.dataset.approve==='true');

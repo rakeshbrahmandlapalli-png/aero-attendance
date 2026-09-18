@@ -294,6 +294,9 @@
   <input id="pw" type="password" autocomplete="current-password">
   <button class="btn" id="signin">Sign in</button>
   <div id="loginErr" class="err hidden"></div>
+  <!-- No self-serve reset on purpose: the manager sets a new password on the
+       spot, which is faster than an email nobody reads at 5am. -->
+  <p class="note">Forgotten your password? Ask your manager to set a new one for you.</p>
 </div>
 
 <!-- ── APP ─────────────────────────────────── -->
