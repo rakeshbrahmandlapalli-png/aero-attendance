@@ -111,6 +111,9 @@
   .today-card .today{margin:0;white-space:nowrap;}
   .state{display:flex;align-items:center;gap:var(--s2);font-size:var(--t2);font-weight:500;}
   .dot{width:10px;height:10px;flex:none;border-radius:50%;background:#7A8494;}
+  .dot.break{background:#E8871E;}
+  .act.break{margin-top:var(--s2);background:#fff;border:1px solid var(--line,#D8DDE5);color:var(--navy);min-height:48px;font-size:var(--t3,15px);}
+  .act.break.on{background:#E8871E;color:#fff;border-color:#E8871E;}
   .dot.on{background:var(--brand);outline:4px solid rgb(232 135 30 / .25);}
   .since{margin-top:var(--s2);font-size:var(--t5);font-weight:600;line-height:1.2;}
   .elapsed{margin-top:var(--s1);font-size:var(--t1);color:var(--ink-2);}
@@ -324,6 +327,8 @@
           <div class="since num hidden" id="since"></div>
           <div class="elapsed" id="elapsed"></div>
           <button class="act in" id="openClock">Clock in</button>
+          <!-- Only while clocked in, and only if the company uses breaks. -->
+          <button class="act break hidden" id="breakBtn">Start break</button>
           <p class="note" id="locNote"></p>
         </section>
 
@@ -404,6 +409,7 @@
   // null until the on-site SQL has been run; then true when the company only
   // allows clock-in inside a site zone (the database enforces it either way).
   var ON_SITE_ONLY = null;
+  var USE_BREAKS = false, breakBusy = false;
   // Icon shapes from Lucide (ISC licence, LUCIDE-LICENSE.txt), inlined so no icon library has to load.
   function icon(shapes) {
     return '<svg class="lucide" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + shapes + '</svg>';
@@ -513,6 +519,16 @@
 
   function hoursBetween(a, b) {
     return (new Date(b || Date.now()) - new Date(a)) / 3600000;
+  }
+
+  // Paid hours: the shift, less the breaks taken during it. A break still
+  // running counts from the moment it started, so the figure on screen never
+  // claims time somebody is not working.
+  function shiftHours(s) {
+    if (!s) return 0;
+    var mins = s.break_minutes || 0;
+    if (s.break_started_at) mins += Math.max(0, (Date.now() - new Date(s.break_started_at)) / 60000);
+    return Math.max(0, hoursBetween(s.clock_in_at, s.clock_out_at) - mins / 60);
   }
 
   function hoursText(h) {
@@ -775,7 +791,7 @@
     HISTORY.forEach(function (s) {
       var i = dayIndex(s.clock_in_at);
       if (i < 0 || i > 6) return;
-      days[i] += hoursBetween(s.clock_in_at, s.clock_out_at);
+      days[i] += shiftHours(s);
       WEEK_SHIFTS[i].push(s);
     });
     var total = days.reduce(function (a, b) { return a + b; }, 0);
@@ -801,14 +817,14 @@
       (list.length ? list.map(function (s) {
         var away = s.clock_in_ok === false || s.clock_out_ok === false;
         return '<div class="day-shift"><span class="num">' + hhmm(s.clock_in_at) + " – " + (s.clock_out_at ? hhmm(s.clock_out_at) : "now") +
-          (away ? "<em>Away from site</em>" : "") + '</span><strong class="num">' + hoursText(hoursBetween(s.clock_in_at, s.clock_out_at)) + "</strong></div>";
+          (away ? "<em>Away from site</em>" : "") + '</span><strong class="num">' + hoursText(shiftHours(s)) + "</strong></div>";
       }).join("") : '<p class="note">No shifts</p>');
   }
 
   function renderToday() {
     var midnight = new Date(); midnight.setHours(0, 0, 0, 0);
     $("todayHours").textContent = hoursText(HISTORY.reduce(function (t, s) {
-      return new Date(s.clock_in_at) >= midnight ? t + hoursBetween(s.clock_in_at, s.clock_out_at) : t;
+      return new Date(s.clock_in_at) >= midnight ? t + shiftHours(s) : t;
     }, 0));
   }
 
@@ -864,11 +880,24 @@
       ? "Your location is checked again when you clock out."
       : "Your location is checked when you clock in and out. It is not tracked in between.";
 
+    // The break button belongs to a shift in progress, so it lives and dies
+    // with one. On a break, the card says so and the hours stop climbing.
+    var onBreak = !!(on && OPEN.break_started_at);
+    show("breakBtn", !!(on && USE_BREAKS));
+    if (on && USE_BREAKS) {
+      $("breakBtn").textContent = onBreak ? "End break" : "Start break";
+      $("breakBtn").classList.toggle("on", onBreak);
+    }
+    if (onBreak) {
+      $("stateText").textContent = "On break since " + hhmm(OPEN.break_started_at);
+      $("dot").className = "dot break";
+    }
+
     clearInterval(tick);
     if (on) {
       var site = (MAP.sites || []).filter(function (w) { return w.id === OPEN.worksite_id; })[0];
       var upd = function () {
-        $("since").textContent = hoursText(hoursBetween(OPEN.clock_in_at));
+        $("since").textContent = hoursText(shiftHours(OPEN));
         $("elapsed").textContent = "Since " + hhmm(OPEN.clock_in_at) + (site ? " at " + site.name : "");
         renderWeek(); renderToday();
       };
@@ -887,7 +916,7 @@
       '<div class="t">' + hhmm(s.clock_in_at) + " – " + (open ? "now" : hhmm(s.clock_out_at)) + "</div>" + flag +
       (s.note ? '<div class="shift-note">' + esc(s.note) + "</div>" : "") +
       '<span class="sr-only">Request a correction</span>' +
-      '</div><div class="h">' + hoursText(hoursBetween(s.clock_in_at, s.clock_out_at)) + icon(ICONS.chevron) + "</div></div>";
+      '</div><div class="h">' + hoursText(shiftHours(s)) + icon(ICONS.chevron) + "</div></div>";
   }
 
   function renderHistory(rows) {
@@ -924,7 +953,7 @@
   function renderMonth() {
     var hours = 0, doneHours = 0, days = {};
     MONTH_ROWS.forEach(function (s) {
-      var hrs = hoursBetween(s.clock_in_at, s.clock_out_at);
+      var hrs = shiftHours(s);
       hours += hrs;
       if (s.clock_out_at) doneHours += hrs;
       days[new Date(s.clock_in_at).toDateString()] = 1;
@@ -1081,6 +1110,7 @@
     refreshMap();
     PAY = { on: true, rate: 12.5 };
     ON_SITE_ONLY = true;
+    USE_BREAKS = true;
     ROTA.on = true; ROTA.shifts = D.rota; ROTA.avail = D.avail; ROTA.off = D.off;
     renderRota(); loadPrefs();
     OPEN = D.open;
@@ -1127,6 +1157,10 @@
     PAY = { on: false, rate: null };
     var strict = await sb.from("companies").select("require_on_site").eq("id", ME.company_id).maybeSingle();
     ON_SITE_ONLY = strict.error ? null : !!(strict.data && strict.data.require_on_site);
+    // Breaks: on unless this company switched them off. An error here means the
+    // breaks update has not been run yet, and the button simply stays hidden.
+    var brk = await sb.from("companies").select("use_breaks").eq("id", ME.company_id).maybeSingle();
+    USE_BREAKS = !brk.error && !!(brk.data && brk.data.use_breaks);
     var co = await sb.from("companies").select("show_pay").eq("id", ME.company_id).maybeSingle();
     if (!co.error && co.data && co.data.show_pay) {
       var rate = await sb.from("pay_rates").select("hourly_rate").eq("user_id", ME.id).maybeSingle();
@@ -1409,6 +1443,30 @@
   $("action").addEventListener("pointercancel", endDrag);
   $("action").addEventListener("click", function (e) { if (e.detail === 0) onAction(); });
   $("openClock").addEventListener("click", openClock);
+
+  // Breaks. No map, no location: a break is about time, not place — the
+  // location was already checked when they clocked in.
+  $("breakBtn").addEventListener("click", async function () {
+    if (breakBusy || !OPEN) return;
+    var ending = !!OPEN.break_started_at;
+    breakBusy = true; $("breakBtn").disabled = true;
+    try {
+      if (DEMO) {
+        OPEN.break_started_at = ending ? null : new Date().toISOString();
+        if (ending) OPEN.break_minutes = (OPEN.break_minutes || 0) + 30;
+      } else {
+        var r = await sb.rpc(ending ? "end_break" : "start_break");
+        if (r.error) throw r.error;
+        if (r.data) OPEN = Array.isArray(r.data) ? r.data[0] : r.data;
+      }
+      toast(ending ? "Break ended" : "Break started");
+      renderStatus(); renderWeek(); renderToday();
+    } catch (error) {
+      toast(/function|does not exist|schema cache/i.test(error.message || "")
+        ? "Breaks aren't switched on for this company yet."
+        : (error.message || "Could not save that."));
+    } finally { breakBusy = false; $("breakBtn").disabled = false; }
+  });
   $("prevMonth").innerHTML = icon(ICONS.prev);
   $("nextMonth").innerHTML = icon(ICONS.chevron);
   document.querySelector(".site-auto .pin").innerHTML = icon(ICONS.pin);
