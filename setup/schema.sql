@@ -920,40 +920,78 @@ declare
   v_company uuid := current_company_id();
   v_removed integer;
   v_updated integer;
+  v_gone    uuid[];
+  v_changed uuid[];
 begin
   if not coalesce(is_manager(), false) then raise exception 'Manager access required.'; end if;
   if p_from is null or p_to is null or p_to <= p_from or p_to - p_from > interval '32 days' then
     raise exception 'Choose a week to publish.';
   end if;
 
-  delete from rota_shifts
-   where company_id = v_company and removed
-     and coalesce(published_starts_at, starts_at) >= p_from
-     and coalesce(published_starts_at, starts_at) < p_to;
-  get diagnostics v_removed = row_count;
+  -- Keep WHO was affected. A person whose only shift was taken off the rota has
+  -- no shift left to find afterwards, and still needs telling.
+  with gone as (
+    delete from rota_shifts
+     where company_id = v_company and removed
+       and coalesce(published_starts_at, starts_at) >= p_from
+       and coalesce(published_starts_at, starts_at) < p_to
+     returning user_id)
+  select count(*)::int, coalesce(array_agg(distinct user_id), '{}'::uuid[])
+    into v_removed, v_gone from gone;
 
-  update rota_shifts set
-    published_starts_at   = starts_at,
-    published_ends_at     = ends_at,
-    published_worksite_id = worksite_id,
-    published_note        = note,
-    updated_at            = now()
-   where company_id = v_company and not removed
-     and starts_at >= p_from and starts_at < p_to
-     and (published_starts_at is distinct from starts_at
-          or published_ends_at is distinct from ends_at
-          or published_worksite_id is distinct from worksite_id
-          or published_note is distinct from note);
-  get diagnostics v_updated = row_count;
+  with changed as (
+    update rota_shifts set
+      published_starts_at   = starts_at,
+      published_ends_at     = ends_at,
+      published_worksite_id = worksite_id,
+      published_note        = note,
+      updated_at            = now()
+     where company_id = v_company and not removed
+       and starts_at >= p_from and starts_at < p_to
+       and (published_starts_at is distinct from starts_at
+            or published_ends_at is distinct from ends_at
+            or published_worksite_id is distinct from worksite_id
+            or published_note is distinct from note)
+     returning user_id)
+  select count(*)::int, coalesce(array_agg(distinct user_id), '{}'::uuid[])
+    into v_updated, v_changed from changed;
 
-  if v_updated > 0 then
-    perform push_event(jsonb_build_object('type', 'rota', 'company_id', v_company, 'from', p_from, 'to', p_to));
+  if v_removed + v_updated > 0 then
+    perform push_event(jsonb_build_object(
+      'type', 'rota', 'company_id', v_company, 'from', p_from, 'to', p_to, 'at', now(),
+      'user_ids', (select coalesce(jsonb_agg(distinct u), '[]'::jsonb) from unnest(v_gone || v_changed) u)));
   end if;
   return v_removed + v_updated;
 end;
 $$;
 revoke execute on function publish_rota(timestamptz, timestamptz) from public, anon;
 grant execute on function publish_rota(timestamptz, timestamptz) to authenticated;
+
+-- Everyone with a published shift in the range, and whether a phone notification
+-- can reach them: a phone that has allowed notifications, and rota alerts not
+-- switched off. Managers only, and only for their own company. It says nothing
+-- about WHICH phone, and nothing about anyone without a shift.
+create or replace function rota_reach(p_from timestamptz, p_to timestamptz)
+returns table (user_id uuid, full_name text, phones integer, wants boolean)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select p.id,
+         p.full_name,
+         (select count(*)::int from push_subscriptions s where s.user_id = p.id),
+         coalesce((select np.rota from notification_prefs np where np.user_id = p.id), true)
+    from profiles p
+   where coalesce(is_manager(), false)
+     and p.company_id = current_company_id()
+     and exists (select 1 from rota_shifts r
+                  where r.user_id = p.id and r.company_id = p.company_id and not r.removed
+                    and r.published_starts_at >= p_from and r.published_starts_at < p_to)
+   order by p.full_name
+$$;
+revoke execute on function rota_reach(timestamptz, timestamptz) from public, anon;
+grant execute on function rota_reach(timestamptz, timestamptz) to authenticated;
 
 -- Every 5 minutes: late starts, no-shows, long shifts and shift reminders.
 select cron.unschedule(jobid) from cron.job where jobname = 'aero-push-tick';

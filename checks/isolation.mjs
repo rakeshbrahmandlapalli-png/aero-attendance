@@ -789,6 +789,70 @@ gap("a manager can set another company's person's pay rate in their own company"
   check("ADDON signed-out visitors cannot read company_features", !!r.error || r.rows[0].n === 0, `saw ${r.rows[0]?.n}`);
 }
 
+// ── 18. PUBLISHING A ROTA TELLS EVERYONE IT AFFECTED ─────────────────────
+// The message the database queues for send-push must name every person a publish
+// touched. The gap this closes: somebody whose only change was a shift being taken
+// OFF the rota had no shift left for the function to find, so nobody told them.
+{
+  const queued = async () => (await asOwner(db, `select body from net._calls where body->>'type' = 'rota' order by id`)).rows.map((x) => x.body);
+  // Two statements on one connection (as() rolls back, and the queued message has to survive).
+  const publish = async (who, from, to) => {
+    await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [who]);
+    await db.exec(`set role authenticated`);
+    try { return (await db.query(`select publish_rota(${from}, ${to}) n`)).rows[0].n; }
+    finally { await db.exec(`reset role`); await db.query(`select set_config('request.jwt.claim.sub', '', false)`); }
+  };
+  const FROM = "now() - interval '1 hour'", TO = "now() + interval '7 days'";
+
+  const before = (await queued()).length;
+  const n1 = await publish(P.mgrA, FROM, TO);
+  const after1 = await queued();
+  check("ROTA  publishing a draft publishes it", n1 >= 1, `changed ${n1}`);
+  check("ROTA  ...and queues exactly one message for that company", after1.length === before + 1 && after1.at(-1)?.company_id === CO_A,
+        JSON.stringify(after1.at(-1)));
+  check("ROTA  ...naming the person whose shift was published", (after1.at(-1)?.user_ids || []).includes(P.staffA1), JSON.stringify(after1.at(-1)));
+  check("ROTA  ...and nobody from another company", !(after1.at(-1)?.user_ids || []).includes(P.staffB1), JSON.stringify(after1.at(-1)));
+  check("ROTA  ...and a timestamp, so one publish is told apart from the next", !!after1.at(-1)?.at, JSON.stringify(after1.at(-1)));
+
+  const n2 = await publish(P.mgrA, FROM, TO);
+  check("ROTA  publishing again with nothing changed sends nothing", n2 === 0 && (await queued()).length === after1.length, `changed ${n2}`);
+
+  // The gap: a shift taken off the rota. The person has no shift left afterwards.
+  await db.exec(`update rota_shifts set removed = true where id = '${ROTA_A_PUB}'`);
+  const n3 = await publish(P.mgrA, FROM, TO);
+  const after3 = await queued();
+  check("ROTA  taking a shift off the rota and publishing removes it", n3 === 1, `changed ${n3}`);
+  check("ROTA  ...and still tells the person it was taken from", after3.length === after1.length + 1 && (after3.at(-1)?.user_ids || []).includes(P.staffA2),
+        JSON.stringify(after3.at(-1)));
+
+  let r = await as(db, P.staffA1, `select publish_rota(now(), now() + interval '1 day')`);
+  check("ROTA  staff cannot publish a rota", !!r.error, "it ran");
+  r = await as(db, P.ownerB, `select publish_rota(now() - interval '1 hour', now() + interval '7 days') n`);
+  check("ROTA  another company's owner publishing changes nothing of A's", !r.error && r.rows[0].n === 0 && (await queued()).length === after3.length, r.error || JSON.stringify(r.rows));
+
+  // Who can be reached by phone.
+  await db.exec(`insert into push_subscriptions (user_id, company_id, endpoint, p256dh, auth)
+                 values ('${P.staffA1}','${CO_A}','https://push.example/a1','k','a') on conflict (endpoint) do nothing;
+                 insert into notification_prefs (user_id, company_id) values ('${P.staffA1}','${CO_A}') on conflict (user_id) do nothing;
+                 update notification_prefs set rota = true where user_id = '${P.staffA1}';`);
+  const reach = async (who) => as(db, who, `select user_id, phones, wants from rota_reach(now() - interval '1 hour', now() + interval '7 days')`);
+  r = await reach(P.mgrA);
+  let a1 = (r.rows || []).find((x) => x.user_id === P.staffA1) || {};
+  check("REACH a manager sees who has a published shift, and that they have a phone", !r.error && a1.phones === 1 && a1.wants === true, r.error || JSON.stringify(r.rows));
+  await db.exec(`update notification_prefs set rota = false where user_id = '${P.staffA1}'`);
+  a1 = ((await reach(P.mgrA)).rows || []).find((x) => x.user_id === P.staffA1) || {};
+  check("REACH ...and when they have switched rota alerts off", a1.phones === 1 && a1.wants === false, JSON.stringify(a1));
+  await db.exec(`delete from push_subscriptions where user_id = '${P.staffA1}'`);
+  a1 = ((await reach(P.mgrA)).rows || []).find((x) => x.user_id === P.staffA1) || {};
+  check("REACH ...and when they have never turned notifications on", a1.phones === 0, JSON.stringify(a1));
+  r = await reach(P.staffA1);
+  check("REACH staff cannot ask who can be reached", !r.error && r.rows.length === 0, r.error || JSON.stringify(r.rows));
+  r = await reach(P.ownerB);
+  check("REACH another company sees none of A's people", !r.error && r.rows.length === 0, r.error || JSON.stringify(r.rows));
+  r = await as(db, "anon", `select * from rota_reach(now(), now())`);
+  check("REACH signed-out visitors cannot run it", !!r.error, "it ran");
+}
+
 // ── report ───────────────────────────────────────────────────────────────
 const failed = results.filter((r) => !r.ok);
 for (const r of results) if (!r.ok) console.log(`FAIL  ${r.name}${r.detail ? "  →  " + r.detail : ""}`);

@@ -1473,9 +1473,10 @@
     var changes = ROTA_SHIFTS.filter(function (s) { return rotaState(s) !== "published"; }).length;
     $("publishRota").disabled = !changes;
     $("publishRota").textContent = changes ? "Publish week (" + changes + ")" : ROTA_SHIFTS.length ? "Week published" : "Publish week";
+    var reached = ROTA_REACH && ROTA_REACH.week === +ROTA_WEEK && ROTA_REACH.text ? " " + ROTA_REACH.text : "";
     $("rotaStatus").textContent = !ROTA_SHIFTS.length ? "No shifts this week yet."
       : changes ? changes + (changes === 1 ? " change" : " changes") + " staff can't see yet. Publish the week when it's ready."
-      : "Staff can see everything on this week's rota.";
+      : "Staff can see everything on this week's rota." + reached;
     $("rotaStatus").className = "note" + (changes ? " changes" : "");
     show("copyWeek", !ROTA_SHIFTS.length);
     $("rotaDays").innerHTML = days.map(function (d, i) {
@@ -1557,6 +1558,21 @@
     });
   }
 
+  // A phone notification needs the person to have turned notifications on, on
+  // their own phone, and nothing here can do that for them. So after publishing,
+  // say who cannot be reached, so the manager can tell them in person instead of
+  // wondering later why somebody "never got it".
+  var ROTA_REACH = null;
+  function reachText(rows) {
+    if (!rows.length) return "";
+    var no = rows.filter(function (r) { return !(r.phones > 0 && r.wants); });
+    var text = (rows.length - no.length) + " of " + rows.length + " on this week's rota can be notified on their phone.";
+    if (no.length) text += " Not reachable: " + no.map(function (r) {
+      return r.full_name + (r.phones > 0 ? " (has switched rota alerts off)" : " (has not turned notifications on)");
+    }).join(", ") + ".";
+    return text;
+  }
+
   function publishRota() {
     return withLock(async function () {
       var from = ROTA_WEEK, to = addDays(ROTA_WEEK, 7);
@@ -1569,7 +1585,11 @@
       } else {
         var r = await sb.rpc("publish_rota", { p_from: from.toISOString(), p_to: to.toISOString() });
         if (r.error) throw r.error;
+        // The reach report is a bonus: if its SQL has not been run, publishing still worked.
+        var rr = await sb.rpc("rota_reach", { p_from: from.toISOString(), p_to: to.toISOString() });
+        ROTA_REACH = { week: +from, text: rr.error ? "" : reachText(rr.data || []) };
       }
+      if (DEMO) ROTA_REACH = { week: +from, text: reachText([{ full_name: "Sam Whitfield", phones: 1, wants: true }, { full_name: "Marek Kowalski", phones: 0, wants: true }, { full_name: "Danny Obi", phones: 1, wants: true }]) };
       toast("Rota published. Staff can see this week.");
       await loadRotaWeek(); await loadNow();
     });

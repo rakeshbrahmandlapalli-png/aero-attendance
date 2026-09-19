@@ -161,21 +161,31 @@ async function onCorrection(id: string) {
   }
 }
 
-async function onRota(companyId: string, from: string, to: string) {
+// The database says exactly who a publish affected (userIds, and `at` to tell one
+// publish from the next), removals included: somebody whose only shift was taken
+// off the rota has no shift left to look for afterwards. Without that list, work it
+// out from recently changed shifts, which is how this used to behave.
+async function onRota(companyId: string, from: string, to: string, userIds?: string[], at?: string) {
   const { data: co } = await db.from("companies").select("use_rota").eq("id", companyId).maybeSingle();
   if (!co?.use_rota) return;
   const { day } = await fmt(companyId);
-  const { data: rows } = await db.from("rota_shifts").select("user_id, updated_at")
-    .eq("company_id", companyId).eq("removed", false)
-    .gte("published_starts_at", from).lt("published_starts_at", to)
-    .gte("updated_at", new Date(Date.now() - 15 * MIN).toISOString());
-  const latest = new Map<string, string>();
-  (rows ?? []).forEach((r) => { if (!latest.has(r.user_id) || r.updated_at > latest.get(r.user_id)!) latest.set(r.user_id, r.updated_at); });
-  for (const [userId, stamp] of latest) {
+  const targets = new Map<string, string>();
+  if (userIds?.length && at) {
+    // Only people who really belong to this company: the list comes over the wire.
+    const { data: members } = await db.from("profiles").select("id").eq("company_id", companyId).in("id", userIds);
+    (members ?? []).forEach((m) => targets.set(m.id, at));
+  } else {
+    const { data: rows } = await db.from("rota_shifts").select("user_id, updated_at")
+      .eq("company_id", companyId).eq("removed", false)
+      .gte("published_starts_at", from).lt("published_starts_at", to)
+      .gte("updated_at", new Date(Date.now() - 15 * MIN).toISOString());
+    (rows ?? []).forEach((r) => { if (!targets.has(r.user_id) || r.updated_at > targets.get(r.user_id)!) targets.set(r.user_id, r.updated_at); });
+  }
+  for (const [userId, stamp] of targets) {
     if (await once(`rota:${userId}:${stamp}`)) {
       await sendTo([userId], ["rota"], {
-        title: "Your rota is out",
-        body: `Your shifts for the week of ${day(from)} have been published.`,
+        title: "Your rota has been updated",
+        body: `Your shifts for the week of ${day(from)} have changed. Open Aero to see them.`,
         url: "/", tag: `rota-${from}`,
       });
     }
@@ -267,7 +277,7 @@ Deno.serve(async (req) => {
   try {
     if (msg.type === "shift" && uuid.test(String(msg.id))) await onShift(String(msg.id));
     else if (msg.type === "correction" && uuid.test(String(msg.id))) await onCorrection(String(msg.id));
-    else if (msg.type === "rota" && uuid.test(String(msg.company_id))) await onRota(String(msg.company_id), String(msg.from), String(msg.to));
+    else if (msg.type === "rota" && uuid.test(String(msg.company_id))) await onRota(String(msg.company_id), String(msg.from), String(msg.to), Array.isArray(msg.user_ids) ? msg.user_ids.map(String).filter((x) => uuid.test(x)) : undefined, msg.at ? String(msg.at) : undefined);
     else if (msg.type === "tick") await onTick();
     else return new Response("Unknown message", { status: 400 });
     return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });

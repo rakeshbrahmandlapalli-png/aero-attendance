@@ -49,6 +49,7 @@ setup/update-2026-09-manager-clock-out.sql  clock_out_for(): a manager closing a
 setup/update-2026-09-handover.sql  my_handover(): the note the last person left on your worksite (already inside schema.sql)
 setup/update-2026-09-overtime.sql  overtime threshold, overtime_weeks(), decide_overtime() (already inside schema.sql)
 setup/update-2026-09-add-ons.sql  company_features + has_feature(): which add-ons a client has been given (already inside schema.sql)
+setup/update-2026-09-rota-notify.sql  publish_rota() records who a publish affected (removals too); rota_reach() (already inside schema.sql)
 setup/update-2026-09-clients-and-settings.sql  platform_admins, per-company time zone / currency / brand name, and the manager column grants (already inside schema.sql)
 setup/update-2026-09-notifications.sql  the notifications update on its own (already inside schema.sql)
 sw.js                 service worker: offline page, and showing push notifications

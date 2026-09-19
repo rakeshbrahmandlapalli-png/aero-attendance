@@ -40,6 +40,23 @@ cheapest way to notice.
 
 The send-push function retries transient push errors twice with short backoff. Expired subscriptions (404/410) are removed automatically. Check Edge Function logs for repeated failures and confirm VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY are present.
 
+### Published a rota and nobody was told
+
+Check in this order. The first two cause almost every case.
+
+1. **Verify JWT must be OFF for send-push.** The database calls it with no login, so with Verify JWT on, Supabase answers 401 and the notification is dropped without a word. Redeploying from the dashboard can switch it back on: after every redeploy of send-push, open the function, Settings, and check. To see what the database got back, run this in the SQL editor straight after publishing:
+
+       select status_code, left(content::text, 120) as answer, created
+         from net._http_response order by created desc limit 5;
+
+   200 is good. 401 means Verify JWT is on. Nothing at all means push_config has no function_url.
+2. **The person has to have turned notifications on, on their own phone** (Account, Turn on notifications). Nothing on the server side can do that for them. After publishing, the rota page now says how many people can be reached and names the ones who cannot.
+3. On iPhone it only works once Aero has been added to the Home Screen.
+4. The company needs the rota switched on in Company settings.
+5. A publish that changes nothing sends nothing.
+
+Since 19 Sep the message names exactly who a publish affected, including somebody whose only shift was taken off the rota; the send-push function has to be redeployed for that to apply.
+
 ## Release checks
 
 Run from the checks folder:

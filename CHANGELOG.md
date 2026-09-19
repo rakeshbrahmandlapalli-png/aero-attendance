@@ -5,6 +5,14 @@ or redeploy an Edge Function says so.
 
 ## Unreleased
 
+### Fixed (notifications)
+- **Somebody whose shift was taken off the rota was never told.** Publishing only messaged people who still had a shift, so a person whose only change was a removal heard nothing. The database now records exactly who a publish affected, removals included, and sends that list with the message. *Needs: setup/update-2026-09-rota-notify.sql, and a redeploy of the send-push function.* Until it is redeployed the function ignores the list and behaves as before.
+- **The manager could not tell who a rota notification could not reach.** A phone notification needs the person to have turned notifications on, on their own phone. After publishing, the Rota page now says how many people on the week can be notified and names the ones who cannot, so it can be sorted in person. OPS-RUNBOOK.md has a checklist for "I published and nobody was told", starting with Verify JWT, which must be off for send-push.
+
+### Fixed (sign-in and settings)
+- **Signing in on the manager board also signed the staff page in as the same person.** The pages shared one login. On a shared office computer the next member of staff to open the staff app would clock in as the manager. The board now has its own login; managers sign in to it once.
+- **Company settings**: the "Name shown in the app" box is gone and the wordmark is always "aero."; the grey notes and duplicate placeholders are gone.
+
 ### Fixed (sign-in was broken)
 - **Nobody could sign in to either app.** Both pages load the signed-in person with
   `companies(name)` embedded, and PostgREST works that out from the foreign keys. Adding
