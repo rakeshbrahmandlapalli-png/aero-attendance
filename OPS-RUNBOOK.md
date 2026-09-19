@@ -40,6 +40,10 @@ cheapest way to notice.
 
 The send-push function retries transient push errors twice with short backoff. Expired subscriptions (404/410) are removed automatically. Check Edge Function logs for repeated failures and confirm VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY are present.
 
+### Posted a notice and nobody was told
+
+Same path and the same first check as the rota below: Verify JWT must be off for send-push, and the person has to have turned notifications on. A notice more than 10 minutes old is never sent, on purpose, so a restore cannot push old notices to phones.
+
 ### Published a rota and nobody was told
 
 Check in this order. The first two cause almost every case.

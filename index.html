@@ -1599,7 +1599,10 @@
   // tracking in these pages, and the notice says so by not mentioning any.
   // 2 (Sep 2026): a note left at clock-out is now passed to the next person on
   // that worksite, so "who can see it" changed and everybody is asked again.
-  var NOTICE_VERSION = 2;
+  // 3 (Sep 2026): a manager can now record a job role and, optionally, a date of
+  // birth, phone number, emergency contact and start date, so "what is kept" and
+  // "who can see it" changed and everybody is asked again.
+  var NOTICE_VERSION = 3;
   // Who runs the app for the client: the registered company, and the name it
   // trades under. Owner's decision, 19 Sep 2026: AeroOne is a trading name of
   // AeroPark Direct Ltd (Companies House 17211973) until the mark is filed.
@@ -1618,6 +1621,7 @@
     ];
     if (ROTA.on) kept.push("Your usual availability and days off.");
     kept.push("Your hourly rate, if your manager has entered one.");
+    kept.push("Your job role and, only if your manager chooses to record them, your date of birth, phone number, an emergency contact you have named and the date you started.");
 
     var howLong = PRIVACY.retention
       ? esc(PRIVACY.retention)
@@ -1626,7 +1630,7 @@
     return "<p>" + co + " uses " + esc(PRODUCT) + " to record when you work. This explains what is kept about you, why, and who can see it.</p>" +
       "<h3>What is kept</h3><ul>" + kept.map(function (x) { return "<li>" + x + "</li>"; }).join("") + "</ul>" +
       "<h3>Why</h3><p>So " + co + " can pay you correctly, keep the working-time records it needs, and run its rotas. It is never sold or used for advertising.</p>" +
-      "<h3>Who can see it</h3><p>Your managers at " + co + " can see your hours, your clock-in and clock-out locations, your notes" + (ROTA.on ? " and your rota" : "") + ". Your colleagues can see your name and role. If you leave a note when you clock out, the next person working that worksite is shown the note itself so they know what was left for them — not your name, and nothing else about your shift.</p>" +
+      "<h3>Who can see it</h3><p>Your managers at " + co + " can see your hours, your clock-in and clock-out locations, your notes, the personal details listed above" + (ROTA.on ? " and your rota" : "") + ". Your colleagues can see your name, role and job role, and nothing else in the list above. If you leave a note when you clock out, the next person working that worksite is shown the note itself so they know what was left for them — not your name, and nothing else about your shift.</p>" +
       "<p>" + esc(PROCESSOR) + " built the app and runs it for " + co + ", and looks after the data on " + co + "'s instructions. It uses Supabase (the database, hosted in the EU), Vercel (hosting) and MapTiler and OpenStreetMap (map pictures: they can see your device's IP address and the area of the map on screen). If you turn on notifications, your phone's own notification service delivers them.</p>" +
       "<h3>How long it is kept</h3><p>" + howLong + "</p>" +
       "<h3>Your rights</h3><p>To see what is kept about you, to correct it, or to raise a concern, ask: " + who + ". You can also ask for a shift to be corrected under Timesheet. If you are unhappy with the answer, you can complain to the Information Commissioner's Office at ico.org.uk.</p>";
@@ -1840,7 +1844,8 @@
   function notifyAvailable(on) { show("notifyBox", on); }
   function notifyPrefList() {
     var list = [["correction_decisions", "When a correction is approved or rejected"]];
-    if (ROTA.on) list.push(["rota", "When a new rota is published"], ["reminders", "An hour before each shift"]);
+    if (ROTA.on) list.push(["rota", "When your rota is published or changed"], ["reminders", "An hour before each shift"]);
+    list.push(["notices", "When your manager posts a notice"]);
     return list;
   }
   $("saveAvail").addEventListener("click", saveAvail);

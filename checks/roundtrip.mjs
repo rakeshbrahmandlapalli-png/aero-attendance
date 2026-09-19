@@ -18,7 +18,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const U = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-const CO = U(1001), OWNER = U(11), STAFF = U(12), SITE = U(2001), SHIFT = U(3001), ANN = U(6001);
+const CO = U(1001), OWNER = U(11), STAFF = U(12), SITE = U(2001), SHIFT = U(3001), ANN = U(6001), JOB = U(7001);
 
 const results = [];
 const check = (name, ok, detail = "") => results.push({ name, ok: !!ok, detail });
@@ -26,7 +26,7 @@ const check = (name, ok, detail = "") => results.push({ name, ok: !!ok, detail }
 // Every company-scoped table the platform function's Backup exports, in its order.
 const TABLES = ["profiles", "worksites", "shifts", "shift_corrections", "pay_rates", "availability", "time_off",
                 "rota_shifts", "privacy_ack", "notification_prefs", "announcements", "announcement_reads",
-                "overtime_decisions", "company_features", "audit_events"];
+                "overtime_decisions", "company_features", "audit_events", "job_roles", "staff_details", "dismissed_alerts"];
 
 // ── 1. a company with something in every one of those tables ─────────────
 const live = await boot({});
@@ -55,6 +55,11 @@ await live.exec(`
   insert into company_features (company_id, feature, enabled) values ('${CO}','incidents', false);
   insert into audit_events (company_id, actor_id, action, entity, summary)
     values ('${CO}','${OWNER}','approved','overtime','Manager approved overtime for Sam Staff.');
+  insert into job_roles (id, company_id, name) values ('${JOB}','${CO}','Driver');
+  update profiles set job_role_id = '${JOB}' where id = '${STAFF}';
+  insert into staff_details (user_id, company_id, date_of_birth, phone, emergency_name)
+    values ('${STAFF}','${CO}','1990-05-01','07700 900123','Pat O''Neil');
+  insert into dismissed_alerts (company_id, alert_key, dismissed_by) values ('${CO}','long:abc','${OWNER}');
 `);
 
 // ── 2. export it the way the platform function does ──────────────────────
@@ -119,6 +124,15 @@ if (!restoreError) {
   check("MATCH  an add-on that was switched off is still off", feat?.feature === "incidents" && feat?.enabled === false, JSON.stringify(feat));
   const who = (await asOwner(fresh, `select email from auth.users where id = $1`, [STAFF])).rows[0];
   check("MATCH  the login exists again so rows still point at a person", who?.email === "staff@doomed.test", JSON.stringify(who));
+
+  const jr = (await asOwner(fresh, `select job_role_id from profiles where id = $1`, [STAFF])).rows[0];
+  check('MATCH  a job role is still on the person it was given to', jr?.job_role_id === JOB, JSON.stringify(jr));
+  const sd = (await asOwner(fresh, `select date_of_birth::text dob, emergency_name from staff_details where user_id = $1`, [STAFF])).rows[0];
+  check('MATCH  private details come back, apostrophe and all', sd?.dob === '1990-05-01' && sd?.emergency_name === "Pat O'Neil", JSON.stringify(sd));
+  // The one that would have flooded phones: restored shifts, corrections and notices each
+  // have a trigger that queues a notification.
+  const sent = (await asOwner(fresh, 'select count(*)::int n from net._calls')).rows[0].n;
+  check('SAFE   a restore queues no notifications at all', sent === 0, sent + ' notification(s) were queued while restoring');
 
   // Running it twice must not double anything up.
   await fresh.exec(sql);

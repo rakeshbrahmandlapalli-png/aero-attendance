@@ -5,6 +5,22 @@ or redeploy an Edge Function says so.
 
 ## Unreleased
 
+### Added (this week's requests)
+- **Edit profile**, replacing the "Make manager" button on the Staff tab. One dialog for a person's name, access (staff or manager), **job role** and optional personal details: date of birth, mobile number, emergency contact and start date. Job roles (Driver, Valet, Supervisor...) are a list each company keeps and can add to from inside the dialog. A job role is only a label; access is what decides what somebody may do, and is guarded by the database exactly as before.
+  - The personal details are in their own table, **not on profiles**, because every colleague can read profiles. Only managers, and the person themselves, can read them. Only one database function writes them, and the audit history records *that* a manager changed somebody's details, never *what* they were.
+  - It is one add-on, "Staff profiles", which the owner switches per client on /platform. **The privacy notice is updated and NOTICE_VERSION is 3**, because the app now can hold more personal data, including an emergency contact who is a third party.
+  - *Needs: setup/update-2026-09-profiles-alerts-notices.sql.*
+- **Build the week.** A grid for the Rota page: people down the side, days across. Pick Early, Late or Night, then tap the days, or "Mon to Fri" for a person. Shifts somebody already has are shown and cannot be painted over. Everything is added as a draft, warns about availability without blocking, and nothing reaches staff until the week is published. "Copy last week" is still there.
+- **Clear an alert.** Each flag on the Now board has a Clear button, and there is Clear all. It is shared across the company's managers and written to the audit history. Alerts still clear by themselves the moment the thing they are about is fixed. Clearing is for "I know, and it is fine".
+- **Posting a notice now sends a phone notification** to everyone in the company (not the person who posted it). People can switch it off under Notifications. *Needs the same SQL, and a redeploy of send-push.*
+
+### Fixed (this week's requests)
+- **The "Needs attention" card disagreed with the list above it** (it said 0 while two things were flagged). It counted only long and off-site shifts; the list also includes people working off the rota. It now counts exactly what is listed.
+- **Restoring a backup would have sent phone notifications for every restored shift and notice.** The restore only held off the audit triggers, not the ones that queue notifications. It now holds off every user trigger on the tables it fills, like pg_restore --disable-triggers. The round-trip test now fails if a restore queues any notification.
+- **/platform offered add-on switches that did nothing.** Rota, pay and breaks were listed but only ever had the client's own Company settings toggle behind them. They are removed from the list until they are enforced in the database. The list is now notices, handover, overtime and staff profiles.
+- **The platform page and the manager board no longer share a login with the staff app** (see below), and Company settings lost its "Name shown in the app" box: the wordmark is always "aero.".
+- Backups now include job roles, staff details and cleared alerts.
+
 ### Fixed (notifications)
 - **Somebody whose shift was taken off the rota was never told.** Publishing only messaged people who still had a shift, so a person whose only change was a removal heard nothing. The database now records exactly who a publish affected, removals included, and sends that list with the message. *Needs: setup/update-2026-09-rota-notify.sql, and a redeploy of the send-push function.* Until it is redeployed the function ignores the list and behaves as before.
 - **The manager could not tell who a rota notification could not reach.** A phone notification needs the person to have turned notifications on, on their own phone. After publishing, the Rota page now says how many people on the week can be notified and names the ones who cannot, so it can be sorted in person. OPS-RUNBOOK.md has a checklist for "I published and nobody was told", starting with Verify JWT, which must be off for send-push.

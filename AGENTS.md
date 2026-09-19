@@ -50,6 +50,7 @@ setup/update-2026-09-handover.sql  my_handover(): the note the last person left 
 setup/update-2026-09-overtime.sql  overtime threshold, overtime_weeks(), decide_overtime() (already inside schema.sql)
 setup/update-2026-09-add-ons.sql  company_features + has_feature(): which add-ons a client has been given (already inside schema.sql)
 setup/update-2026-09-rota-notify.sql  publish_rota() records who a publish affected (removals too); rota_reach() (already inside schema.sql)
+setup/update-2026-09-profiles-alerts-notices.sql  job_roles, staff_details (private), dismiss_alert(), notice push (already inside schema.sql)
 setup/update-2026-09-clients-and-settings.sql  platform_admins, per-company time zone / currency / brand name, and the manager column grants (already inside schema.sql)
 setup/update-2026-09-notifications.sql  the notifications update on its own (already inside schema.sql)
 sw.js                 service worker: offline page, and showing push notifications
@@ -88,6 +89,10 @@ developer-only folder with its own package.json, kept out of the site by
    **Run `cd checks && npm run embeds` after adding any table.** It reads the
    real schema, works out every route between the tables the pages embed, and
    fails when one is ambiguous.
+   **Personal details never go on `profiles`.** Every colleague can read profiles (the app shows names), so a
+   date of birth or phone number there would be readable by the whole team. `staff_details` is its own table:
+   managers and the person themselves only, written only by `save_staff_details()`, which audits THAT it
+   changed and never WHAT it held.
 3. **Security lives in the database, not the browser.** Row-level security
    decides who sees what. The distance-from-site check runs inside the
    `clock_in()` / `clock_out()` Postgres functions, so editing the page's

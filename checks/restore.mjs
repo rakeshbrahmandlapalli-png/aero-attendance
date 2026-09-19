@@ -69,9 +69,9 @@ if (only) {
 // ── what order the rows have to go back in ───────────────────────────────
 // Parents before children, or the foreign keys refuse them.
 const ORDER = [
-  "profiles", "worksites", "shifts", "shift_corrections", "pay_rates", "availability", "time_off",
+  "job_roles", "profiles", "worksites", "shifts", "shift_corrections", "pay_rates", "availability", "time_off",
   "rota_shifts", "privacy_ack", "notification_prefs", "announcements", "announcement_reads",
-  "overtime_decisions", "company_features", "audit_events",
+  "overtime_decisions", "company_features", "staff_details", "dismissed_alerts", "audit_events",
 ];
 
 const q = (v) => {
@@ -108,21 +108,32 @@ out.push("-- everyone a new password afterwards before they can sign in.");
 out.push("");
 out.push("begin;");
 out.push("");
-// Putting a shift correction or a rota shift back fires the audit triggers,
-// which would write fresh audit entries dated today for things that happened
-// weeks ago -- on top of the real ones coming out of the backup. An audit trail
-// that invents its own history is worse than no audit trail, so the two
-// triggers are held off while the rows go back, and put straight back after.
-out.push("-- Hold off the audit triggers: restoring history must not write new history.");
-out.push("do $$ begin");
-out.push("  if exists (select 1 from pg_trigger where tgname = 'shift_corrections_audit') then");
-out.push("    alter table shift_corrections disable trigger shift_corrections_audit;");
-out.push("  end if;");
-out.push("  if exists (select 1 from pg_trigger where tgname = 'rota_shifts_audit') then");
-out.push("    alter table rota_shifts disable trigger rota_shifts_audit;");
-out.push("  end if;");
-out.push("end $$;");
-out.push("");
+// Putting rows back must not run the app's own triggers. Two kinds matter:
+//
+//   audit    a restored shift correction or rota shift would write a fresh audit
+//            entry dated TODAY for something that happened weeks ago, on top of
+//            the real ones coming out of the backup. An audit trail that invents
+//            its own history is worse than none.
+//   push     restored shifts, corrections and notices would each queue a phone
+//            notification, so every manager would be told everyone "just clocked
+//            in" and every member of staff would be sent last month's notices.
+//
+// So every user-defined trigger on the tables being filled is held off while the
+// rows go back, exactly as pg_restore --disable-triggers does, and put back after.
+// Only USER triggers: the ones that enforce foreign keys stay on.
+const TRIGGER_TABLES = ["companies", ...ORDER];
+const triggerBlock = (verb) => [
+  "do $$ declare t text; begin",
+  `  foreach t in array array[${TRIGGER_TABLES.map((t) => `'${t}'`).join(", ")}] loop`,
+  "    if to_regclass('public.' || t) is not null then",
+  `      execute format('alter table %I ${verb} trigger user', t);`,
+  "    end if;",
+  "  end loop;",
+  "end $$;",
+  "",
+];
+out.push("-- Hold off the app's triggers: restoring history must not write new history or send notifications.");
+out.push(...triggerBlock("disable"));
 
 for (const entry of companies) {
   const c = entry.company;
@@ -165,16 +176,8 @@ for (const entry of companies) {
   summary.push({ name: c.name, counts });
 }
 
-out.push("-- ...and on again, so the app keeps recording what happens from here.");
-out.push("do $$ begin");
-out.push("  if exists (select 1 from pg_trigger where tgname = 'shift_corrections_audit') then");
-out.push("    alter table shift_corrections enable trigger shift_corrections_audit;");
-out.push("  end if;");
-out.push("  if exists (select 1 from pg_trigger where tgname = 'rota_shifts_audit') then");
-out.push("    alter table rota_shifts enable trigger rota_shifts_audit;");
-out.push("  end if;");
-out.push("end $$;");
-out.push("");
+out.push("-- ...and on again, so the app keeps recording and notifying from here on.");
+out.push(...triggerBlock("enable"));
 out.push("commit;");
 out.push("");
 
