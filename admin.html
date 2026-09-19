@@ -110,7 +110,24 @@
   .notice-off{color:var(--ink-2);}
   .flag{padding:var(--s4);background:var(--warn-soft);border-left:4px solid var(--warn);color:var(--warn);overflow-wrap:anywhere;}
   .flag .act{display:block;margin-top:var(--s3);}
-  .flag-count{font-weight:600;}
+  .flag-count{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);font-weight:600;}
+  .flag .act{display:flex;gap:var(--s2);flex-wrap:wrap;}
+  #pfJobWrap,#pfDetailsWrap{margin-top:var(--s2);}
+  #weekDialog{width:min(820px,calc(100% - 32px));}
+  .wk-type{display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap;margin-bottom:var(--s2);}
+  .wk-type label{display:flex;align-items:center;gap:var(--s2);min-width:96px;min-height:48px;margin:0;color:var(--ink);}
+  .wk-type input[type=radio]{width:24px;height:24px;min-height:24px;flex:none;margin:0;accent-color:var(--accent);}
+  .wk-type input[type=time]{width:auto;flex:1 1 112px;}
+  .wk-scroll{overflow-x:auto;margin-top:var(--s3);border:1px solid var(--line);border-radius:var(--r);}
+  .wk{min-width:520px;}
+  .wk-row{display:grid;grid-template-columns:minmax(120px,1.4fr) repeat(7,minmax(52px,1fr));border-bottom:1px solid var(--line-soft);}
+  .wk-row:last-child{border-bottom:0;}
+  .wk-head>div{padding:var(--s2) var(--s1);text-align:center;color:var(--ink-2);font-size:var(--t1);line-height:1.3;}
+  .wk-name{position:sticky;left:0;z-index:1;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:var(--s1);padding:var(--s2) var(--s3);background:var(--card);font-weight:600;overflow-wrap:anywhere;}
+  .wk-cell{display:flex;align-items:center;justify-content:center;min-height:56px;padding:var(--s1);border:0;border-left:1px solid var(--line-soft);border-radius:0;background:var(--card);color:var(--ink);font-size:var(--t1);text-align:center;}
+  button.wk-cell{cursor:pointer;}
+  .wk-cell.on{background:var(--accent-soft);color:var(--accent);font-weight:600;}
+  .wk-cell.have{background:var(--surface);color:var(--ink-2);}
   .coverage{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s6);padding-bottom:var(--s6);border-bottom:1px solid var(--line);}
   .coverage strong{display:block;font-size:var(--t4);font-weight:600;}
   .coverage span{font-size:var(--t1);color:var(--ink-2);}
@@ -320,7 +337,7 @@
     <section id="tab-rota">
       <div class="rota-head">
         <div class="week-nav"><button type="button" class="icon-btn" id="rotaPrev" aria-label="Previous week"></button><h2 id="rotaWeek">This week</h2><button type="button" class="icon-btn" id="rotaNext" aria-label="Next week"></button></div>
-        <div class="toolbar-actions"><button type="button" class="g hidden" id="copyWeek">Copy last week</button><button type="button" class="b" id="publishRota">Publish week</button></div>
+        <div class="toolbar-actions"><button type="button" class="g" id="weekRota">Build the week</button><button type="button" class="g hidden" id="copyWeek">Copy last week</button><button type="button" class="b" id="publishRota">Publish week</button></div>
       </div>
       <p class="note" id="rotaStatus" aria-live="polite"></p>
       <div class="day-tabs" id="rotaDays" role="group" aria-label="Day of the week"></div>
@@ -392,14 +409,16 @@
     <section id="tab-audit"><h2>Audit history</h2><p class="note">A record of attendance corrections and rota changes for this company.</p><div class="bar"><label class="field">Action<select id="auditFilter"><option value="">All activity</option><option value="requested">Requests</option><option value="approved">Approvals</option><option value="rejected">Rejections</option><option value="created">Created</option><option value="updated">Updated</option><option value="removed">Removed</option></select></label><button class="g" id="refreshAudit">Refresh</button><button class="g" id="exportAudit">Export CSV</button><span class="notify-state" id="auditUpdated"></span></div><div id="auditEvents" aria-live="polite"></div></section>
   </main>
 </div>
-<dialog id="settingsDialog" aria-labelledby="settingsTitle"><form id="settingsForm"><h2 id="settingsTitle">Company settings</h2><label class="field">Company name<input id="companyName" required maxlength="120"></label><label class="field" id="brandWrap">Name shown in the app<input id="brandName" maxlength="60" autocomplete="off" placeholder="Aero Attendance"></label><p class="note" id="brandNote">Replaces &ldquo;Aero Attendance&rdquo; in the privacy notice and the heading of this board. Leave blank to keep it. The home-screen icon and its name cannot change.</p><label class="field" id="tzWrap">Time zone<select id="timeZone"></select></label><label class="field" id="curWrap">Currency<select id="currency"></select></label><p class="note" id="localeNote">Phone notifications show times in this time zone. Changing the currency does not convert any hourly rate: the numbers stay as they are.</p><label class="filter-check" id="payToggleWrap"><input type="checkbox" id="showPay">Show estimated pay</label><p class="note" id="payToggleNote">Staff see an estimate from their own hourly rate; managers see everyone's on Timesheets. Switch this on only once the data processing agreement is signed.</p><label class="filter-check" id="onSiteToggleWrap"><input type="checkbox" id="requireOnSite">Only allow clock-in on site</label><p class="note" id="onSiteToggleNote">Staff can only clock in inside a worksite zone, with location switched on. Clocking out is always allowed and flagged if they're away. Switch off for teams that work off-site.</p><label class="filter-check" id="breakToggleWrap"><input type="checkbox" id="useBreaks">Staff record breaks</label><p class="note" id="breakToggleNote">Staff tap Start break and End break themselves, and those minutes come off their paid hours. Switch off for teams that never stop.</p><label class="field" id="privacyContactWrap">Who staff ask about their data<input id="privacyContact" maxlength="200" autocomplete="off" placeholder="Name, role or email"></label><label class="field" id="retentionWrap">How long records are kept<input id="retentionText" maxlength="200" autocomplete="off" placeholder="e.g. Six years after you leave"></label><p class="note" id="privacyNote">Both appear in the privacy notice every member of staff is shown the first time they sign in.</p><label class="filter-check" id="rotaToggleWrap"><input type="checkbox" id="useRota">Use rota &amp; availability</label><p class="note" id="rotaToggleNote">Staff give their usual week and days off. You build and publish the rota on the Rota tab, and Now flags late starts and no-shows.</p><label class="field" id="otWrap">Overtime after (hours a week)<input id="overtimeHours" type="number" inputmode="decimal" min="0.5" max="168" step="0.5" autocomplete="off"></label><p class="note" id="otNote">Any week somebody works more than this is listed on the Review tab to approve or reject, and can be exported on its own for payroll. Weeks start on Monday in this company's time zone. Leave blank to switch it off.</p><div id="settingsError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelSettings">Cancel</button><button class="b" id="saveSettings">Save changes</button></div></form></dialog>
+<dialog id="settingsDialog" aria-labelledby="settingsTitle"><form id="settingsForm"><h2 id="settingsTitle">Company settings</h2><label class="field">Company name<input id="companyName" required maxlength="120"></label><label class="field" id="tzWrap">Time zone<select id="timeZone"></select></label><label class="field" id="curWrap">Currency<select id="currency"></select></label><label class="filter-check" id="payToggleWrap"><input type="checkbox" id="showPay">Show estimated pay</label><label class="filter-check" id="onSiteToggleWrap"><input type="checkbox" id="requireOnSite">Only allow clock-in on site</label><label class="filter-check" id="breakToggleWrap"><input type="checkbox" id="useBreaks">Staff record breaks</label><label class="field" id="privacyContactWrap">Privacy notice: who staff ask about their data<input id="privacyContact" maxlength="200" autocomplete="off"></label><label class="field" id="retentionWrap">Privacy notice: how long records are kept<input id="retentionText" maxlength="200" autocomplete="off"></label><label class="filter-check" id="rotaToggleWrap"><input type="checkbox" id="useRota">Use rota &amp; availability</label><label class="field" id="otWrap">Overtime after (hours a week)<input id="overtimeHours" type="number" inputmode="decimal" min="0.5" max="168" step="0.5" autocomplete="off"></label><div id="settingsError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelSettings">Cancel</button><button class="b" id="saveSettings">Save changes</button></div></form></dialog>
 <dialog id="rateDialog" aria-labelledby="rateTitle"><form id="rateForm"><h2 id="rateTitle">Hourly rate</h2><p class="note" id="rateWho"></p><label class="field">Pounds per hour<input id="rateValue" type="number" inputmode="decimal" min="0" max="1000" step="0.01"></label><p class="note">Used only to estimate pay from completed hours. Clear it and save to remove the rate.</p><div id="rateError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelRate">Cancel</button><button class="b" id="saveRate">Save rate</button></div></form></dialog>
 
 <dialog id="rotaDialog" aria-labelledby="rotaTitle"><form id="rotaForm"><h2 id="rotaTitle">Add shift</h2><label class="field">Staff member<select id="rotaWho" required></select></label><label class="field">Date<input id="rotaDate" type="date" required></label><div class="time-pair"><label class="field">Start<input id="rotaStart" type="time" required></label><label class="field">Finish<input id="rotaEnd" type="time" required></label></div><p class="note" id="rotaHint"></p><label class="field">Worksite<select id="rotaSite"></select></label><label class="field">Note for staff (optional)<input id="rotaNote" maxlength="300"></label><div id="rotaWarn" class="warn-line hidden" role="status"></div><div id="rotaError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g hidden" id="deleteRota">Remove shift</button><button type="button" class="g" id="cancelRota">Cancel</button><button class="b" id="saveRota">Save shift</button></div></form></dialog>
 <dialog id="staffDialog" aria-labelledby="staffTitle"><form id="staffForm" novalidate><h2 id="staffTitle">Add staff</h2><div id="staffFields"><label class="field">Full name<input id="newName" maxlength="120" autocomplete="off"></label><label class="field">Email<input id="newEmail" type="email" inputmode="email" autocomplete="off"></label><label class="field">Role<select id="newRole"><option value="staff">Staff</option><option value="admin">Manager</option></select></label><label class="field">Starting password<input id="newPassword" maxlength="72" autocomplete="new-password" spellcheck="false"></label><button type="button" class="g sm" id="suggestPassword">Suggest a password</button><p class="note">Give it to them in person or by text. They choose their own password the first time they sign in.</p></div><p id="staffDone" class="hidden"></p><div id="staffError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelStaff">Cancel</button><button class="b" id="saveStaff">Add staff</button></div></form></dialog>
 <dialog id="pwDialog" aria-labelledby="pwTitle"><form id="pwForm" novalidate><h2 id="pwTitle">Choose your password</h2><p class="note">You signed in with a starting password. Choose your own to keep your account private.</p><label class="field">New password<input id="newPw" type="password" autocomplete="new-password"></label><label class="field">Type it again<input id="newPw2" type="password" autocomplete="new-password"></label><div class="err hidden" id="pwError" role="alert"></div><div class="bar"><button class="b" id="savePw">Save password</button></div></form></dialog>
-<dialog id="closeDialog" aria-labelledby="closeTitle"><h2 id="closeTitle">Clock someone out</h2><p class="note" id="closeWho"></p><label class="field">Why (optional)<input id="closeReason" maxlength="200" autocomplete="off" placeholder="e.g. Drove off without clocking out"></label><p class="note">Recorded against your name in Audit history. If a break is still running it is closed, and those minutes come off the paid hours.</p><div id="closeError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelClose">Cancel</button><button type="button" class="b" id="confirmClose">Clock out</button></div></dialog>
-<dialog id="noticeDialog" aria-labelledby="noticeTitle"><h2 id="noticeTitle">Notices</h2><p class="note">Everyone in the company sees this on their home screen until they dismiss it.</p><label class="field">New notice<textarea id="noticeBody" maxlength="500" rows="3" placeholder="Something everyone needs to know today"></textarea></label><label class="field">Stop showing it<select id="noticeExpiry"><option value="">When I switch it off</option><option value="1">After 1 day</option><option value="3">After 3 days</option><option value="7">After 7 days</option></select></label><div id="noticeError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="b" id="saveNotice">Post notice</button></div><h3 class="notify-sub">Posted notices</h3><div id="noticeList"></div><div class="bar"><button type="button" class="g" id="closeNotice">Close</button></div></dialog>
+<dialog id="closeDialog" aria-labelledby="closeTitle"><h2 id="closeTitle">Clock someone out</h2><p class="note" id="closeWho"></p><label class="field">Why (optional)<input id="closeReason" maxlength="200" autocomplete="off"></label><p class="note">Recorded against your name in Audit history. If a break is still running it is closed, and those minutes come off the paid hours.</p><div id="closeError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelClose">Cancel</button><button type="button" class="b" id="confirmClose">Clock out</button></div></dialog>
+<dialog id="profileDialog" aria-labelledby="profileTitle"><form id="profileForm" novalidate><h2 id="profileTitle">Edit profile</h2><label class="field">Name<input id="pfName" maxlength="120" autocomplete="off"></label><label class="field">Access<select id="pfAccess"></select></label><div id="pfJobWrap"><label class="field">Job role<select id="pfJob"></select></label><label class="field">Add a new job role<input id="pfNewRole" maxlength="40" autocomplete="off"></label><div class="bar"><button type="button" class="g" id="pfAddRole">Add to list</button><button type="button" class="g" id="pfRemoveRole">Remove selected role</button></div></div><div id="pfDetailsWrap"><h3 class="notify-sub">Optional details</h3><label class="field">Date of birth<input id="pfDob" type="date"></label><label class="field">Mobile number<input id="pfPhone" type="tel" inputmode="tel" maxlength="30" autocomplete="off"></label><label class="field">Emergency contact name<input id="pfEmName" maxlength="100" autocomplete="off"></label><label class="field">Emergency contact number<input id="pfEmPhone" type="tel" inputmode="tel" maxlength="30" autocomplete="off"></label><label class="field">Start date<input id="pfStart" type="date"></label></div><div id="pfError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="pfCancel">Cancel</button><button class="b" id="pfSave">Save profile</button></div></form></dialog>
+<dialog id="weekDialog" aria-labelledby="weekTitle"><form id="weekForm" novalidate><h2 id="weekTitle">Build the week</h2><div id="wkTypes"></div><label class="field">Worksite<select id="wkSite"></select></label><div class="wk-scroll"><div id="wkGrid" class="wk"></div></div><div id="wkSummary" class="warn-line" role="status"></div><div id="wkError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="wkCancel">Cancel</button><button class="b" id="wkSave">Add shifts</button></div></form></dialog>
+<dialog id="noticeDialog" aria-labelledby="noticeTitle"><h2 id="noticeTitle">Notices</h2><p class="note">Everyone in the company sees this on their home screen until they dismiss it.</p><label class="field">New notice<textarea id="noticeBody" maxlength="500" rows="3"></textarea></label><label class="field">Stop showing it<select id="noticeExpiry"><option value="">When I switch it off</option><option value="1">After 1 day</option><option value="3">After 3 days</option><option value="7">After 7 days</option></select></label><div id="noticeError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="b" id="saveNotice">Post notice</button></div><h3 class="notify-sub">Posted notices</h3><div id="noticeList"></div><div class="bar"><button type="button" class="g" id="closeNotice">Close</button></div></dialog>
 <dialog id="notifyDialog" aria-labelledby="notifyTitle"><h2 id="notifyTitle">Notifications</h2><p class="note" id="notifyState"></p><div class="bar notify-actions"><button type="button" class="b" id="notifyOn">Turn on notifications</button><button type="button" class="g hidden" id="notifyOff">Turn off for this device</button></div><h3 class="notify-sub">Tell me when</h3><div id="notifyPrefs"></div><div class="bar"><button type="button" class="g" id="closeNotify">Close</button></div></dialog>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
@@ -414,8 +433,8 @@
   var REQUESTS = [], AUDIT = [], editingSite = null, requestsLoaded = false, auditLoaded = false;
   var attentionIds = null;
   var PAY_ON = false, PAY_READY = false, RATES = {}, rateUser = null;
-  // Per company (time_zone, currency, brand_name). LOCALE_READY stays false until the settings SQL has been run.
-  var LOCALE_READY = false, TZ = "Europe/London", CUR = "GBP", BRAND = "";
+  // Per company (time_zone, currency). LOCALE_READY stays false until the settings SQL has been run.
+  var LOCALE_READY = false, TZ = "Europe/London", CUR = "GBP";
   var ON_SITE = true, ON_SITE_READY = false;
   var USE_BREAKS = false, BREAKS_READY = false;
   // The privacy notice: what only the company can supply, and who has read it.
@@ -469,7 +488,7 @@
 
   var D = {
     company: "Example Logistics Ltd",
-    showPay: true, timeZone: "Europe/London", currency: "GBP", brandName: "",
+    showPay: true, timeZone: "Europe/London", currency: "GBP",
     useRota: true, rota: [], avail: {}, off: [], requireOnSite: true,
     notices: [{ id: "a1", body: "Gate code changes to 4417 from Monday. Ask Jo if it doesn't work.",
                 active: true, expires_at: null, created_at: agoISO(26) }],
@@ -477,6 +496,8 @@
     // Add-ons the owner has taken away from this client, for demo mode. Empty
     // means they have everything, which is the default for a real client too.
     featuresOff: {},
+    jobRoles: [{ id: "jr1", name: "Driver" }, { id: "jr2", name: "Valet" }, { id: "jr3", name: "Supervisor" }],
+    details: { p1: { user_id: "p1", date_of_birth: "1991-04-12", phone: "07700 900111", emergency_name: "Alex Whitfield", emergency_phone: "07700 900222", start_date: "2024-02-05" } },
     overtimeHours: 40,
     overtime: [
       { user_id: "p1", full_name: "Sam Whitfield", week_start: "2026-09-07", hours: 47.5, threshold: 40, overtime: 7.5, status: null, note: "" },
@@ -606,13 +627,6 @@
     catch (e) { return CUR + " " + Number(n); }
   }
 
-  // The company's own name for the app replaces the "aero." wordmark and the tab title.
-  function applyBrand() {
-    var mark = document.querySelector(".brand");
-    if (BRAND) mark.textContent = BRAND; else mark.innerHTML = "aero<span>.</span>";
-    document.title = (BRAND || "Aero Attendance") + " | Manager board";
-  }
-
   // Time zones and currencies for the Company settings pickers.
   var COMMON_ZONES = ["Europe/London", "Europe/Dublin", "Europe/Paris", "Europe/Berlin", "Europe/Madrid", "Asia/Kolkata", "Asia/Dubai",
     "Asia/Singapore", "Australia/Sydney", "America/New_York", "America/Chicago", "America/Los_Angeles", "UTC"];
@@ -662,7 +676,8 @@
       NOW = D.now;
       TODAY = D.now.map(function (s) { return { user_id: s.full_name, clock_in_at: s.clock_in_at, clock_out_at: null }; })
         .concat(D.sheet.filter(function (s) { return new Date(s.clock_out_at) >= midnight; }));
-      renderNow(); renderFlags(); renderStats(); return;
+      DISMISS_READY = true;
+      renderNow(); renderFlags(); return;
     }
     var since = '"' + midnight.toISOString() + '"';
     var res = await Promise.all([
@@ -674,9 +689,14 @@
     if (err) { fail(err); return; }
     NOW = res[0].data || [];
     TODAY = res[1].data || [];
+    // What has been cleared. If its SQL has not been run there is nothing to read,
+    // and the Clear buttons stay hidden rather than doing nothing.
+    var dis = await sb.from("dismissed_alerts").select("alert_key").gte("dismissed_at", new Date(Date.now() - 7 * 864e5).toISOString());
+    DISMISS_READY = !dis.error;
+    DISMISSED = {};
+    (dis.data || []).forEach(function (d) { DISMISSED[d.alert_key] = true; });
     renderNow();
     renderFlags();
-    renderStats();
   }
 
   function renderNow() {
@@ -726,6 +746,19 @@
     noLocation: 6    // no verified location: informational
   };
 
+  // Cleared alerts. An alert is worked out from live data every time, so it goes
+  // away by itself the moment the thing it is about is fixed. Clearing is for "I
+  // know, and it is fine", and it is shared: what one manager clears, the others
+  // stop seeing. The key names the shift or rota slot, so clearing one alert clears
+  // only that one.
+  var FLAGS = [], DISMISSED = {}, DISMISS_READY = false;
+
+  function flagHtml(f) {
+    return '<div class="flag' + (f.bad ? " bad" : "") + '"><span class="ft">' + f.text + '</span><span class="act">' + (f.extra || "") +
+      (DISMISS_READY ? '<button type="button" class="g sm" data-clear="' + esc(f.key) + '" data-summary="' + esc(f.summary) + '">Clear</button>' : "") +
+      "</span></div>";
+  }
+
   function renderFlags(quiet) {
     var ids=NOW.filter(needsAttention).map(function(s){return s.shift_id;});
     if(!quiet && attentionIds && $('boardAlerts').checked && ids.some(function(id){return !attentionIds.includes(id);}))toast('An attendance exception needs attention.');
@@ -735,24 +768,51 @@
       // 13h is past any legitimate shift — almost always a forgotten clock-out,
       // and every hour it sits there is an hour of wrong payroll.
       if (s.hours_so_far > 13) {
-        out.push({ rank: URGENCY.forgotten, html: '<div class="flag bad"><b>' + esc(s.full_name) + "</b> has been on shift " +
-          hrs(s.hours_so_far) + " — check the finish time." +
-          '<span class="act"><button class="g sm" data-close="' + s.shift_id +
-          '">Clock out</button></span></div>' });
+        out.push({ key: "long:" + s.shift_id, rank: URGENCY.forgotten, bad: true,
+          text: "<b>" + esc(s.full_name) + "</b> has been on shift " + hrs(s.hours_so_far) + " — check the finish time.",
+          extra: '<button class="g sm" data-close="' + s.shift_id + '">Clock out</button>',
+          summary: s.full_name + " has been on shift " + hrs(s.hours_so_far) });
       }
       if (s.clock_in_ok === false) {
-        out.push({ rank: URGENCY.offSite, html: '<div class="flag"><b>' + esc(s.full_name) + "</b> clocked in " +
-          s.clock_in_metres + "m from " + esc(s.worksite || "site") + ".</div>" });
+        out.push({ key: "away:" + s.shift_id, rank: URGENCY.offSite,
+          text: "<b>" + esc(s.full_name) + "</b> clocked in " + s.clock_in_metres + "m from " + esc(s.worksite || "site") + ".",
+          summary: s.full_name + " clocked in " + s.clock_in_metres + "m from site" });
       }
-      if (s.clock_in_ok == null) out.push({ rank: URGENCY.noLocation, html: '<div class="flag"><b>' + esc(s.full_name) + '</b> has no verified clock-in location.</div>' });
+      if (s.clock_in_ok == null) out.push({ key: "noloc:" + s.shift_id, rank: URGENCY.noLocation,
+        text: "<b>" + esc(s.full_name) + "</b> has no verified clock-in location.", summary: s.full_name + " has no verified clock-in location" });
     });
-    out = out.concat(rotaFlags());
+    out = out.concat(rotaFlags()).filter(function (f) { return !DISMISSED[f.key]; });
     // Stable, so people keep the board's own order inside one level of urgency.
     out.sort(function (a, b) { return a.rank - b.rank; });
+    FLAGS = out;
 
-    var head = out.length > 1 ? '<div class="flag-count">' + out.length + " things need attention</div>" : "";
-    $("flags").innerHTML = head + out.map(function (f) { return f.html; }).join("");
+    var head = out.length > 1
+      ? '<div class="flag-count"><span>' + out.length + " things need attention</span>" +
+        (DISMISS_READY ? '<button type="button" class="g sm" id="clearAllFlags">Clear all</button>' : "") + "</div>"
+      : "";
+    $("flags").innerHTML = head + out.map(flagHtml).join("");
+    // The "Needs attention" card counts exactly what is listed, so the two never disagree.
+    renderStats();
   }
+
+  function clearAlerts(list) {
+    return withLock(async function () {
+      for (var i = 0; i < list.length; i++) {
+        if (!DEMO) {
+          var r = await sb.rpc("dismiss_alert", { p_key: list[i].key, p_summary: list[i].summary });
+          if (r.error) { fail(r.error); break; }
+        }
+        DISMISSED[list[i].key] = true;
+      }
+      renderFlags(true);
+      toast(list.length > 1 ? "Alerts cleared" : "Alert cleared");
+    });
+  }
+  $("flags").addEventListener("click", function (e) {
+    var one = e.target.closest("button[data-clear]");
+    if (one) return clearAlerts([{ key: one.getAttribute("data-clear"), summary: one.getAttribute("data-summary") }]);
+    if (e.target.closest("#clearAllFlags")) return clearAlerts(FLAGS.map(function (f) { return { key: f.key, summary: f.summary }; }));
+  });
 
   function stat(label, value, sub) {
     return '<div class="stat"><div class="lbl">' + esc(label) + '</div><div class="val num">' +
@@ -770,7 +830,7 @@
     });
     var nSites = Object.keys(sites).length, nPeople = Object.keys(people).length;
     var active = STAFF.filter(function (p) { return p.active; }).length;
-    var attention = NOW.filter(needsAttention).length;
+    var attention = FLAGS.length;
     $("stats").innerHTML =
       stat("On shift now", NOW.length, NOW.length ? "Across " + nSites + (nSites === 1 ? " site" : " sites") : "Nobody clocked in") +
       stat("Clocked in today", nPeople, active ? "of " + active + " active staff" : "Different people") +
@@ -954,6 +1014,10 @@
     var selected = $("who").value;
     if (DEMO) {
       STAFF = D.staff;
+      if (hasFeature("staff_profiles")) {
+        JOB_ROLES = D.jobRoles.slice(); DETAILS = D.details; PROFILES_READY = true;
+        STAFF.forEach(function (p) { if (!("job_role_id" in p)) p.job_role_id = ({ p1: "jr1", p2: "jr1", p3: "jr2" })[p.id] || null; });
+      }
       $("who").innerHTML = '<option value="">Everyone</option>' + STAFF.map(function (p) {
         return '<option value="' + p.id + '">' + esc(p.full_name) + "</option>";
       }).join("");
@@ -964,6 +1028,7 @@
     var r = await sb.from("profiles").select("*").order("full_name");
     if (r.error) { fail(r.error); return; }
     STAFF = r.data || [];
+    await loadProfileExtras();
     var ak = await sb.from("privacy_ack").select("user_id, seen_at");
     ACK_READY = !ak.error;
     ACK = {}; ((ak.data) || []).forEach(function (a) { ACK[a.user_id] = a.seen_at; });
@@ -994,7 +1059,7 @@
     $("staffBody").innerHTML = rows.map(function (p) {
       return "<tr>" +
         nameCell(p.full_name) +
-        '<td><span class="role">' + esc(ROLE_LABEL[p.role] || p.role) + "</span></td>" +
+        '<td>' + roleCell(p) + "</td>" +
         "<td>" + (p.active ? '<span class="st ok"><i></i>Active</span>'
                            : '<span class="st none"><i></i>Removed</span>') + noticeLine(p) + "</td>" +
         '<td class="tiny num">' + dmy(p.created_at) + "</td>" +
@@ -1003,8 +1068,7 @@
           (PAY_READY ? '<button class="g sm" data-rate="' + p.id + '">Set rate</button> ' : "") +
           (p.active && p.id !== ME.id && (p.role !== "owner" || ME.role === "owner")
             ? '<button class="g sm" data-pw="' + p.id + '">New password</button> ' : "") +
-          (p.active && p.id !== ME.id && p.role !== "owner"
-            ? '<button class="g sm" data-role="' + p.id + '">' + (p.role === "admin" ? "Make staff" : "Make manager") + "</button> " : "") +
+          (p.active ? '<button class="g sm" data-profile="' + p.id + '">Edit profile</button> ' : "") +
           (p.id === ME.id || p.role === "owner" ? "" : '<button class="g sm" data-toggle="' + p.id + '">' +
             (p.active ? "Remove" : "Restore") + "</button>") + "</td>" +
       "</tr>";
@@ -1012,28 +1076,6 @@
   }
 
   var ROLE_LABEL = { owner: "Owner", admin: "Manager", staff: "Staff" };
-
-  // Staff <-> manager. The database refuses anything else (the owner's role,
-  // your own role): see profiles_guard in schema.sql. Its message is shown as it is.
-  function changeRole(id) {
-    var p = STAFF.find(function (x) { return x.id === id; });
-    if (!p || p.id === ME.id || p.role === "owner") return;
-    var to = p.role === "admin" ? "staff" : "admin";
-    var ask = to === "admin"
-      ? "Make " + p.full_name + " a manager? Managers see everyone's hours and pay rates, and can add staff, remove staff and reset passwords."
-      : "Make " + p.full_name + " a member of staff? They will lose the manager board.";
-    if (!confirm(ask)) return;
-    return withLock(async function () {
-      if (DEMO) p.role = to;
-      else {
-        var r = await sb.from("profiles").update({ role: to }).eq("id", id).select("id");
-        if (r.error) throw r.error;
-        if (!r.data || !r.data.length) throw new Error("The role was not changed. Refresh and try again.");
-      }
-      toast(p.full_name + " is now " + (to === "admin" ? "a manager" : "staff"));
-      await loadStaff();
-    });
-  }
 
   // Removing someone blocks their sign-in but keeps every shift they worked:
   // UK employers must keep working-time and pay records for years.
@@ -1342,14 +1384,14 @@
     });
   }
   $('reviewFilter').addEventListener('change',renderReviews);
-  $('settings').addEventListener('click',function(){$('companyName').value=$('company').textContent;$('brandName').value=BRAND;fillLocale(TZ,CUR);['brandWrap','brandNote','tzWrap','curWrap','localeNote'].forEach(function(id){show(id,LOCALE_READY);});$('showPay').checked=PAY_ON;show('payToggleWrap',PAY_READY);show('payToggleNote',PAY_READY);$('useRota').checked=USE_ROTA;$('requireOnSite').checked=ON_SITE;$('useBreaks').checked=USE_BREAKS;show('breakToggleWrap',BREAKS_READY);show('breakToggleNote',BREAKS_READY);$('privacyContact').value=PRIVACY_CONTACT;$('retentionText').value=RETENTION_TEXT;show('privacyContactWrap',PRIVACY_READY);show('retentionWrap',PRIVACY_READY);show('privacyNote',PRIVACY_READY);show('onSiteToggleWrap',ON_SITE_READY);show('onSiteToggleNote',ON_SITE_READY);show('rotaToggleWrap',ROTA_READY);show('rotaToggleNote',ROTA_READY);$('overtimeHours').value=OT_HOURS==null?'':OT_HOURS;show('otWrap',OT_READY&&hasFeature('overtime'));show('otNote',OT_READY&&hasFeature('overtime'));show('settingsError',false);$('settingsDialog').showModal();});
+  $('settings').addEventListener('click',function(){$('companyName').value=$('company').textContent;fillLocale(TZ,CUR);['tzWrap','curWrap'].forEach(function(id){show(id,LOCALE_READY);});$('showPay').checked=PAY_ON;show('payToggleWrap',PAY_READY);$('useRota').checked=USE_ROTA;$('requireOnSite').checked=ON_SITE;$('useBreaks').checked=USE_BREAKS;show('breakToggleWrap',BREAKS_READY);$('privacyContact').value=PRIVACY_CONTACT;$('retentionText').value=RETENTION_TEXT;show('privacyContactWrap',PRIVACY_READY);show('retentionWrap',PRIVACY_READY);show('onSiteToggleWrap',ON_SITE_READY);show('rotaToggleWrap',ROTA_READY);$('overtimeHours').value=OT_HOURS==null?'':OT_HOURS;show('otWrap',OT_READY&&hasFeature('overtime'));show('settingsError',false);$('settingsDialog').showModal();});
   $('cancelSettings').addEventListener('click',function(){$('settingsDialog').close();});
   $('settingsForm').addEventListener('submit',async function(e){
     e.preventDefault();var name=$('companyName').value.trim();if(!name)return;$('saveSettings').disabled=true;show('settingsError',false);
     try{
-      if(DEMO){D.company=name;if(LOCALE_READY){D.timeZone=$('timeZone').value;D.currency=$('currency').value;D.brandName=$('brandName').value.trim();}D.showPay=$('showPay').checked;D.useRota=$('useRota').checked;D.requireOnSite=$('requireOnSite').checked;D.useBreaks=$('useBreaks').checked;D.privacyContact=$('privacyContact').value.trim();D.retentionText=$('retentionText').value.trim();if(OT_READY){var dv=$('overtimeHours').value.trim();D.overtimeHours=dv===''?null:Number(dv);OT_HOURS=D.overtimeHours;}}
-      else{var values={name:name};if(LOCALE_READY){values.time_zone=$('timeZone').value;values.currency=$('currency').value;values.brand_name=$('brandName').value.trim();}if(PAY_READY)values.show_pay=$('showPay').checked;if(ROTA_READY)values.use_rota=$('useRota').checked;if(ON_SITE_READY)values.require_on_site=$('requireOnSite').checked;if(BREAKS_READY)values.use_breaks=$('useBreaks').checked;if(PRIVACY_READY){values.privacy_contact=$('privacyContact').value.trim();values.retention_text=$('retentionText').value.trim();}if(OT_READY){var ov=$('overtimeHours').value.trim();if(ov!==''&&!(Number(ov)>0&&Number(ov)<=168))throw new Error('Overtime hours must be between 0.5 and 168, or blank.');values.overtime_weekly_hours=ov===''?null:Number(ov);}var r=await sb.from('companies').update(values).eq('id',ME.company_id);if(r.error)throw r.error;OT_HOURS=values.overtime_weekly_hours===undefined?OT_HOURS:values.overtime_weekly_hours;await loadOvertime();}
-      if(LOCALE_READY){TZ=$('timeZone').value;CUR=$('currency').value;BRAND=$('brandName').value.trim();applyBrand();}PAY_ON=PAY_READY&&$('showPay').checked;ON_SITE=ON_SITE_READY?$('requireOnSite').checked:ON_SITE;USE_BREAKS=BREAKS_READY?$('useBreaks').checked:USE_BREAKS;if(PRIVACY_READY){PRIVACY_CONTACT=$('privacyContact').value.trim();RETENTION_TEXT=$('retentionText').value.trim();}
+      if(DEMO){D.company=name;if(LOCALE_READY){D.timeZone=$('timeZone').value;D.currency=$('currency').value;}D.showPay=$('showPay').checked;D.useRota=$('useRota').checked;D.requireOnSite=$('requireOnSite').checked;D.useBreaks=$('useBreaks').checked;D.privacyContact=$('privacyContact').value.trim();D.retentionText=$('retentionText').value.trim();if(OT_READY){var dv=$('overtimeHours').value.trim();D.overtimeHours=dv===''?null:Number(dv);OT_HOURS=D.overtimeHours;}}
+      else{var values={name:name};if(LOCALE_READY){values.time_zone=$('timeZone').value;values.currency=$('currency').value;}if(PAY_READY)values.show_pay=$('showPay').checked;if(ROTA_READY)values.use_rota=$('useRota').checked;if(ON_SITE_READY)values.require_on_site=$('requireOnSite').checked;if(BREAKS_READY)values.use_breaks=$('useBreaks').checked;if(PRIVACY_READY){values.privacy_contact=$('privacyContact').value.trim();values.retention_text=$('retentionText').value.trim();}if(OT_READY){var ov=$('overtimeHours').value.trim();if(ov!==''&&!(Number(ov)>0&&Number(ov)<=168))throw new Error('Overtime hours must be between 0.5 and 168, or blank.');values.overtime_weekly_hours=ov===''?null:Number(ov);}var r=await sb.from('companies').update(values).eq('id',ME.company_id);if(r.error)throw r.error;OT_HOURS=values.overtime_weekly_hours===undefined?OT_HOURS:values.overtime_weekly_hours;await loadOvertime();}
+      if(LOCALE_READY){TZ=$('timeZone').value;CUR=$('currency').value;}PAY_ON=PAY_READY&&$('showPay').checked;ON_SITE=ON_SITE_READY?$('requireOnSite').checked:ON_SITE;USE_BREAKS=BREAKS_READY?$('useBreaks').checked:USE_BREAKS;if(PRIVACY_READY){PRIVACY_CONTACT=$('privacyContact').value.trim();RETENTION_TEXT=$('retentionText').value.trim();}
       var rotaWas=USE_ROTA;USE_ROTA=ROTA_READY&&$('useRota').checked;applyRota();if(USE_ROTA!==rotaWas){loadNow();if(USE_ROTA)loadRotaWeek();}
       $('company').textContent=name;$('settingsDialog').close();toast('Settings saved');renderSheet();renderStaff();
     }catch(error){$('settingsError').textContent=error.message;show('settingsError',true);}
@@ -1390,13 +1432,11 @@
   // Optional for each company (companies.use_rota). ROTA_READY stays false
   // until the rota SQL has been run, so the board keeps working without it.
   async function loadLocale() {
-    if (DEMO) { LOCALE_READY = true; TZ = D.timeZone; CUR = D.currency; BRAND = D.brandName; applyBrand(); return; }
-    var r = await sb.from("companies").select("time_zone, currency, brand_name").eq("id", ME.company_id).maybeSingle();
+    if (DEMO) { LOCALE_READY = true; TZ = D.timeZone; CUR = D.currency; return; }
+    var r = await sb.from("companies").select("time_zone, currency").eq("id", ME.company_id).maybeSingle();
     LOCALE_READY = !r.error && !!r.data;
     TZ = (LOCALE_READY && r.data.time_zone) || "Europe/London";
     CUR = (LOCALE_READY && r.data.currency) || "GBP";
-    BRAND = (LOCALE_READY && r.data.brand_name) || "";
-    applyBrand();
   }
 
   async function loadRotaFlag() {
@@ -1482,9 +1522,10 @@
     var changes = ROTA_SHIFTS.filter(function (s) { return rotaState(s) !== "published"; }).length;
     $("publishRota").disabled = !changes;
     $("publishRota").textContent = changes ? "Publish week (" + changes + ")" : ROTA_SHIFTS.length ? "Week published" : "Publish week";
+    var reached = ROTA_REACH && ROTA_REACH.week === +ROTA_WEEK && ROTA_REACH.text ? " " + ROTA_REACH.text : "";
     $("rotaStatus").textContent = !ROTA_SHIFTS.length ? "No shifts this week yet."
       : changes ? changes + (changes === 1 ? " change" : " changes") + " staff can't see yet. Publish the week when it's ready."
-      : "Staff can see everything on this week's rota.";
+      : "Staff can see everything on this week's rota." + reached;
     $("rotaStatus").className = "note" + (changes ? " changes" : "");
     show("copyWeek", !ROTA_SHIFTS.length);
     $("rotaDays").innerHTML = days.map(function (d, i) {
@@ -1566,6 +1607,21 @@
     });
   }
 
+  // A phone notification needs the person to have turned notifications on, on
+  // their own phone, and nothing here can do that for them. So after publishing,
+  // say who cannot be reached, so the manager can tell them in person instead of
+  // wondering later why somebody "never got it".
+  var ROTA_REACH = null;
+  function reachText(rows) {
+    if (!rows.length) return "";
+    var no = rows.filter(function (r) { return !(r.phones > 0 && r.wants); });
+    var text = (rows.length - no.length) + " of " + rows.length + " on this week's rota can be notified on their phone.";
+    if (no.length) text += " Not reachable: " + no.map(function (r) {
+      return r.full_name + (r.phones > 0 ? " (has switched rota alerts off)" : " (has not turned notifications on)");
+    }).join(", ") + ".";
+    return text;
+  }
+
   function publishRota() {
     return withLock(async function () {
       var from = ROTA_WEEK, to = addDays(ROTA_WEEK, 7);
@@ -1578,7 +1634,11 @@
       } else {
         var r = await sb.rpc("publish_rota", { p_from: from.toISOString(), p_to: to.toISOString() });
         if (r.error) throw r.error;
+        // The reach report is a bonus: if its SQL has not been run, publishing still worked.
+        var rr = await sb.rpc("rota_reach", { p_from: from.toISOString(), p_to: to.toISOString() });
+        ROTA_REACH = { week: +from, text: rr.error ? "" : reachText(rr.data || []) };
       }
+      if (DEMO) ROTA_REACH = { week: +from, text: reachText([{ full_name: "Sam Whitfield", phones: 1, wants: true }, { full_name: "Marek Kowalski", phones: 0, wants: true }, { full_name: "Danny Obi", phones: 1, wants: true }]) };
       toast("Rota published. Staff can see this week.");
       await loadRotaWeek(); await loadNow();
     });
@@ -1640,17 +1700,19 @@
       if (now < start + 10 * 60000 || now > end + 12 * 36e5) return;
       var came = RECENT.some(function (s) { var t = +new Date(s.clock_in_at); return s.user_id === r.user_id && t >= start - 2 * 36e5 && t <= end; });
       if (came) return;
-      var site = siteLabel(r.published_worksite_id);
-      out.push({ rank: now < end ? URGENCY.noShow : URGENCY.missed,
-        html: '<div class="flag"><b>' + esc(staffName(r.user_id)) + "</b> " +
-        (now < end ? "hasn't clocked in. Their shift started at " + hhmm(r.published_starts_at)
+      var site = siteLabel(r.published_worksite_id), running = now < end;
+      out.push({ key: "rota:" + r.id, rank: running ? URGENCY.noShow : URGENCY.missed,
+        text: "<b>" + esc(staffName(r.user_id)) + "</b> " +
+          (running ? "hasn't clocked in. Their shift started at " + hhmm(r.published_starts_at)
                    : "didn't clock in for their " + hhmm(r.published_starts_at) + "–" + hhmm(r.published_ends_at) + " shift") +
-        (site ? " at " + esc(site) : "") + ".</div>" });
+          (site ? " at " + esc(site) : "") + ".",
+        summary: staffName(r.user_id) + (running ? " has not clocked in for a rota shift" : " missed a rota shift") });
     });
     NOW.forEach(function (s) {
       var t = +new Date(s.clock_in_at);
       var planned = TODAY_ROTA.some(function (r) { return r.user_id === s.user_id && t >= +new Date(r.published_starts_at) - 2 * 36e5 && t <= +new Date(r.published_ends_at); });
-      if (!planned) out.push({ rank: URGENCY.unplanned, html: '<div class="flag"><b>' + esc(s.full_name) + "</b> is working but isn't on the rota.</div>" });
+      if (!planned) out.push({ key: "offrota:" + s.shift_id, rank: URGENCY.unplanned,
+        text: "<b>" + esc(s.full_name) + "</b> is working but isn't on the rota.", summary: s.full_name + " is working but is not on the rota" });
     });
     return out;
   }
@@ -1815,6 +1877,7 @@
     var list = [["clock_in", "Someone clocks in"], ["clock_out", "Someone clocks out"], ["away", "Someone clocks in away from the site"], ["corrections", "A correction is requested"]];
     if (USE_ROTA) list.push(["late", "Someone is late or doesn't turn up for a rota shift"]);
     list.push(["long_shift", "Someone is still clocked in after 13 hours"]);
+    if (hasFeature("notices")) list.push(["notices", "A notice is posted"]);
     return list;
   }
   $("notifications").addEventListener("click", function () { renderNotify(); $("notifyDialog").showModal(); });
@@ -1950,6 +2013,288 @@
   }
 
   $("otCsv").addEventListener("click", exportOvertimeCsv);
+
+  // ── EDIT PROFILE ───────────────────────────
+  // Name, access, job role and the optional personal details, in one place.
+  // ACCESS (owner / manager / staff) decides what somebody may do and is guarded by
+  // the database. A JOB ROLE (Driver, Valet...) is only a label the company keeps.
+  // The details are in their own table because every colleague can read profiles.
+  var JOB_ROLES = [], DETAILS = {}, PROFILES_READY = false, profileTarget = null;
+
+  function jobRoleName(id) {
+    var j = JOB_ROLES.filter(function (r) { return r.id === id; })[0];
+    return j ? j.name : "";
+  }
+  function roleCell(p) {
+    var job = jobRoleName(p.job_role_id), access = ROLE_LABEL[p.role] || p.role;
+    return job ? '<span class="role">' + esc(job) + '</span><div class="tiny">' + esc(access) + "</div>"
+               : '<span class="role">' + esc(access) + "</span>";
+  }
+
+  async function loadProfileExtras() {
+    PROFILES_READY = false; JOB_ROLES = []; DETAILS = {};
+    if (!hasFeature("staff_profiles")) return;
+    var res = await Promise.all([sb.from("job_roles").select("id, name").order("name"), sb.from("staff_details").select("*")]);
+    // The SQL may not have been run yet: no profile extras, and nothing else breaks.
+    if (res[0].error || res[1].error) return;
+    JOB_ROLES = res[0].data || [];
+    (res[1].data || []).forEach(function (d) { DETAILS[d.user_id] = d; });
+    PROFILES_READY = true;
+  }
+
+  function fillJobSelect(selected) {
+    $("pfJob").innerHTML = '<option value="">No job role</option>' + JOB_ROLES.map(function (r) {
+      return '<option value="' + esc(r.id) + '">' + esc(r.name) + "</option>";
+    }).join("");
+    $("pfJob").value = selected || "";
+  }
+
+  function openProfile(id) {
+    var p = STAFF.filter(function (x) { return x.id === id; })[0];
+    if (!p) return;
+    profileTarget = p;
+    $("pfName").value = p.full_name || "";
+    $("pfAccess").innerHTML = p.role === "owner" ? '<option value="owner">Owner</option>'
+      : '<option value="staff">Staff</option><option value="admin">Manager</option>';
+    $("pfAccess").value = p.role;
+    $("pfAccess").disabled = p.role === "owner" || p.id === ME.id;
+    show("pfJobWrap", PROFILES_READY); show("pfDetailsWrap", PROFILES_READY);
+    if (PROFILES_READY) {
+      fillJobSelect(p.job_role_id);
+      var d = DETAILS[p.id] || {};
+      $("pfDob").value = d.date_of_birth || ""; $("pfPhone").value = d.phone || "";
+      $("pfEmName").value = d.emergency_name || ""; $("pfEmPhone").value = d.emergency_phone || "";
+      $("pfStart").value = d.start_date || "";
+      $("pfNewRole").value = "";
+    }
+    show("pfError", false);
+    $("profileDialog").showModal();
+  }
+
+  async function addJobRole() {
+    var name = $("pfNewRole").value.trim();
+    show("pfError", false);
+    if (!name) return;
+    var same = JOB_ROLES.filter(function (r) { return r.name.toLowerCase() === name.toLowerCase(); })[0];
+    if (!same) {
+      if (DEMO) same = { id: "jr" + Date.now(), name: name };
+      else {
+        var r = await sb.from("job_roles").insert({ company_id: ME.company_id, name: name }).select("id, name").single();
+        if (r.error) { $("pfError").textContent = r.error.message; return show("pfError", true); }
+        same = r.data;
+      }
+      JOB_ROLES.push(same);
+      JOB_ROLES.sort(function (a, b) { return a.name.localeCompare(b.name); });
+      if (DEMO) D.jobRoles = JOB_ROLES;
+    }
+    fillJobSelect(same.id);
+    $("pfNewRole").value = "";
+  }
+
+  async function removeJobRole() {
+    var id = $("pfJob").value;
+    show("pfError", false);
+    if (!id) return;
+    var n = STAFF.filter(function (p) { return p.job_role_id === id; }).length;
+    if (!confirm('Remove the job role "' + jobRoleName(id) + '" from the list? ' + n + (n === 1 ? " person has" : " people have") + " it and will be left with no job role.")) return;
+    if (!DEMO) {
+      var r = await sb.from("job_roles").delete().eq("id", id);
+      if (r.error) { $("pfError").textContent = r.error.message; return show("pfError", true); }
+    }
+    JOB_ROLES = JOB_ROLES.filter(function (x) { return x.id !== id; });
+    if (DEMO) D.jobRoles = JOB_ROLES;
+    STAFF.forEach(function (p) { if (p.job_role_id === id) p.job_role_id = null; });
+    fillJobSelect("");
+    renderStaff();
+  }
+
+  async function saveProfile(e) {
+    e.preventDefault();
+    var p = profileTarget;
+    if (!p) return;
+    show("pfError", false);
+    var name = $("pfName").value.trim();
+    if (!name) { $("pfError").textContent = "Enter a name."; return show("pfError", true); }
+    var changes = {};
+    if (name !== p.full_name) changes.full_name = name;
+    if (!$("pfAccess").disabled && $("pfAccess").value !== p.role) changes.role = $("pfAccess").value;
+    if (PROFILES_READY && ($("pfJob").value || null) !== (p.job_role_id || null)) changes.job_role_id = $("pfJob").value || null;
+    if (changes.role === "admin" && !confirm("Make " + name + " a manager? Managers see everyone's hours and pay rates, and can add staff, remove staff and reset passwords.")) return;
+    if (changes.role === "staff" && !confirm("Make " + name + " a member of staff? They will lose the manager board.")) return;
+
+    var now = {
+      date_of_birth: $("pfDob").value || null, phone: $("pfPhone").value.trim() || null,
+      emergency_name: $("pfEmName").value.trim() || null, emergency_phone: $("pfEmPhone").value.trim() || null,
+      start_date: $("pfStart").value || null
+    };
+    var was = DETAILS[p.id] || {};
+    var detailsChanged = PROFILES_READY && Object.keys(now).some(function (k) { return (now[k] || null) !== (was[k] || null); });
+
+    $("pfSave").disabled = true;
+    try {
+      if (DEMO) {
+        Object.assign(p, changes);
+        if (detailsChanged) DETAILS[p.id] = Object.assign({ user_id: p.id }, now);
+      } else {
+        if (Object.keys(changes).length) {
+          var r = await sb.from("profiles").update(changes).eq("id", p.id).select("id");
+          if (r.error) throw r.error;
+          if (!r.data || !r.data.length) throw new Error("The profile was not changed. Refresh and try again.");
+        }
+        // Only when something changed: every save is written to the audit history.
+        if (detailsChanged) {
+          var d = await sb.rpc("save_staff_details", { p_user_id: p.id, p_dob: now.date_of_birth, p_phone: now.phone,
+            p_emergency_name: now.emergency_name, p_emergency_phone: now.emergency_phone, p_start: now.start_date });
+          if (d.error) throw d.error;
+        }
+      }
+      $("profileDialog").close();
+      toast("Profile saved");
+      await loadStaff();
+    } catch (error) { $("pfError").textContent = error.message; show("pfError", true); }
+    finally { $("pfSave").disabled = false; }
+  }
+  $("profileForm").addEventListener("submit", saveProfile);
+  $("pfCancel").addEventListener("click", function () { $("profileDialog").close(); });
+  $("pfAddRole").addEventListener("click", addJobRole);
+  $("pfRemoveRole").addEventListener("click", removeJobRole);
+
+  // ── BUILD THE WEEK ─────────────────────────
+  // A whole week at a glance: people down the side, days across the top. Pick a
+  // shift, then tap the days. A shift somebody already has is shown and cannot be
+  // painted over. Everything is added as a draft: nothing reaches staff until the
+  // week is published. Warns about availability like the single-shift dialog does,
+  // and never blocks.
+  var WK = { cells: {} };
+  var WK_TYPES = [["Early", "06:00", "14:00"], ["Late", "14:00", "22:00"], ["Night", "22:00", "06:00"]];
+
+  function wkTypes() {
+    return WK_TYPES.map(function (t, i) { return { name: t[0], start: $("wkS" + i).value, end: $("wkE" + i).value }; });
+  }
+  function wkPaint() {
+    var r = document.querySelector('input[name="wkPaint"]:checked');
+    return r ? Number(r.value) : 0;
+  }
+  function wkHave(uid, i) {
+    var key = localDay(addDays(ROTA_WEEK, i));
+    return ROTA_SHIFTS.filter(function (x) { return !x.removed && x.user_id === uid && localDay(x.starts_at) === key; })[0];
+  }
+
+  function wkPlan() {
+    var types = wkTypes(), rows = [], warn = 0, bad = "";
+    Object.keys(WK.cells).forEach(function (uid) {
+      WK.cells[uid].forEach(function (t, i) {
+        if (t == null) return;
+        var ty = types[t], day = addDays(ROTA_WEEK, i);
+        if (!ty.start || !ty.end || ty.start === ty.end) { bad = "Choose the start and finish times for " + ty.name + "."; return; }
+        var a = new Date(localDay(day) + "T" + ty.start), b = new Date(localDay(day) + "T" + ty.end);
+        if (b <= a) b.setDate(b.getDate() + 1);
+        if (b - a > 16 * 36e5) bad = ty.name + " is longer than 16 hours.";
+        if (availFor(uid, day).no) warn++;
+        rows.push({ user_id: uid, starts_at: a.toISOString(), ends_at: b.toISOString() });
+      });
+    });
+    return { rows: rows, warn: warn, bad: bad };
+  }
+
+  function updateWeekSummary() {
+    var plan = wkPlan(), text = "";
+    if (plan.bad) text = plan.bad;
+    else if (!plan.rows.length) text = "Pick a shift above, then tap the days you want it on.";
+    else {
+      text = plan.rows.length + (plan.rows.length === 1 ? " shift" : " shifts") + " ready to add.";
+      if (plan.warn) text += " " + plan.warn + (plan.warn === 1 ? " falls" : " fall") + " on a day the person is not available or has off. They are still added.";
+    }
+    $("wkSummary").textContent = text;
+    show("wkSummary", !!text);
+  }
+
+  function renderWeekGrid() {
+    var people = STAFF.filter(function (p) { return p.active; });
+    var days = [0, 1, 2, 3, 4, 5, 6].map(function (i) { return addDays(ROTA_WEEK, i); });
+    var types = wkTypes();
+    var head = '<div class="wk-row wk-head"><div class="wk-name"></div>' + days.map(function (d) {
+      return "<div>" + esc(d.toLocaleDateString("en-GB", { weekday: "short" })) + "<br>" + d.getDate() + "</div>";
+    }).join("") + "</div>";
+    $("wkGrid").innerHTML = head + people.map(function (p) {
+      var job = jobRoleName(p.job_role_id);
+      return '<div class="wk-row"><div class="wk-name"><span>' + esc(p.full_name) + "</span>" + (job ? '<span class="tiny">' + esc(job) + "</span>" : "") +
+        '<button type="button" class="g sm" data-wkweek="' + esc(p.id) + '">Mon to Fri</button></div>' +
+        days.map(function (d, i) {
+          var have = wkHave(p.id, i), t = (WK.cells[p.id] || [])[i];
+          if (have) return '<div class="wk-cell have" title="Already on the rota">' + esc(hhmm(have.starts_at) + "–" + hhmm(have.ends_at)) + "</div>";
+          var label = p.full_name + ", " + d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }) + (t != null ? ": " + types[t].name : "");
+          return '<button type="button" class="wk-cell' + (t != null ? " on" : "") + '" data-wk="' + esc(p.id) + ":" + i + '" aria-label="' + esc(label) + '">' +
+            (t != null ? esc(types[t].name) : availFor(p.id, d).no ? '<span class="tiny">n/a</span>' : "") + "</button>";
+        }).join("") + "</div>";
+    }).join("");
+    updateWeekSummary();
+  }
+
+  function openWeek() {
+    if (!ROTA_WEEK) return;
+    WK.cells = {};
+    // Start from the times this week already uses, if there are enough of them; else the usual early, late, night.
+    var seen = {};
+    ROTA_SHIFTS.forEach(function (x) { if (!x.removed) { var k = hhmm(x.starts_at) + "-" + hhmm(x.ends_at); seen[k] = (seen[k] || 0) + 1; } });
+    var used = Object.keys(seen).filter(function (k) { return seen[k] > 1; }).sort(function (a, b) { return seen[b] - seen[a]; });
+    $("wkTypes").innerHTML = WK_TYPES.map(function (t, i) {
+      var pair = (used[i] || t[1] + "-" + t[2]).split("-");
+      return '<div class="wk-type"><label><input type="radio" name="wkPaint" value="' + i + '"' + (i === 0 ? " checked" : "") + ">" + esc(t[0]) + "</label>" +
+        '<input id="wkS' + i + '" type="time" value="' + pair[0] + '" aria-label="' + esc(t[0]) + ' starts"><span>to</span>' +
+        '<input id="wkE' + i + '" type="time" value="' + pair[1] + '" aria-label="' + esc(t[0]) + ' finishes"></div>';
+    }).join("") +
+      '<div class="wk-type"><label><input type="radio" name="wkPaint" value="-1">Clear a day</label></div>';
+    $("wkSite").innerHTML = '<option value="">No worksite</option>' + SITES.map(function (w) { return '<option value="' + esc(w.id) + '">' + esc(w.name) + "</option>"; }).join("");
+    $("wkSite").value = SITES.some(function (w) { return w.id === lastRota.site; }) ? lastRota.site : (SITES[0] ? SITES[0].id : "");
+    show("wkError", false);
+    renderWeekGrid();
+    $("weekDialog").showModal();
+  }
+
+  $("weekRota").addEventListener("click", openWeek);
+  $("wkCancel").addEventListener("click", function () { $("weekDialog").close(); });
+  $("wkGrid").addEventListener("click", function (e) {
+    var cell = e.target.closest("[data-wk]"), week = e.target.closest("[data-wkweek]"), paint = wkPaint();
+    if (cell) {
+      var a = cell.getAttribute("data-wk").split(":"), uid = a[0], i = Number(a[1]);
+      var row = WK.cells[uid] = WK.cells[uid] || [null, null, null, null, null, null, null];
+      row[i] = paint < 0 || row[i] === paint ? null : paint;
+      renderWeekGrid();
+    } else if (week) {
+      var id = week.getAttribute("data-wkweek"), r = WK.cells[id] = WK.cells[id] || [null, null, null, null, null, null, null];
+      for (var d = 0; d < 5; d++) if (!wkHave(id, d)) r[d] = paint < 0 ? null : paint;
+      renderWeekGrid();
+    }
+  });
+  // Changing a shift's times must not need the grid redrawn, but the summary can go stale.
+  $("wkTypes").addEventListener("input", updateWeekSummary);
+  $("weekForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var plan = wkPlan();
+    show("wkError", false);
+    if (plan.bad || !plan.rows.length) { $("wkError").textContent = plan.bad || "Tap some days in the grid first."; return show("wkError", true); }
+    var site = $("wkSite").value || null;
+    return withLock(async function () {
+      var rows = plan.rows.map(function (r) {
+        return { company_id: ME.company_id, user_id: r.user_id, worksite_id: site, starts_at: r.starts_at, ends_at: r.ends_at, note: "" };
+      });
+      try {
+        if (DEMO) rows.forEach(function (r) {
+          D.rota.push(Object.assign({ id: "r" + Math.random(), removed: false, published_starts_at: null, published_ends_at: null, published_worksite_id: null, published_note: null }, r));
+        });
+        else {
+          var r = await sb.from("rota_shifts").insert(rows);
+          if (r.error) throw r.error;
+        }
+        lastRota = { start: lastRota.start, end: lastRota.end, site: site };
+        WK.cells = {};
+        $("weekDialog").close();
+        toast(rows.length + (rows.length === 1 ? " shift added. " : " shifts added. ") + "Publish the week when it's ready.");
+        await loadRotaWeek();
+      } catch (error) { $("wkError").textContent = error.message; show("wkError", true); }
+    });
+  });
 
   // ── NOTICES ────────────────────────────────
   // A manager posts a short message; everyone in the company sees it on Home
@@ -2113,7 +2458,7 @@
   function signedOut() {
     ME = null; REQUESTS=[];requestsLoaded=false;attentionIds=null;clearInterval(poll);
     PAY_ON=false;PAY_READY=false;RATES={};
-    LOCALE_READY=false;TZ="Europe/London";CUR="GBP";BRAND="";applyBrand();
+    LOCALE_READY=false;TZ="Europe/London";CUR="GBP";
     USE_ROTA=false;ROTA_READY=false;ROTA_SHIFTS=[];AVAIL={};OFF=[];ROTA_WEEK=null;ROTA_DAY=null;TODAY_ROTA=[];RECENT=[];
     show("app", false); show("login", true);
   }
@@ -2187,14 +2532,19 @@
   window.addEventListener("online", function () { connection(); if (ME && !DEMO) { loadNow(); loadReviews(); } });
   connection();
   if (!DEMO) {
-    sb = window.supabase.createClient(CFG.url, CFG.key, { global: { fetch: timedFetch } });
+    // The manager board keeps its OWN login, separate from the staff app's. All the
+    // pages share one address and Supabase stores the session per project, so with
+    // one slot signing in here silently signed the staff page in as the same person.
+    // On a shared office computer that means the next member of staff to open the
+    // staff app clocks in as the manager. The staff app keeps the default slot, so
+    // nobody who is signed in there is signed out; managers sign in to the board once.
+    sb = window.supabase.createClient(CFG.url, CFG.key, { global: { fetch: timedFetch }, auth: { storageKey: "aero-manager-auth" } });
     sb.auth.onAuthStateChange(function (event, session) {
       if (event === "SIGNED_OUT" && ME) return sessionEnded();
-      // Somebody signed in as a DIFFERENT person in another tab on this address.
-      // The staff and manager apps share one session on purpose, so this board
-      // would otherwise keep showing one company's data backed by somebody
-      // else's login. That is worse than an error: start again as whoever is
-      // actually signed in now.
+      // Somebody signed in as a DIFFERENT person in another tab of this same board.
+      // Without this it keeps showing one company's data while every request goes
+      // out under somebody else's login. That is worse than an error: start again
+      // as whoever is actually signed in now.
       if (session && session.user && ME && session.user.id !== ME.id) location.reload();
     });
   }
@@ -2227,7 +2577,7 @@
     if (t.dataset.close)   closeShift(t.dataset.close);
     if (t.dataset.toggle)  toggleStaff(t.dataset.toggle);
     if (t.dataset.pw)      newPassword(t.dataset.pw);
-    if (t.dataset.role)    changeRole(t.dataset.role);
+    if (t.dataset.profile) openProfile(t.dataset.profile);
     if (t.dataset.delsite) removeSite(t.dataset.delsite);
     if (t.dataset.editsite) editSite(t.dataset.editsite);
     if (t.dataset.review) reviewRequest(t.dataset.review,t.dataset.approve==='true');
@@ -2261,9 +2611,7 @@
   $("attentionOnly").addEventListener("change", renderNow);
   $("stats").addEventListener("click", function (e) {
     if (!e.target.closest("#showAttention")) return;
-    $("attentionOnly").checked = true;
-    renderNow();
-    $("nowBody").closest(".panel").scrollIntoView({ behavior: "smooth", block: "start" });
+    $("flags").scrollIntoView({ behavior: "smooth", block: "start" });
   });
   $("boardDate").textContent = new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});
   $("refresh").addEventListener("click", async function() {

@@ -405,7 +405,7 @@
       <h1 id="clockTitle" class="sr-only">Clock in</h1>
       <div class="sheet-head"><span>Today</span><strong class="num" id="todayHours">0h 00m</strong></div>
       <div id="siteWrap"><div class="site-auto"><span class="pin" aria-hidden="true"></span><span id="siteAuto"></span><button type="button" class="note-toggle" id="changeSite">Change</button></div><div id="sitePick" class="hidden"><label for="site">Worksite</label><select id="site"></select></div></div>
-      <div id="noteWrap" class="hidden"><button type="button" class="note-toggle" id="addNote">Add a note for your manager</button><div id="noteField" class="hidden"><label for="shiftNote">Shift note (optional)</label><textarea id="shiftNote" maxlength="1000" placeholder="Anything your manager needs to know"></textarea></div></div>
+      <div id="noteWrap" class="hidden"><button type="button" class="note-toggle" id="addNote">Add a note for your manager</button><div id="noteField" class="hidden"><label for="shiftNote">Shift note (optional)</label><textarea id="shiftNote" maxlength="1000"></textarea></div></div>
       <div id="clockError" class="clock-error hidden" role="alert"></div>
       <div class="slide in" id="slide"><span class="slide-fill" aria-hidden="true"></span><span class="slide-label" id="slideLabel" aria-hidden="true">Slide to clock in</span><button type="button" class="slide-knob" id="action" aria-label="Clock in"></button></div>
       <p class="zone-line" id="zoneLine" aria-live="polite"></p>
@@ -438,8 +438,8 @@
   // allows clock-in inside a site zone (the database enforces it either way).
   var ON_SITE_ONLY = null;
   var USE_BREAKS = false, breakBusy = false;
-  // Per company (companies.currency, companies.brand_name). Blank/failed reads mean the defaults.
-  var CUR = "GBP", BRAND = "", PRODUCT = "Aero Attendance";
+  // Per company (companies.currency). A failed read means the default.
+  var CUR = "GBP", PRODUCT = "Aero Attendance";
   // Icon shapes from Lucide (ISC licence, LUCIDE-LICENSE.txt), inlined so no icon library has to load.
   function icon(shapes) {
     return '<svg class="lucide" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + shapes + '</svg>';
@@ -1285,11 +1285,10 @@
     $("me").textContent = ME.full_name || user.email;
     $("company").textContent = (ME.companies && ME.companies.name) || "";
 
-    // The company's own currency and app name. If the settings update has not
-    // been run the read fails and the defaults (GBP, "Aero Attendance") stay.
-    var loc = await sb.from("companies").select("currency, brand_name").eq("id", ME.company_id).maybeSingle();
-    if (!loc.error && loc.data) { CUR = loc.data.currency || "GBP"; BRAND = loc.data.brand_name || ""; }
-    PRODUCT = BRAND || "Aero Attendance";
+    // The company's own currency. If the settings update has not been run the
+    // read fails and the default (GBP) stays.
+    var loc = await sb.from("companies").select("currency").eq("id", ME.company_id).maybeSingle();
+    if (!loc.error && loc.data) { CUR = loc.data.currency || "GBP"; }
     document.title = PRODUCT + " | Your working day";
 
     // Estimated pay is optional. If the pay tables aren't set up yet, or the
@@ -1529,7 +1528,7 @@
     ME = null; OPEN = null; REQUESTS=[];HISTORY=[];clearInterval(tick);
     stopWatch(); MAP.me = null;
     MONTH_ROWS = []; SHEET_MONTH = null; PAY = { on: false, rate: null }; SELECTED_DAY = null;
-    CUR = "GBP"; BRAND = ""; PRODUCT = "Aero Attendance"; document.title = "Aero Attendance | Your working day";
+    CUR = "GBP"; document.title = "Aero Attendance | Your working day";
     ROTA = { on: false, shifts: [], avail: {}, off: [] }; availDirty = false; renderRota();
     show("clock", false); show("main", true);
     show("app", false);
@@ -1600,7 +1599,10 @@
   // tracking in these pages, and the notice says so by not mentioning any.
   // 2 (Sep 2026): a note left at clock-out is now passed to the next person on
   // that worksite, so "who can see it" changed and everybody is asked again.
-  var NOTICE_VERSION = 2;
+  // 3 (Sep 2026): a manager can now record a job role and, optionally, a date of
+  // birth, phone number, emergency contact and start date, so "what is kept" and
+  // "who can see it" changed and everybody is asked again.
+  var NOTICE_VERSION = 3;
   // Who runs the app for the client: the registered company, and the name it
   // trades under. Owner's decision, 19 Sep 2026: AeroOne is a trading name of
   // AeroPark Direct Ltd (Companies House 17211973) until the mark is filed.
@@ -1619,6 +1621,7 @@
     ];
     if (ROTA.on) kept.push("Your usual availability and days off.");
     kept.push("Your hourly rate, if your manager has entered one.");
+    kept.push("Your job role and, only if your manager chooses to record them, your date of birth, phone number, an emergency contact you have named and the date you started.");
 
     var howLong = PRIVACY.retention
       ? esc(PRIVACY.retention)
@@ -1627,7 +1630,7 @@
     return "<p>" + co + " uses " + esc(PRODUCT) + " to record when you work. This explains what is kept about you, why, and who can see it.</p>" +
       "<h3>What is kept</h3><ul>" + kept.map(function (x) { return "<li>" + x + "</li>"; }).join("") + "</ul>" +
       "<h3>Why</h3><p>So " + co + " can pay you correctly, keep the working-time records it needs, and run its rotas. It is never sold or used for advertising.</p>" +
-      "<h3>Who can see it</h3><p>Your managers at " + co + " can see your hours, your clock-in and clock-out locations, your notes" + (ROTA.on ? " and your rota" : "") + ". Your colleagues can see your name and role. If you leave a note when you clock out, the next person working that worksite is shown the note itself so they know what was left for them — not your name, and nothing else about your shift.</p>" +
+      "<h3>Who can see it</h3><p>Your managers at " + co + " can see your hours, your clock-in and clock-out locations, your notes, the personal details listed above" + (ROTA.on ? " and your rota" : "") + ". Your colleagues can see your name, role and job role, and nothing else in the list above. If you leave a note when you clock out, the next person working that worksite is shown the note itself so they know what was left for them — not your name, and nothing else about your shift.</p>" +
       "<p>" + esc(PROCESSOR) + " built the app and runs it for " + co + ", and looks after the data on " + co + "'s instructions. It uses Supabase (the database, hosted in the EU), Vercel (hosting) and MapTiler and OpenStreetMap (map pictures: they can see your device's IP address and the area of the map on screen). If you turn on notifications, your phone's own notification service delivers them.</p>" +
       "<h3>How long it is kept</h3><p>" + howLong + "</p>" +
       "<h3>Your rights</h3><p>To see what is kept about you, to correct it, or to raise a concern, ask: " + who + ". You can also ask for a shift to be corrected under Timesheet. If you are unhappy with the answer, you can complain to the Information Commissioner's Office at ico.org.uk.</p>";
@@ -1841,7 +1844,8 @@
   function notifyAvailable(on) { show("notifyBox", on); }
   function notifyPrefList() {
     var list = [["correction_decisions", "When a correction is approved or rejected"]];
-    if (ROTA.on) list.push(["rota", "When a new rota is published"], ["reminders", "An hour before each shift"]);
+    if (ROTA.on) list.push(["rota", "When your rota is published or changed"], ["reminders", "An hour before each shift"]);
+    list.push(["notices", "When your manager posts a notice"]);
     return list;
   }
   $("saveAvail").addEventListener("click", saveAvail);
@@ -1954,11 +1958,10 @@
   sb = window.supabase.createClient(CFG.url, CFG.key, { global: { fetch: timedFetch } });
   sb.auth.onAuthStateChange(function (event, session) {
     if (event === "SIGNED_OUT" && ME) return sessionEnded();
-    // Somebody signed in as a DIFFERENT person in another tab on this address.
-    // The staff and manager apps share one session on purpose, so this page would
-    // otherwise keep showing one person's name and hours backed by somebody
-    // else's login. That is worse than an error: start again as whoever is
-    // actually signed in now.
+    // Somebody signed in as a DIFFERENT person in another tab of this same app.
+    // Without this the page keeps showing one person's name and hours while every
+    // request goes out under somebody else's login. That is worse than an error:
+    // start again as whoever is actually signed in now.
     if (session && session.user && ME && session.user.id !== ME.id) location.reload();
   });
   window.addEventListener("online", function () { if (ME) load(); });

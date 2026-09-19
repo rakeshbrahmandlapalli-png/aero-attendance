@@ -75,9 +75,9 @@ await db.exec(`
   insert into platform_admins (user_id) values ('${P.platform}');
 `);
 
-const TABLES = ["announcement_reads", "announcements", "audit_events", "availability", "company_features", "notification_prefs",
-                "overtime_decisions", "pay_rates", "privacy_ack", "profiles", "push_subscriptions", "rota_shifts",
-                "shift_corrections", "shifts", "time_off", "worksites", "on_shift_now"];
+const TABLES = ["announcement_reads", "announcements", "audit_events", "availability", "company_features", "dismissed_alerts",
+                "job_roles", "notification_prefs", "overtime_decisions", "pay_rates", "privacy_ack", "profiles", "push_subscriptions",
+                "rota_shifts", "shift_corrections", "shifts", "staff_details", "time_off", "worksites", "on_shift_now"];
 
 // ── 1. READ ISOLATION: nobody sees the other company's rows ──────────────
 const others = { A: CO_B, B: CO_A };
@@ -370,6 +370,9 @@ gap("a manager can set another company's person's pay rate in their own company"
     insert into announcements (id, company_id, author_id, body) values ('${ANN_C}','${CO_C}','${O}','C notice');
     insert into announcement_reads (announcement_id, user_id, company_id) values ('${ANN_C}','${S}','${CO_C}');
     insert into company_features (company_id, feature, enabled) values ('${CO_C}','overtime',false);
+    insert into job_roles (company_id, name) values ('${CO_C}','Driver');
+    insert into staff_details (user_id, company_id, date_of_birth, phone) values ('${S}','${CO_C}','1990-05-01','07700 900123');
+    insert into dismissed_alerts (company_id, alert_key) values ('${CO_C}','long:seed');
     insert into overtime_decisions (company_id, user_id, week_start, status, hours_at_decision, decided_by)
       values ('${CO_C}','${S}','2026-09-07','approved', 44, '${O}');
   `);
@@ -380,7 +383,7 @@ gap("a manager can set another company's person's pay rate in their own company"
   const left = [];
   for (const t of ["profiles", "worksites", "shifts", "pay_rates", "availability", "time_off", "rota_shifts", "shift_corrections",
                    "push_subscriptions", "notification_prefs", "privacy_ack", "announcements", "announcement_reads", "audit_events",
-                   "company_features", "overtime_decisions"]) {
+                   "company_features", "overtime_decisions", "job_roles", "staff_details", "dismissed_alerts"]) {
     const n = (await asOwner(db, `select count(*)::int n from ${t} where company_id = $1`, [CO_C])).rows[0].n;
     if (n) left.push(`${t}:${n}`);
   }
@@ -787,6 +790,199 @@ gap("a manager can set another company's person's pay rate in their own company"
   check("ADDON signed-out visitors cannot ask what a company has", !!r.error, "it ran");
   r = await as(db, "anon", `select count(*)::int n from company_features`);
   check("ADDON signed-out visitors cannot read company_features", !!r.error || r.rows[0].n === 0, `saw ${r.rows[0]?.n}`);
+}
+
+// ── 18. PUBLISHING A ROTA TELLS EVERYONE IT AFFECTED ─────────────────────
+// The message the database queues for send-push must name every person a publish
+// touched. The gap this closes: somebody whose only change was a shift being taken
+// OFF the rota had no shift left for the function to find, so nobody told them.
+{
+  const queued = async () => (await asOwner(db, `select body from net._calls where body->>'type' = 'rota' order by id`)).rows.map((x) => x.body);
+  // Two statements on one connection (as() rolls back, and the queued message has to survive).
+  const publish = async (who, from, to) => {
+    await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [who]);
+    await db.exec(`set role authenticated`);
+    try { return (await db.query(`select publish_rota(${from}, ${to}) n`)).rows[0].n; }
+    finally { await db.exec(`reset role`); await db.query(`select set_config('request.jwt.claim.sub', '', false)`); }
+  };
+  const FROM = "now() - interval '1 hour'", TO = "now() + interval '7 days'";
+
+  const before = (await queued()).length;
+  const n1 = await publish(P.mgrA, FROM, TO);
+  const after1 = await queued();
+  check("ROTA  publishing a draft publishes it", n1 >= 1, `changed ${n1}`);
+  check("ROTA  ...and queues exactly one message for that company", after1.length === before + 1 && after1.at(-1)?.company_id === CO_A,
+        JSON.stringify(after1.at(-1)));
+  check("ROTA  ...naming the person whose shift was published", (after1.at(-1)?.user_ids || []).includes(P.staffA1), JSON.stringify(after1.at(-1)));
+  check("ROTA  ...and nobody from another company", !(after1.at(-1)?.user_ids || []).includes(P.staffB1), JSON.stringify(after1.at(-1)));
+  check("ROTA  ...and a timestamp, so one publish is told apart from the next", !!after1.at(-1)?.at, JSON.stringify(after1.at(-1)));
+
+  const n2 = await publish(P.mgrA, FROM, TO);
+  check("ROTA  publishing again with nothing changed sends nothing", n2 === 0 && (await queued()).length === after1.length, `changed ${n2}`);
+
+  // The gap: a shift taken off the rota. The person has no shift left afterwards.
+  await db.exec(`update rota_shifts set removed = true where id = '${ROTA_A_PUB}'`);
+  const n3 = await publish(P.mgrA, FROM, TO);
+  const after3 = await queued();
+  check("ROTA  taking a shift off the rota and publishing removes it", n3 === 1, `changed ${n3}`);
+  check("ROTA  ...and still tells the person it was taken from", after3.length === after1.length + 1 && (after3.at(-1)?.user_ids || []).includes(P.staffA2),
+        JSON.stringify(after3.at(-1)));
+
+  let r = await as(db, P.staffA1, `select publish_rota(now(), now() + interval '1 day')`);
+  check("ROTA  staff cannot publish a rota", !!r.error, "it ran");
+  r = await as(db, P.ownerB, `select publish_rota(now() - interval '1 hour', now() + interval '7 days') n`);
+  check("ROTA  another company's owner publishing changes nothing of A's", !r.error && r.rows[0].n === 0 && (await queued()).length === after3.length, r.error || JSON.stringify(r.rows));
+
+  // Who can be reached by phone.
+  await db.exec(`insert into push_subscriptions (user_id, company_id, endpoint, p256dh, auth)
+                 values ('${P.staffA1}','${CO_A}','https://push.example/a1','k','a') on conflict (endpoint) do nothing;
+                 insert into notification_prefs (user_id, company_id) values ('${P.staffA1}','${CO_A}') on conflict (user_id) do nothing;
+                 update notification_prefs set rota = true where user_id = '${P.staffA1}';`);
+  const reach = async (who) => as(db, who, `select user_id, phones, wants from rota_reach(now() - interval '1 hour', now() + interval '7 days')`);
+  r = await reach(P.mgrA);
+  let a1 = (r.rows || []).find((x) => x.user_id === P.staffA1) || {};
+  check("REACH a manager sees who has a published shift, and that they have a phone", !r.error && a1.phones === 1 && a1.wants === true, r.error || JSON.stringify(r.rows));
+  await db.exec(`update notification_prefs set rota = false where user_id = '${P.staffA1}'`);
+  a1 = ((await reach(P.mgrA)).rows || []).find((x) => x.user_id === P.staffA1) || {};
+  check("REACH ...and when they have switched rota alerts off", a1.phones === 1 && a1.wants === false, JSON.stringify(a1));
+  await db.exec(`delete from push_subscriptions where user_id = '${P.staffA1}'`);
+  a1 = ((await reach(P.mgrA)).rows || []).find((x) => x.user_id === P.staffA1) || {};
+  check("REACH ...and when they have never turned notifications on", a1.phones === 0, JSON.stringify(a1));
+  r = await reach(P.staffA1);
+  check("REACH staff cannot ask who can be reached", !r.error && r.rows.length === 0, r.error || JSON.stringify(r.rows));
+  r = await reach(P.ownerB);
+  check("REACH another company sees none of A's people", !r.error && r.rows.length === 0, r.error || JSON.stringify(r.rows));
+  r = await as(db, "anon", `select * from rota_reach(now(), now())`);
+  check("REACH signed-out visitors cannot run it", !!r.error, "it ran");
+}
+
+// ── 19. JOB ROLES, PRIVATE STAFF DETAILS, CLEARED ALERTS, NOTICE PUSH ────
+{
+  const JR_A = U(7001), JR_B = U(7002), A3 = U(16);
+  // as() rolls back; anything that has to be read back afterwards runs on one connection.
+  const asMgr = async (who, fn) => {
+    await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [who]);
+    await db.exec(`set role authenticated`);
+    try { return await fn(); } finally { await db.exec(`reset role`); await db.query(`select set_config('request.jwt.claim.sub', '', false)`); }
+  };
+  const feature = (co, on) => on
+    ? db.exec(`delete from company_features where company_id = '${co}' and feature = 'staff_profiles'`)
+    : db.exec(`insert into company_features (company_id, feature, enabled) values ('${co}','staff_profiles',false) on conflict (company_id, feature) do update set enabled = false`);
+
+  await db.exec(`insert into job_roles (id, company_id, name) values ('${JR_A}','${CO_A}','Driver'), ('${JR_B}','${CO_B}','Yard hand')`);
+
+  // ── job roles: a label, and a company's own
+  let r = await as(db, P.mgrA, `insert into job_roles (company_id, name) values ($1,'Valet')`, [CO_A]);
+  check("ROLE  a manager can add a job role (sanity)", !r.error, r.error);
+  r = await as(db, P.mgrA, `insert into job_roles (company_id, name) values ($1,'  driver ')`, [CO_A]);
+  check("ROLE  the same role cannot be added twice, whatever the capitals or spaces", blocked(r), "it added a duplicate");
+  r = await as(db, P.staffA1, `insert into job_roles (company_id, name) values ($1,'Boss')`, [CO_A]);
+  check("ROLE  staff cannot add a job role", blocked(r), "it added");
+  r = await as(db, P.ownerB, `insert into job_roles (company_id, name) values ($1,'Intruder')`, [CO_A]);
+  check("ROLE  another company's owner cannot add one to A", blocked(r), "it added");
+  r = await as(db, P.staffA1, `select id from job_roles`);
+  check("ROLE  staff see their own company's roles and only those", !r.error && r.rows.length === 1 && r.rows[0].id === JR_A, r.error || JSON.stringify(r.rows));
+  r = await as(db, P.ownerB, `select id from job_roles`);
+  check("ROLE  another company sees only its own", !r.error && r.rows.length === 1 && r.rows[0].id === JR_B, r.error || JSON.stringify(r.rows));
+
+  r = await as(db, P.mgrA, `update profiles set job_role_id = $1 where id = $2`, [JR_A, P.staffA1]);
+  check("ROLE  a manager can give somebody a job role (sanity)", !r.error && r.count === 1, r.error);
+  r = await as(db, P.mgrA, `update profiles set job_role_id = $1 where id = $2`, [JR_B, P.staffA1]);
+  check("ROLE  ...but not ANOTHER company's role", !!r.error, "it pointed across the wall");
+  r = await as(db, P.staffA1, `update profiles set job_role_id = $1 where id = $2`, [JR_A, P.staffA1]);
+  check("ROLE  staff cannot give themselves a job role", blocked(r), "it changed");
+  await db.exec(`update profiles set job_role_id = '${JR_A}' where id = '${P.staffA1}'; delete from job_roles where id = '${JR_A}'`);
+  const left = (await asOwner(db, `select job_role_id from profiles where id = $1`, [P.staffA1])).rows[0];
+  check("ROLE  removing a role from the list just leaves people without one", left && left.job_role_id === null, JSON.stringify(left));
+  await db.exec(`insert into job_roles (id, company_id, name) values ('${JR_A}','${CO_A}','Driver')`);
+
+  // ── private staff details
+  const save = (who, args) => asMgr(who, async () => {
+    await db.query(`select save_staff_details($1,$2,$3,$4,$5,$6)`, args);
+    return (await db.query(`select date_of_birth::text dob, phone, emergency_name, start_date::text sd, updated_by from staff_details where user_id = $1`, [args[0]])).rows[0];
+  });
+  const row = await save(P.mgrA, [P.staffA1, "1990-05-01", " 07700 900123 ", "Pat Smith", "07700 900456", "2024-03-04"]);
+  check("PROF  a manager can record a date of birth and contact details (sanity)",
+        row?.dob === "1990-05-01" && row?.phone === "07700 900123" && row?.emergency_name === "Pat Smith" && row?.sd === "2024-03-04", JSON.stringify(row));
+  check("PROF  ...against the manager who did it", row?.updated_by === P.mgrA, JSON.stringify(row));
+  const aud = (await asOwner(db, `select summary, details::text d from audit_events where entity = 'staff_profile' and entity_id = $1`, [P.staffA1])).rows;
+  check("PROF  ...and that it happened is in the audit history", aud.length >= 1 && /Staff A1/.test(aud[0].summary), JSON.stringify(aud));
+  check("PROF  ...but WHAT was recorded never is", !/1990|07700|Pat Smith/.test(JSON.stringify(aud)), JSON.stringify(aud));
+
+  r = await as(db, A3, `select user_id from staff_details`);
+  check("PROF  a colleague cannot read anybody's details", !r.error && r.rows.length === 0, r.error || JSON.stringify(r.rows));
+  r = await as(db, P.staffA1, `select user_id from staff_details`);
+  check("PROF  a person can read their own", !r.error && r.rows.length === 1 && r.rows[0].user_id === P.staffA1, r.error || JSON.stringify(r.rows));
+  r = await as(db, P.mgrA, `select user_id from staff_details`);
+  check("PROF  a manager can read their company's", !r.error && r.rows.length >= 1, r.error || JSON.stringify(r.rows));
+  r = await as(db, P.ownerB, `select user_id from staff_details`);
+  check("PROF  another company cannot read any of it", !r.error && r.rows.length === 0, r.error || JSON.stringify(r.rows));
+  r = await as(db, A3, `select * from profiles where id = $1`, [P.staffA1]);
+  check("PROF  it is not on profiles, which every colleague can read", !r.error && r.rows.length === 1 && !("date_of_birth" in r.rows[0]) && !("phone" in r.rows[0]), JSON.stringify(Object.keys(r.rows[0] || {})));
+
+  r = await as(db, P.staffA1, `select save_staff_details($1,'1990-05-01',null,null,null,null)`, [P.staffA1]);
+  check("PROF  staff cannot write even their own details", !!r.error, "it ran");
+  r = await as(db, P.mgrA, `select save_staff_details($1,'1990-05-01',null,null,null,null)`, [P.staffB1]);
+  check("PROF  a manager cannot write another company's person", !!r.error, "it ran");
+  r = await as(db, P.mgrA, `select save_staff_details($1, current_date + 1, null, null, null, null)`, [P.staffA1]);
+  check("PROF  a date of birth in the future is refused", !!r.error, "it ran");
+  r = await as(db, P.mgrA, `insert into staff_details (user_id, company_id, phone) values ($1,$2,'1')`, [P.staffA2, CO_A]);
+  check("PROF  nobody writes the table by hand", blocked(r), "it wrote");
+  r = await as(db, P.mgrA, `delete from staff_details`);
+  check("PROF  nobody deletes from it by hand either", blocked(r), "it deleted");
+
+  const cleared = await save(P.mgrA, [P.staffA1, null, "", "  ", null, null]);
+  check("PROF  saving with everything blank keeps nothing", cleared === undefined, JSON.stringify(cleared));
+
+  await feature(CO_A, false);
+  await save(P.mgrA, [P.staffA1, "1990-05-01", null, null, null, null]).catch(() => null);
+  r = await as(db, P.mgrA, `select save_staff_details($1,'1990-05-01',null,null,null,null)`, [P.staffA1]);
+  check("ADDON staff profiles off: nothing can be saved", !!r.error, "it ran");
+  r = await as(db, P.staffA1, `select id from job_roles`);
+  check("ADDON staff profiles off: no job roles are readable", !r.error && r.rows.length === 0, r.error || JSON.stringify(r.rows));
+  r = await as(db, P.mgrA, `insert into job_roles (company_id, name) values ($1,'While off')`, [CO_A]);
+  check("ADDON staff profiles off: no job role can be added", blocked(r), "it added");
+  await feature(CO_A, true);
+  r = await as(db, P.staffA1, `select id from job_roles`);
+  check("ADDON staff profiles back on: the roles are still there, not deleted", !r.error && r.rows.length >= 1, r.error || JSON.stringify(r.rows));
+
+  // ── clearing an alert
+  await asMgr(P.mgrA, () => db.query(`select dismiss_alert('long:abc123', 'Priya Shah has been on shift 14h')`));
+  await asMgr(P.mgrA, () => db.query(`select dismiss_alert('long:abc123', 'again')`));
+  const d = (await asOwner(db, `select alert_key, dismissed_by from dismissed_alerts where company_id = $1 and alert_key = 'long:abc123'`, [CO_A])).rows;
+  check("ALERT a manager can clear an alert, once however often they tap (sanity)", d.length === 1 && d[0].dismissed_by === P.mgrA, JSON.stringify(d));
+  const al = (await asOwner(db, `select summary from audit_events where entity = 'alert' and action = 'cleared' and details->>'key' = 'long:abc123'`)).rows;
+  check("ALERT ...and it is in the audit history once, saying what was cleared", al.length === 1 && /Priya Shah/.test(al[0].summary), JSON.stringify(al));
+  r = await as(db, P.staffA1, `select dismiss_alert('long:zzz','x')`);
+  check("ALERT staff cannot clear an alert", !!r.error, "it ran");
+  r = await as(db, P.mgrA, `insert into dismissed_alerts (company_id, alert_key) values ($1,'hand')`, [CO_A]);
+  check("ALERT nobody writes the table by hand", blocked(r), "it wrote");
+  r = await as(db, P.mgrA, `delete from dismissed_alerts`);
+  check("ALERT ...or brings a cleared alert back by deleting it", blocked(r), "it deleted");
+  r = await as(db, P.mgrA, `select alert_key from dismissed_alerts`);
+  check("ALERT a manager sees what has been cleared, so the other managers stop seeing it", !r.error && r.rows.some((x) => x.alert_key === "long:abc123"), r.error || JSON.stringify(r.rows));
+  r = await as(db, P.staffA1, `select alert_key from dismissed_alerts`);
+  check("ALERT staff see none of it", !r.error && r.rows.length === 0, r.error || JSON.stringify(r.rows));
+  r = await as(db, P.ownerB, `select alert_key from dismissed_alerts`);
+  check("ALERT another company sees none of it", !r.error && r.rows.length === 0, r.error || JSON.stringify(r.rows));
+  await db.exec(`insert into dismissed_alerts (company_id, alert_key, dismissed_at) values ('${CO_A}','old:one', now() - interval '8 days')`);
+  await asMgr(P.mgrA, () => db.query(`select dismiss_alert('fresh:one','x')`));
+  const old = (await asOwner(db, `select count(*)::int n from dismissed_alerts where alert_key = 'old:one'`)).rows[0].n;
+  check("ALERT one about a shift long over is tidied away", old === 0, `${old} left`);
+  r = await as(db, "anon", `select dismiss_alert('x','y')`);
+  check("ALERT signed-out visitors cannot run it", !!r.error, "it ran");
+
+  // ── notices reach phones
+  const noticeCalls = async () => (await asOwner(db, `select body from net._calls where body->>'type' = 'notice' order by id`)).rows.map((x) => x.body);
+  const n0 = (await noticeCalls()).length;
+  const made = await asMgr(P.mgrA, async () =>
+    (await db.query(`insert into announcements (company_id, author_id, body) values ($1,$2,'Gate code changes Monday') returning id`, [CO_A, P.mgrA])).rows[0].id);
+  const n1 = await noticeCalls();
+  check("NOTE  posting a notice asks send-push to tell people", n1.length === n0 + 1 && n1.at(-1)?.id === made, JSON.stringify(n1.at(-1)));
+  await asMgr(P.mgrA, () => db.query(`insert into announcements (company_id, author_id, body, active) values ($1,$2,'Draft, switched off',false)`, [CO_A, P.mgrA]));
+  check("NOTE  a notice that is not live sends nothing", (await noticeCalls()).length === n1.length, "it sent");
+  const pref = (await asOwner(db, `select notices from notification_prefs where user_id = $1`, [P.staffA1])).rows[0];
+  check("NOTE  people can switch notice alerts off (and they start on)", pref && pref.notices === true, JSON.stringify(pref));
 }
 
 // ── report ───────────────────────────────────────────────────────────────

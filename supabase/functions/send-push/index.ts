@@ -47,7 +47,7 @@ const duration = (a: string, b: string) => {
 const MIN = 60000, HOUR = 60 * MIN;
 
 type Note = { title: string; body: string; url: string; tag: string };
-type Pref = "clock_in" | "clock_out" | "away" | "corrections" | "late" | "long_shift" | "correction_decisions" | "rota" | "reminders";
+type Pref = "clock_in" | "clock_out" | "away" | "corrections" | "late" | "long_shift" | "correction_decisions" | "rota" | "reminders" | "notices";
 
 // Claim a notification. False means it has already been sent.
 async function once(key: string) {
@@ -161,25 +161,59 @@ async function onCorrection(id: string) {
   }
 }
 
-async function onRota(companyId: string, from: string, to: string) {
+// The database says exactly who a publish affected (userIds, and `at` to tell one
+// publish from the next), removals included: somebody whose only shift was taken
+// off the rota has no shift left to look for afterwards. Without that list, work it
+// out from recently changed shifts, which is how this used to behave.
+async function onRota(companyId: string, from: string, to: string, userIds?: string[], at?: string) {
   const { data: co } = await db.from("companies").select("use_rota").eq("id", companyId).maybeSingle();
   if (!co?.use_rota) return;
   const { day } = await fmt(companyId);
-  const { data: rows } = await db.from("rota_shifts").select("user_id, updated_at")
-    .eq("company_id", companyId).eq("removed", false)
-    .gte("published_starts_at", from).lt("published_starts_at", to)
-    .gte("updated_at", new Date(Date.now() - 15 * MIN).toISOString());
-  const latest = new Map<string, string>();
-  (rows ?? []).forEach((r) => { if (!latest.has(r.user_id) || r.updated_at > latest.get(r.user_id)!) latest.set(r.user_id, r.updated_at); });
-  for (const [userId, stamp] of latest) {
+  const targets = new Map<string, string>();
+  if (userIds?.length && at) {
+    // Only people who really belong to this company: the list comes over the wire.
+    const { data: members } = await db.from("profiles").select("id").eq("company_id", companyId).in("id", userIds);
+    (members ?? []).forEach((m) => targets.set(m.id, at));
+  } else {
+    const { data: rows } = await db.from("rota_shifts").select("user_id, updated_at")
+      .eq("company_id", companyId).eq("removed", false)
+      .gte("published_starts_at", from).lt("published_starts_at", to)
+      .gte("updated_at", new Date(Date.now() - 15 * MIN).toISOString());
+    (rows ?? []).forEach((r) => { if (!targets.has(r.user_id) || r.updated_at > targets.get(r.user_id)!) targets.set(r.user_id, r.updated_at); });
+  }
+  for (const [userId, stamp] of targets) {
     if (await once(`rota:${userId}:${stamp}`)) {
       await sendTo([userId], ["rota"], {
-        title: "Your rota is out",
-        body: `Your shifts for the week of ${day(from)} have been published.`,
+        title: "Your rota has been updated",
+        body: `Your shifts for the week of ${day(from)} have changed. Open Aero to see them.`,
         url: "/", tag: `rota-${from}`,
       });
     }
   }
+}
+
+// A manager posted a notice: tell everyone in the company except the person who posted it.
+async function onNotice(id: string) {
+  const { data: n } = await db.from("announcements")
+    .select("id, company_id, author_id, body, active, expires_at, created_at").eq("id", id).maybeSingle();
+  if (!n || !n.active) return;
+  // Only a notice that has JUST been posted. A restore or an import puts old rows
+  // back, and must never send last month's notices to everybody's phone.
+  if (Date.now() - new Date(n.created_at).getTime() > 10 * MIN) return;
+  if (n.expires_at && new Date(n.expires_at).getTime() < Date.now()) return;
+  // The owner can take notices away from a client on /platform.
+  const { data: feature } = await db.from("company_features").select("enabled")
+    .eq("company_id", n.company_id).eq("feature", "notices").maybeSingle();
+  if (feature && feature.enabled === false) return;
+  if (!(await once(`notice:${n.id}`))) return;
+
+  const { data: people } = await db.from("profiles").select("id, role").eq("company_id", n.company_id).eq("active", true);
+  const others = (people ?? []).filter((p) => p.id !== n.author_id);
+  const body = n.body.length > 140 ? n.body.slice(0, 137) + "..." : n.body;
+  await sendTo(others.filter((p) => p.role === "staff").map((p) => p.id), ["notices"],
+    { title: "Notice from your manager", body, url: "/", tag: `notice-${n.id}` });
+  await sendTo(others.filter((p) => p.role !== "staff").map((p) => p.id), ["notices"],
+    { title: "Notice posted", body, url: "/admin.html", tag: `notice-${n.id}` });
 }
 
 async function onTick() {
@@ -267,7 +301,8 @@ Deno.serve(async (req) => {
   try {
     if (msg.type === "shift" && uuid.test(String(msg.id))) await onShift(String(msg.id));
     else if (msg.type === "correction" && uuid.test(String(msg.id))) await onCorrection(String(msg.id));
-    else if (msg.type === "rota" && uuid.test(String(msg.company_id))) await onRota(String(msg.company_id), String(msg.from), String(msg.to));
+    else if (msg.type === "rota" && uuid.test(String(msg.company_id))) await onRota(String(msg.company_id), String(msg.from), String(msg.to), Array.isArray(msg.user_ids) ? msg.user_ids.map(String).filter((x) => uuid.test(x)) : undefined, msg.at ? String(msg.at) : undefined);
+    else if (msg.type === "notice" && uuid.test(String(msg.id))) await onNotice(String(msg.id));
     else if (msg.type === "tick") await onTick();
     else return new Response("Unknown message", { status: 400 });
     return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });

@@ -50,9 +50,12 @@ const STUBS = `
     language sql as $$ insert into cron.job(jobname) values (job_name) returning jobid $$;
   create function cron.unschedule(job_id bigint) returns boolean language sql as $$ select true $$;
   create schema net;
+  -- Nothing is sent, but what WOULD have been is kept, so a test can read the
+  -- message a publish or a clock-in queued for the send-push function.
+  create table net._calls (id bigint generated always as identity primary key, url text, body jsonb);
   create function net.http_post(url text, body jsonb default '{}', params jsonb default '{}',
     headers jsonb default '{}', timeout_milliseconds integer default 5000) returns bigint
-    language sql as $$ select 1::bigint $$;
+    language plpgsql as $$ begin insert into net._calls (url, body) values (url, body); return 1; end $$;
 
   -- What a fresh Supabase project grants by default. The schema's own REVOKEs
   -- are the security; if these defaults were missing, the test would be too kind.

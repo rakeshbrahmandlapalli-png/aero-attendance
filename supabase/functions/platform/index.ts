@@ -122,11 +122,13 @@ Deno.serve(async (req) => {
   }
 
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  // What can be ticked on /platform. The check constraint on
-  // company_features.feature also allows "incidents"; it is left out here until
-  // that feature exists, because offering a switch for something that is not
-  // built is a lie. Add it to this list in the same commit that ships it.
-  const FEATURES = ["rota", "pay", "breaks", "notices", "handover", "overtime"];
+  // What can be ticked on /platform: only features the DATABASE really refuses when
+  // they are off. A switch that does nothing is a lie, so nothing else is listed.
+  // (rota, pay and breaks are not here yet: they are still just the client's own
+  // Company settings toggles. "incidents" is allowed by the constraint but is not
+  // built.) Add a name here in the same commit that enforces it, and to the check
+  // constraint on company_features.feature in schema.sql.
+  const FEATURES = ["notices", "handover", "overtime", "staff_profiles"];
 
   if (body.action === "update") {
     const id = String(body.company_id ?? "");
@@ -289,6 +291,7 @@ Deno.serve(async (req) => {
       ["availability", ["user_id", "weekday"]], ["time_off", ["id"]], ["rota_shifts", ["id"]], ["privacy_ack", ["user_id"]],
       ["notification_prefs", ["user_id"]], ["announcements", ["id"]], ["announcement_reads", ["announcement_id", "user_id"]],
       ["overtime_decisions", ["user_id", "week_start"]], ["company_features", ["feature"]], ["audit_events", ["id"]],
+      ["job_roles", ["id"]], ["staff_details", ["user_id"]], ["dismissed_alerts", ["alert_key"]],
     ];
     const fetchAll = async (table: string, order: string[], companyId: string) => {
       const rows: Record<string, unknown>[] = [];
