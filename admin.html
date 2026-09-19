@@ -2072,21 +2072,19 @@
       .select("id, full_name, role, company_id, companies!profiles_company_id_fkey(name)")
       .eq("id", user.id).maybeSingle();
     if (prof.error) {
-      if (isAuthError(prof.error)) { signedOut(); $("loginErr").textContent = "You've been signed out. Please sign in again."; show("loginErr", true); return; }
+      if (isAuthError(prof.error)) return signedOutWith("You've been signed out. Please sign in again.");
       if (isNetworkError(prof.error)) return bootProblem();
-      alert("Could not load profile: " + prof.error.message); return;
+      return signedOutWith("Could not load your profile: " + prof.error.message);
     }
     if (!prof.data) {
       // A paused company shows its people nothing at all, which looks exactly like "no company".
       var paused = await sb.rpc("my_company_paused");
-      alert(!paused.error && paused.data === true
+      return signedOutWith(!paused.error && paused.data === true
         ? "Your company's account is paused. Please contact your provider."
         : "You are not attached to a company yet.");
-      return signedOut();
     }
     if (prof.data.role === "staff") {
-      alert("This screen is for managers. Use the staff app to clock in.");
-      return signedOut();
+      return signedOutWith("This screen is for managers. Use the staff app to clock in.");
     }
 
     ME = prof.data;
@@ -2160,11 +2158,18 @@
     if (isAuthError(err)) return sessionEnded();
     toast(problemText(err));
   }
+  // Back to the sign-in screen WITH the reason on it. Never a browser alert:
+  // that puts the reason in a box you dismiss, and leaves a blank sign-in screen
+  // behind it saying nothing about why you are looking at it.
+  function signedOutWith(message) {
+    signedOut();
+    $("loginErr").textContent = message;
+    show("loginErr", true);
+  }
+
   function sessionEnded() {
     if (signingOut) return;
-    signedOut();
-    $("loginErr").textContent = "You've been signed out. Please sign in again.";
-    show("loginErr", true);
+    signedOutWith("You've been signed out. Please sign in again.");
   }
   // Nothing loaded at start-up because the server can't be reached.
   function bootProblem() {
