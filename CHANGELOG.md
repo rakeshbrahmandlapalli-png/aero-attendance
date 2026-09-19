@@ -5,6 +5,30 @@ or redeploy an Edge Function says so.
 
 ## Unreleased
 
+### Fixed (backups)
+- **Five tables were missing from every backup.** `announcements`, `announcement_reads`,
+  `overtime_decisions`, `company_features` and `audit_events` all hold a company's data and none of
+  them were exported, so a restore would have come back without notices, overtime decisions, add-on
+  settings or audit history — and nobody would have found out until they needed it. All five are in
+  now. *Needs: a redeploy of the `platform` Edge Function.*
+- **A restore would have invented audit history.** Putting shift corrections and rota shifts back
+  fires the audit triggers, which wrote fresh entries dated today for things that happened weeks
+  ago, on top of the real ones coming out of the backup. The restore now holds those two triggers
+  off while the rows go back. An audit trail that makes up its own history is worse than none.
+
+### Added (backups)
+- **A restore tool, and proof that it works.** `checks/restore.mjs` turns a backup from `/platform`
+  (locked or not) into a `.sql` file to paste into the Supabase SQL editor. It connects to nothing
+  and handles no keys, so it cannot touch live data by itself and the SQL can be read before it is
+  run. Everything is `on conflict do nothing` and it never deletes.
+  `npm run roundtrip` builds a company on the real `schema.sql`, exports it in the backup's own
+  shape, runs the real restore tool over it, loads the result into an empty database and compares
+  every table row by row — including a locked backup, a wrong passphrase, and running the same
+  restore twice. See OPS-RUNBOOK.md.
+  - Logins still cannot be restored, and should not be: passwords are not in a backup. The
+    `auth.users` rows come back so everything points at a real person, but everyone needs a new
+    password set afterwards.
+
 ### Added
 - **Add-ons: the owner chooses which features each client gets.** A new "Add-ons" button on each
   client in `/platform`. Untick something and it goes from that client's app — the database refuses

@@ -33,6 +33,8 @@ setup/update-2026-09-privacy-notice.sql  privacy notice fields and the read-reco
 setup/update-2026-09-tenant-integrity.sql  a shift may only point at its own company's people and sites (already inside schema.sql)
 checks/isolation.mjs  tenant isolation test: runs the REAL schema.sql in PostgreSQL (PGlite) and attacks it as two companies
 checks/harness.mjs    the Supabase stand-in the test runs on (roles, auth.uid(), no-op cron/net)
+checks/restore.mjs    turns a backup from /platform back into SQL to paste into Supabase (no keys, connects to nothing)
+checks/roundtrip.mjs  proves it: builds a company on the real schema, backs it up, restores it into an empty one, compares row by row
 supabase/functions/manage-staff/index.ts  Edge Function: add staff logins, remove/restore leavers
 supabase/functions/send-push/index.ts  Edge Function: phone notifications (web push)
 supabase/functions/platform/index.ts  Edge Function: the owner's "Add a client" (platform admins only)

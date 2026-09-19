@@ -279,10 +279,16 @@ Deno.serve(async (req) => {
     if (companyListError) return reply(400, { error: companyListError.message });
     if (only && (!companies || companies.length === 0)) return reply(404, { error: "That company no longer exists." });
 
+    // Every table that holds this company's data. Push subscriptions and
+    // push_log are left out on purpose (device keys, and no use in a restore);
+    // passwords are not ours to export at all.
+    // ADD A LINE HERE WITH EVERY NEW COMPANY-SCOPED TABLE, or a restore comes
+    // back missing it and nobody finds out until they need it.
     const TABLES: [string, string[]][] = [
       ["profiles", ["id"]], ["worksites", ["id"]], ["shifts", ["id"]], ["shift_corrections", ["id"]], ["pay_rates", ["user_id"]],
       ["availability", ["user_id", "weekday"]], ["time_off", ["id"]], ["rota_shifts", ["id"]], ["privacy_ack", ["user_id"]],
-      ["notification_prefs", ["user_id"]],
+      ["notification_prefs", ["user_id"]], ["announcements", ["id"]], ["announcement_reads", ["announcement_id", "user_id"]],
+      ["overtime_decisions", ["user_id", "week_start"]], ["company_features", ["feature"]], ["audit_events", ["id"]],
     ];
     const fetchAll = async (table: string, order: string[], companyId: string) => {
       const rows: Record<string, unknown>[] = [];
@@ -290,7 +296,12 @@ Deno.serve(async (req) => {
         let r = admin.from(table).select("*").eq("company_id", companyId);
         for (const col of order) r = r.order(col);
         const { data, error } = await r.range(from, from + 999);
-        if (error) throw new Error(`${table}: ${error.message}`);
+        // A table whose SQL has not been run yet is empty, not a failed backup:
+        // better a backup that says so than no backup at all.
+        if (error) {
+          if (/does not exist|schema cache|relation/i.test(error.message)) return rows;
+          throw new Error(`${table}: ${error.message}`);
+        }
         rows.push(...(data ?? []));
         if (!data || data.length < 1000) return rows;
       }
