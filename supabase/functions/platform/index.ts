@@ -11,11 +11,20 @@
 //   { action: "list" }
 //   { action: "create", company_name, time_zone, currency,
 //                       manager_name, manager_email, password }
+//   { action: "update", company_id, company_name, time_zone, currency, brand_name }
+//   { action: "delete", company_id, confirm_name }   permanent: see below
 //
 // "create" makes the company, the manager's login (which must choose their own
 // password at the first sign-in) and their profile as OWNER of that company,
 // in that order, and undoes every step if a later one fails, so it can never
 // leave a login that belongs to nobody or a company with nobody in it.
+//
+// "delete" removes a company, every row that belongs to it (the database
+// cascades: staff, shifts, pay, rota, everything) and its people's logins. It
+// cannot be undone, so the server, not just the page, insists that the caller
+// types the company's exact name, and it refuses if the caller (or any other
+// platform admin) is a member of that company, because that would delete the
+// login the platform owner signs in with.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const cors = {
@@ -47,15 +56,18 @@ Deno.serve(async (req) => {
 
   if (body.action === "list") {
     const { data: companies, error } = await admin.from("companies")
-      .select("id, name, time_zone, currency, created_at").order("created_at", { ascending: false });
+      .select("id, name, brand_name, time_zone, currency, created_at").order("created_at", { ascending: false });
     if (error) return reply(400, { error: error.message });
     const { data: owners } = await admin.from("profiles").select("company_id, full_name").eq("role", "owner").eq("active", true);
     const counts = await Promise.all((companies ?? []).map((c) =>
       admin.from("profiles").select("id", { count: "exact", head: true }).eq("company_id", c.id).eq("active", true)));
+    const shiftCounts = await Promise.all((companies ?? []).map((c) =>
+      admin.from("shifts").select("id", { count: "exact", head: true }).eq("company_id", c.id)));
     return reply(200, {
       companies: (companies ?? []).map((c, i) => ({
         ...c,
         staff: counts[i].count ?? 0,
+        shifts: shiftCounts[i].count ?? 0,
         owner: (owners ?? []).find((o) => o.company_id === c.id)?.full_name ?? "",
       })),
     });
@@ -99,6 +111,57 @@ Deno.serve(async (req) => {
       return reply(400, { error: profileError.message });
     }
     return reply(200, { company_id: company.id, name: companyName, email });
+  }
+
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  if (body.action === "update") {
+    const id = String(body.company_id ?? "");
+    const name = String(body.company_name ?? "").trim();
+    const timeZone = String(body.time_zone ?? "").trim();
+    const currency = String(body.currency ?? "").trim().toUpperCase();
+    const brand = String(body.brand_name ?? "").trim();
+    if (!uuid.test(id)) return reply(400, { error: "Unknown company." });
+    if (!name || name.length > 120) return reply(400, { error: "Enter the company name (up to 120 characters)." });
+    try { new Intl.DateTimeFormat("en-GB", { timeZone }); } catch { return reply(400, { error: `"${timeZone}" is not a time zone. Use a name like Europe/London.` }); }
+    if (!/^[A-Z]{3}$/.test(currency)) return reply(400, { error: "The currency is a three-letter code such as GBP." });
+    if (brand.length > 60) return reply(400, { error: "The name shown in the app can be up to 60 characters." });
+    const { data, error } = await admin.from("companies")
+      .update({ name, time_zone: timeZone, currency, brand_name: brand }).eq("id", id).select("id");
+    if (error) return reply(400, { error: error.message });
+    if (!data || data.length === 0) return reply(404, { error: "That company no longer exists." });
+    return reply(200, { ok: true });
+  }
+
+  if (body.action === "delete") {
+    const id = String(body.company_id ?? "");
+    if (!uuid.test(id)) return reply(400, { error: "Unknown company." });
+    const { data: company } = await admin.from("companies").select("id, name").eq("id", id).maybeSingle();
+    if (!company) return reply(404, { error: "That company no longer exists." });
+    if (String(body.confirm_name ?? "").trim() !== company.name) {
+      return reply(400, { error: "The name you typed does not match. Nothing was deleted." });
+    }
+    const { data: people } = await admin.from("profiles").select("id").eq("company_id", id);
+    const ids = (people ?? []).map((p) => p.id as string);
+    if (ids.includes(who.user.id)) {
+      return reply(400, { error: "You are signed in as a member of this company. Deleting it would delete your own login. Nothing was deleted." });
+    }
+    if (ids.length) {
+      const { data: admins } = await admin.from("platform_admins").select("user_id").in("user_id", ids);
+      if (admins && admins.length) return reply(400, { error: "A platform admin is a member of this company. Nothing was deleted." });
+    }
+
+    // One statement: the database removes the company and everything that belongs to it, or nothing.
+    const { error } = await admin.from("companies").delete().eq("id", id);
+    if (error) return reply(400, { error: error.message });
+
+    // Then the logins. The company is already gone, so a failure here only leaves an unused login behind.
+    let left = 0;
+    for (const userId of ids) {
+      const { error: delError } = await admin.auth.admin.deleteUser(userId);
+      if (delError) left++;
+    }
+    return reply(200, { ok: true, people: ids.length, logins_not_removed: left });
   }
 
   return reply(400, { error: "Unknown action." });

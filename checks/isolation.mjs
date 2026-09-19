@@ -335,6 +335,44 @@ gap("a manager can set another company's person's pay rate in their own company"
   check("SETTINGS  a new company starts on Europe/London, GBP and no brand name", d.time_zone === "Europe/London" && d.currency === "GBP" && d.brand_name === "", JSON.stringify(d));
 }
 
+// ── 10. DELETING A CLIENT LEAVES NOTHING BEHIND ──────────────────────────
+// The platform page's Delete removes one company row and relies on the database to remove
+// everything that belongs to it. If a table were added without ON DELETE CASCADE, Delete
+// would start failing (or, worse, leave that company's rows orphaned). Seeds one company
+// with a row in EVERY table and deletes it.
+{
+  const CO_C = U(1003), O = U(31), S = U(32), WC = U(2003), SH = U(3031);
+  await db.exec(`
+    insert into companies (id, name) values ('${CO_C}', 'Doomed Ltd');
+    insert into auth.users (id, email) values ('${O}','o@c.test'),('${S}','s@c.test');
+    insert into profiles (id, company_id, full_name, role) values ('${O}','${CO_C}','Owner C','owner'),('${S}','${CO_C}','Staff C','staff');
+    insert into worksites (id, company_id, name, lat, lng, radius_m) values ('${WC}','${CO_C}','C Yard',51,0,100);
+    insert into shifts (id, company_id, user_id, worksite_id, clock_in_at, clock_out_at) values ('${SH}','${CO_C}','${S}','${WC}', now() - interval '9 hours', now() - interval '1 hour');
+    insert into pay_rates (user_id, company_id, hourly_rate) values ('${S}','${CO_C}',10);
+    insert into availability (user_id, company_id, weekday, kind) values ('${S}','${CO_C}',0,'off');
+    insert into time_off (user_id, company_id, first_day, last_day) values ('${S}','${CO_C}', current_date + 1, current_date + 2);
+    insert into rota_shifts (company_id, user_id, worksite_id, starts_at, ends_at) values ('${CO_C}','${S}','${WC}', now() + interval '1 day', now() + interval '1 day 8 hours');
+    insert into shift_corrections (company_id, shift_id, user_id, original_in, original_out, requested_in, requested_out, reason, status)
+      values ('${CO_C}','${SH}','${S}', now() - interval '9 hours', now() - interval '1 hour', now() - interval '10 hours', now() - interval '1 hour', 'r', 'pending');
+    insert into push_subscriptions (user_id, company_id, endpoint, p256dh, auth) values ('${S}','${CO_C}','https://p.example/c','k','a');
+    insert into notification_prefs (user_id, company_id) values ('${S}','${CO_C}');
+    insert into privacy_ack (user_id, company_id, version) values ('${S}','${CO_C}',1);
+  `);
+  const before = (await asOwner(db, `select count(*)::int n from profiles where company_id = $1`, [CO_C])).rows[0].n;
+  let err = "";
+  try { await db.exec(`delete from companies where id = '${CO_C}'`); } catch (e) { err = e.message; }
+  check("DELETE  removing a company succeeds", before === 2 && !err, err || `seeded ${before} people`);
+  const left = [];
+  for (const t of ["profiles", "worksites", "shifts", "pay_rates", "availability", "time_off", "rota_shifts", "shift_corrections",
+                   "push_subscriptions", "notification_prefs", "privacy_ack"]) {
+    const n = (await asOwner(db, `select count(*)::int n from ${t} where company_id = $1`, [CO_C])).rows[0].n;
+    if (n) left.push(`${t}:${n}`);
+  }
+  check("DELETE  ...and leaves no row of theirs in any table", left.length === 0, left.join(", "));
+  const other = (await asOwner(db, `select count(*)::int n from shifts where company_id = $1`, [CO_A])).rows[0].n;
+  check("DELETE  ...and does not touch another company", other === 2, `A now has ${other} shifts`);
+}
+
 // ── report ───────────────────────────────────────────────────────────────
 const failed = results.filter((r) => !r.ok);
 for (const r of results) if (!r.ok) console.log(`FAIL  ${r.name}${r.detail ? "  →  " + r.detail : ""}`);

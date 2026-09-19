@@ -236,6 +236,14 @@ Staff app structure — keep it:
   (`must_change_password`) and a profile with role `owner`, in that order, and
   undoes each step if a later one fails. Do not go back to pasting company ids
   into SQL: a wrong id puts staff in the wrong company.
+- **Edit and Delete on /platform.** Edit changes name, brand name, time zone and
+  currency. Delete is permanent: the `platform` function requires the exact
+  company name typed (checked on the server, not just in the page), refuses if
+  the caller or any other platform admin belongs to that company, removes the
+  company in one statement (the database cascades to every table, and the
+  isolation test proves it leaves nothing behind), then removes the logins.
+  Every new table needs `on delete cascade` to `companies`, or Delete breaks.
+  There is no undo and no backup; do not add a "soft delete" without asking.
 - `platform_admins(user_id)` has row-level security on and NO policy, and
   `anon` / `authenticated` have no privileges on it, so only the service key
   (the Edge Function) can read it. Never add a policy or grant on it. The

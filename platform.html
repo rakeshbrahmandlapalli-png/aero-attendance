@@ -81,6 +81,13 @@
   .done{padding:var(--s4);border-left:4px solid var(--ok);background:var(--surface);margin-bottom:var(--s6);}
   .done dl{margin:var(--s4) 0;display:grid;grid-template-columns:max-content 1fr;gap:var(--s2) var(--s4);}
   .done dt{color:var(--ink-2);}.done dd{margin:0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums;}
+  .row-actions{display:flex;gap:var(--s2);flex-wrap:wrap;margin-top:var(--s3);}
+  .btn.danger{background:var(--warn);border-color:var(--warn);color:#fff;}
+  .btn.danger:disabled{background:var(--surface);border-color:var(--line);color:var(--ink-2);}
+  dialog{width:min(480px,calc(100% - 32px));max-height:calc(100dvh - 32px);overflow:auto;border:1px solid var(--line);border-radius:var(--r);padding:var(--s6);color:var(--ink);background:var(--card);}
+  dialog::backdrop{background:rgb(23 28 36 / .4);}
+  dialog h2{margin-bottom:var(--s2);}
+  .dialog-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:var(--s2);margin-top:var(--s6);}
   .toast{position:fixed;z-index:60;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);width:max-content;max-width:calc(100% - 32px);padding:var(--s4);border-radius:var(--r);background:var(--ink);color:#fff;}
   @media(prefers-reduced-motion:reduce){*{transition:none!important;}}
 </style>
@@ -158,6 +165,39 @@
     </section>
   </main>
 </div>
+<dialog id="editDialog" aria-labelledby="editTitle">
+  <form id="editForm" autocomplete="off">
+    <h2 id="editTitle">Edit client</h2>
+    <label for="editName">Company name</label>
+    <input id="editName" required maxlength="120">
+    <label for="editBrand">Name shown in the app</label>
+    <input id="editBrand" maxlength="60" placeholder="Aero Attendance">
+    <div class="two">
+      <div><label for="editZone">Time zone</label><select id="editZone"></select></div>
+      <div><label for="editCur">Currency</label><select id="editCur"></select></div>
+    </div>
+    <div id="editErr" class="err hidden" role="alert"></div>
+    <div class="dialog-actions">
+      <button type="button" class="btn g" id="editCancel">Cancel</button>
+      <button class="btn" id="editSave">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="deleteDialog" aria-labelledby="deleteTitle">
+  <form id="deleteForm" autocomplete="off">
+    <h2 id="deleteTitle">Delete client</h2>
+    <p id="deleteWhat"></p>
+    <p class="note">This cannot be undone. There is no backup to restore it from. If they might come back, edit them instead, or export their timesheets first.</p>
+    <label for="deleteConfirm">Type the company name to confirm: <strong id="deleteName"></strong></label>
+    <input id="deleteConfirm" autocomplete="off" autocapitalize="none" spellcheck="false">
+    <div id="deleteErr" class="err hidden" role="alert"></div>
+    <div class="dialog-actions">
+      <button type="button" class="btn g" id="deleteCancel">Cancel</button>
+      <button class="btn danger" id="deleteGo" disabled>Delete for good</button>
+    </div>
+  </form>
+</dialog>
 <div id="toast" class="toast hidden" role="status"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -185,8 +225,8 @@
 
   // ── demo data: made-up companies, kept in memory ──────────────────────
   var DEMO_LIST = [
-    { id: "d1", name: "Example Logistics Ltd", time_zone: "Europe/London", currency: "GBP", created_at: "2026-08-02T09:00:00Z", staff: 25, owner: "Jo Hargreaves" },
-    { id: "d2", name: "Sample Cars Ltd", time_zone: "Europe/London", currency: "GBP", created_at: "2026-09-11T09:00:00Z", staff: 10, owner: "Priya Nair" }
+    { id: "d1", name: "Example Logistics Ltd", time_zone: "Europe/London", currency: "GBP", created_at: "2026-08-02T09:00:00Z", staff: 25, shifts: 1840, brand_name: "", owner: "Jo Hargreaves" },
+    { id: "d2", name: "Sample Cars Ltd", time_zone: "Europe/London", currency: "GBP", created_at: "2026-09-11T09:00:00Z", staff: 10, shifts: 212, brand_name: "", owner: "Priya Nair" }
   ];
 
   // ── calling the platform function ─────────────────────────────────────
@@ -194,8 +234,19 @@
   async function call(body) {
     if (DEMO) {
       if (body.action === "list") return { companies: DEMO_LIST.slice() };
+      if (body.action === "update") {
+        var hit = DEMO_LIST.filter(function (c) { return c.id === body.company_id; })[0];
+        if (hit) { hit.name = body.company_name; hit.time_zone = body.time_zone; hit.currency = body.currency; hit.brand_name = body.brand_name; }
+        return { ok: true };
+      }
+      if (body.action === "delete") {
+        var gone = DEMO_LIST.filter(function (c) { return c.id === body.company_id; })[0];
+        if (!gone || body.confirm_name !== gone.name) throw new Error("The name you typed does not match. Nothing was deleted.");
+        DEMO_LIST = DEMO_LIST.filter(function (c) { return c !== gone; });
+        return { ok: true, people: gone.staff, logins_not_removed: 0 };
+      }
       DEMO_LIST.unshift({ id: "d" + Date.now(), name: body.company_name, time_zone: body.time_zone, currency: body.currency,
-        created_at: new Date().toISOString(), staff: 1, owner: body.manager_name });
+        created_at: new Date().toISOString(), staff: 1, shifts: 0, brand_name: "", owner: body.manager_name });
       return { company_id: "demo", name: body.company_name, email: body.manager_email };
     }
     var r = await sb.functions.invoke(PLATFORM_FUNCTION, { body: body });
@@ -210,31 +261,38 @@
   var COMMON_ZONES = ["Europe/London", "Europe/Dublin", "Europe/Paris", "Europe/Berlin", "Europe/Madrid", "Asia/Kolkata", "Asia/Dubai",
     "Asia/Singapore", "Australia/Sydney", "America/New_York", "America/Chicago", "America/Los_Angeles", "UTC"];
   var COMMON_CURRENCIES = ["GBP", "EUR", "USD", "INR", "AED", "AUD", "CAD", "CHF", "SGD", "PLN", "SEK", "NOK", "DKK", "NZD", "ZAR"];
-  function fillLocale() {
+  function fillLocale(zoneId, curId, zone, cur) {
+    zoneId = zoneId || "timeZone"; curId = curId || "currency"; zone = zone || "Europe/London"; cur = cur || "GBP";
     var all = [];
     try { all = Intl.supportedValuesOf("timeZone") || []; } catch (e) {}
     var rest = all.filter(function (z) { return COMMON_ZONES.indexOf(z) < 0; });
     var pick = function (list) { return list.map(function (z) { return '<option value="' + esc(z) + '">' + esc(z.replace(/_/g, " ")) + "</option>"; }).join(""); };
-    $("timeZone").innerHTML = '<optgroup label="Common">' + pick(COMMON_ZONES) + "</optgroup>" + (rest.length ? '<optgroup label="All time zones">' + pick(rest) + "</optgroup>" : "");
-    $("timeZone").value = "Europe/London";
+    var extra = COMMON_ZONES.indexOf(zone) < 0 && rest.indexOf(zone) < 0 ? [zone] : [];
+    $(zoneId).innerHTML = '<optgroup label="Common">' + pick(extra.concat(COMMON_ZONES)) + "</optgroup>" + (rest.length ? '<optgroup label="All time zones">' + pick(rest) + "</optgroup>" : "");
+    $(zoneId).value = zone;
     var names = null;
     try { names = new Intl.DisplayNames(["en-GB"], { type: "currency" }); } catch (e) {}
-    $("currency").innerHTML = COMMON_CURRENCIES.map(function (c) {
+    var codes = COMMON_CURRENCIES.indexOf(cur) < 0 ? [cur].concat(COMMON_CURRENCIES) : COMMON_CURRENCIES;
+    $(curId).innerHTML = codes.map(function (c) {
       var label = c; try { label = c + " – " + names.of(c); } catch (e) {}
       return '<option value="' + esc(c) + '">' + esc(label) + "</option>";
     }).join("");
-    $("currency").value = "GBP";
+    $(curId).value = cur;
   }
 
   // ── the list ──────────────────────────────────────────────────────────
   function niceDate(iso) {
     try { return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); } catch (e) { return ""; }
   }
+  var COMPANIES = [];
   function renderList(companies) {
+    COMPANIES = companies;
     $("clients").innerHTML = companies.map(function (c) {
       return "<li><strong>" + esc(c.name) + '</strong><div class="meta">' +
         (c.owner ? "Owner " + esc(c.owner) + " · " : "") + '<span class="num">' + esc(c.staff) + "</span> " + (c.staff === 1 ? "person" : "people") +
-        "</div>" + '<div class="meta">' + esc(c.time_zone) + " · " + esc(c.currency) + " · added " + esc(niceDate(c.created_at)) + "</div></li>";
+        "</div>" + '<div class="meta">' + esc(c.time_zone) + " · " + esc(c.currency) + " · added " + esc(niceDate(c.created_at)) + "</div>" +
+        '<div class="row-actions"><button class="btn g" type="button" data-edit="' + esc(c.id) + '">Edit</button>' +
+        '<button class="btn g" type="button" data-delete="' + esc(c.id) + '">Delete</button></div></li>';
     }).join("");
     show("clientsEmpty", companies.length === 0);
     $("clientsNote").textContent = companies.length + (companies.length === 1 ? " company" : " companies");
@@ -331,6 +389,68 @@
     show("doneBox", false); handOver = "";
     $("donePw").textContent = "";     // do not leave a password sitting in the page
   }
+
+  // ── editing and deleting a client ─────────────────────────────────────
+  var target = null;
+  function findCompany(id) { return COMPANIES.filter(function (c) { return c.id === id; })[0] || null; }
+
+  function openEdit(id) {
+    target = findCompany(id); if (!target) return;
+    $("editName").value = target.name; $("editBrand").value = target.brand_name || "";
+    fillLocale("editZone", "editCur", target.time_zone, target.currency);
+    show("editErr", false); $("editDialog").showModal(); $("editName").focus();
+  }
+  async function saveEdit(e) {
+    e.preventDefault();
+    if (busy || !target) return;
+    busy = true; $("editSave").disabled = true; show("editErr", false);
+    try {
+      await call({ action: "update", company_id: target.id, company_name: $("editName").value.trim(), brand_name: $("editBrand").value.trim(),
+        time_zone: $("editZone").value, currency: $("editCur").value });
+      $("editDialog").close(); toast("Saved");
+      await loadList();
+    } catch (err) {
+      if (err.status === 401) { $("editDialog").close(); return signedOutView("You've been signed out. Please sign in again."); }
+      $("editErr").textContent = err.message; show("editErr", true);
+    } finally { busy = false; $("editSave").disabled = false; }
+  }
+
+  function openDelete(id) {
+    target = findCompany(id); if (!target) return;
+    var n = target.staff, s = target.shifts || 0;
+    $("deleteTitle").textContent = "Delete " + target.name + "?";
+    $("deleteWhat").textContent = "This permanently deletes the company, its " + n + " active " + (n === 1 ? "person" : "people") + " (and anyone removed earlier) with their logins, and " +
+      s.toLocaleString("en-GB") + (s === 1 ? " recorded shift" : " recorded shifts") + ", with every timesheet, rota, pay rate and note.";
+    $("deleteName").textContent = target.name;
+    $("deleteConfirm").value = ""; $("deleteGo").disabled = true; show("deleteErr", false);
+    $("deleteDialog").showModal(); $("deleteConfirm").focus();
+  }
+  async function confirmDelete(e) {
+    e.preventDefault();
+    if (busy || !target || $("deleteConfirm").value.trim() !== target.name) return;
+    busy = true; $("deleteGo").disabled = true; show("deleteErr", false);
+    try {
+      var r = await call({ action: "delete", company_id: target.id, confirm_name: $("deleteConfirm").value.trim() });
+      $("deleteDialog").close();
+      toast(r.logins_not_removed ? "Deleted, but " + r.logins_not_removed + " login(s) could not be removed." : "Client deleted");
+      target = null;
+      await loadList();
+    } catch (err) {
+      if (err.status === 401) { $("deleteDialog").close(); return signedOutView("You've been signed out. Please sign in again."); }
+      $("deleteErr").textContent = err.message; show("deleteErr", true);
+      $("deleteGo").disabled = !target || $("deleteConfirm").value.trim() !== target.name;
+    } finally { busy = false; }
+  }
+  $("clients").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.edit) openEdit(b.dataset.edit);
+    if (b.dataset.delete) openDelete(b.dataset.delete);
+  });
+  $("editForm").addEventListener("submit", saveEdit);
+  $("editCancel").addEventListener("click", function () { $("editDialog").close(); });
+  $("deleteForm").addEventListener("submit", confirmDelete);
+  $("deleteCancel").addEventListener("click", function () { $("deleteDialog").close(); });
+  $("deleteConfirm").addEventListener("input", function () { $("deleteGo").disabled = !target || $("deleteConfirm").value.trim() !== target.name; });
 
   // ── start-up ──────────────────────────────────────────────────────────
   $("signin").addEventListener("click", signIn);
