@@ -24,12 +24,22 @@ webpush.setVapidDetails(
   Deno.env.get("VAPID_PRIVATE_KEY")!,
 );
 
-// Clients are UK businesses; times read as the yard clock.
-const TZ = "Europe/London";
-const time = (iso: string) =>
-  new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
-const day = (iso: string) =>
-  new Intl.DateTimeFormat("en-GB", { timeZone: TZ, weekday: "short", day: "numeric", month: "short" }).format(new Date(iso));
+// Times read as the company's own clock: companies.time_zone (default
+// Europe/London). An unknown or empty zone falls back to London rather than
+// stopping a notification.
+const zones = new Map<string, string>();
+async function fmt(companyId: string) {
+  if (!zones.has(companyId)) {
+    const { data } = await db.from("companies").select("time_zone").eq("id", companyId).maybeSingle();
+    zones.set(companyId, data?.time_zone || "Europe/London");
+  }
+  let tz = zones.get(companyId)!;
+  try { new Intl.DateTimeFormat("en-GB", { timeZone: tz }); } catch { tz = "Europe/London"; }
+  return {
+    time: (iso: string) => new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit" }).format(new Date(iso)),
+    day: (iso: string) => new Intl.DateTimeFormat("en-GB", { timeZone: tz, weekday: "short", day: "numeric", month: "short" }).format(new Date(iso)),
+  };
+}
 const duration = (a: string, b: string) => {
   const m = Math.round((new Date(b).getTime() - new Date(a).getTime()) / 60000);
   return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`;
@@ -92,6 +102,7 @@ async function onShift(id: string) {
   const name = (s.profiles as { full_name?: string } | null)?.full_name || "Someone";
   const site = (s.worksites as { name?: string } | null)?.name;
   const to = await managers(s.company_id, s.user_id);
+  const { time } = await fmt(s.company_id);
 
   if (await once(`in:${s.id}`)) {
     const away = s.clock_in_ok === false;
@@ -117,6 +128,7 @@ async function onCorrection(id: string) {
     .eq("id", id).maybeSingle();
   if (!c) return;
   const name = (c.profiles as { full_name?: string } | null)?.full_name || "Someone";
+  const { time, day } = await fmt(c.company_id);
   if (c.status === "pending") {
     if (await once(`corr:${c.id}`)) {
       await sendTo(await managers(c.company_id, c.user_id), ["corrections"], {
@@ -137,6 +149,7 @@ async function onCorrection(id: string) {
 async function onRota(companyId: string, from: string, to: string) {
   const { data: co } = await db.from("companies").select("use_rota").eq("id", companyId).maybeSingle();
   if (!co?.use_rota) return;
+  const { day } = await fmt(companyId);
   const { data: rows } = await db.from("rota_shifts").select("user_id, updated_at")
     .eq("company_id", companyId).eq("removed", false)
     .gte("published_starts_at", from).lt("published_starts_at", to)
@@ -164,6 +177,7 @@ async function onTick() {
   for (const s of long ?? []) {
     if (await once(`long:${s.id}`)) {
       const name = (s.profiles as { full_name?: string } | null)?.full_name || "Someone";
+      const { time, day } = await fmt(s.company_id);
       await sendTo(await managers(s.company_id, s.user_id), ["long_shift"], {
         title: `${name} is still clocked in`,
         body: `Clocked in at ${time(s.clock_in_at)} on ${day(s.clock_in_at)}, over 13 hours ago. Check the finish time.`,
@@ -196,6 +210,7 @@ async function onTick() {
         return s.user_id === r.user_id && t >= start - 2 * HOUR && t <= end;
       });
       const name = person?.full_name || "Someone";
+      const { time, day } = await fmt(r.company_id);
 
       if (start > now) {
         if (!came && start - now <= 65 * MIN && await once(`remind:${r.id}:${r.published_starts_at}`)) {

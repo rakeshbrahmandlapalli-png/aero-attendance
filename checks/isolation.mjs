@@ -20,6 +20,7 @@ const W_A = U(2001), W_B = U(2002);
 const P = {           // people
   ownerA: U(11), mgrA: U(12), staffA1: U(13), staffA2: U(14), goneA: U(15),
   ownerB: U(21), staffB1: U(22),
+  platform: U(90),      // a platform admin: signs in, but belongs to no company
 };
 const SHIFT_A1 = U(3001), SHIFT_A2 = U(3002), SHIFT_B1 = U(3003);
 const CORR_A = U(4001);
@@ -29,7 +30,7 @@ const results = [];
 function check(name, ok, detail = "") { results.push({ name, ok: !!ok, detail }); }
 const blocked = (r) => !!r.error || r.count === 0;     // an error, or nothing touched
 
-const db = await boot();
+const db = await boot({ schemaPath: process.env.SCHEMA_FILE });   // SCHEMA_FILE: try a deliberately broken copy, to prove a check can fail
 
 // ── seed, as the database owner (bypasses row-level security) ────────────
 // exec, not query: this is many statements at once
@@ -61,6 +62,8 @@ await db.exec(`
   insert into push_subscriptions (user_id, company_id, endpoint, p256dh, auth) values ('${P.staffA1}','${CO_A}','https://push.example/a1','k','a');
   insert into notification_prefs (user_id, company_id) values ('${P.staffA1}','${CO_A}');
   insert into privacy_ack (user_id, company_id, version) values ('${P.staffA1}','${CO_A}',1);
+  insert into auth.users (id, email) values ('${P.platform}','platform@aero.test');
+  insert into platform_admins (user_id) values ('${P.platform}');
 `);
 
 const TABLES = ["availability", "notification_prefs", "pay_rates", "privacy_ack", "profiles", "push_subscriptions",
@@ -135,6 +138,9 @@ const W = [
   ["plant a staff member in another company", P.ownerB, `insert into profiles (id, company_id, full_name, role) values (gen_random_uuid(),$1,'PLANTED','owner')`, [CO_A]],
   ["plant a pay rate in another company", P.ownerB, `insert into pay_rates (user_id, company_id, hourly_rate) values ($2,$1,99)`, [CO_A, P.ownerA]],
   ["plant a rota shift in another company", P.ownerB, `insert into rota_shifts (company_id, user_id, starts_at, ends_at) values ($1,$2,now(),now() + interval '8 hours')`, [CO_A, P.staffA1]],
+  ["change another company's time zone",  P.ownerB, `update companies set time_zone = 'Asia/Tokyo' where id = $1`, [CO_A]],
+  ["change another company's currency",   P.ownerB, `update companies set currency = 'USD' where id = $1`, [CO_A]],
+  ["rebrand another company",             P.ownerB, `update companies set brand_name = 'HACKED' where id = $1`, [CO_A]],
   ["edit another company's read-record",  P.ownerB, `update privacy_ack set version = 99 where company_id = $1`, [CO_A]],
   ["edit another company's staff (as staff)", P.staffB1, `update profiles set full_name = 'HACKED' where company_id = $1`, [CO_A]],
   ["read-write another company's shifts (as staff)", P.staffB1, `update shifts set note = 'HACKED' where company_id = $1`, [CO_A]],
@@ -260,6 +266,73 @@ gap("a manager can set another company's person's pay rate in their own company"
   check("OK    a manager can edit their own company's shift note", !r.error && r.count === 1, r.error || `rows ${r.count}`);
   r = await as(db, P.mgrA, `select review_shift_correction($1, true, 'ok')`, [CORR_A]);
   check("OK    a manager can approve their own company's correction request", !r.error, r.error);
+}
+
+// ── 9. PLATFORM ADMINS AND PER-COMPANY SETTINGS ──────────────────────────
+// platform_admins decides who may add client companies (the `platform` Edge Function
+// reads it with the service key). No signed-in user, manager or platform admin included,
+// may reach it from the app: not even to read it, and above all not to add themselves.
+{
+  const asks = [
+    ["read",   `select count(*)::int n from platform_admins`],
+    ["add themselves", `insert into platform_admins (user_id) values ($1)`],
+    ["remove a platform admin", `delete from platform_admins`],
+    ["edit a platform admin", `update platform_admins set user_id = user_id`],
+  ];
+  for (const who of ["staffA1", "mgrA", "ownerA", "ownerB", "platform"]) {
+    for (const [label, sql] of asks) {
+      // the insert names staffA2, who is a real user and NOT yet an admin, so a refusal can only be about permission
+      const r = await as(db, P[who], sql, sql.includes("$1") ? [P.staffA2] : []);
+      const refused = /permission denied|row-level security/.test(r.error || "");
+      check(`PLATFORM  ${who} cannot ${label} platform_admins`, refused || (!r.error && r.count === 0 && (r.rows[0]?.n ?? 0) === 0), r.error || `it worked (${r.count})`);
+    }
+  }
+  for (const [label, sql] of [["read", `select count(*)::int n from platform_admins`], ["add themselves", `insert into platform_admins (user_id) values (gen_random_uuid())`]]) {
+    const r = await as(db, "anon", sql.replace("gen_random_uuid()", `'${P.staffA2}'::uuid`));
+    check(`PLATFORM  signed-out visitors cannot ${label} platform_admins`, /permission denied|row-level security/.test(r.error || ""), r.error || "it worked");
+  }
+  const still = (await asOwner(db, `select count(*)::int n from platform_admins`)).rows[0].n;
+  check("PLATFORM  the list is unchanged after all of that", still === 1, `now ${still}`);
+
+  // being a platform admin gives no view into any company
+  for (const t of ["companies", "profiles", "shifts", "worksites", "pay_rates"]) {
+    const r = await as(db, P.platform, `select count(*)::int n from ${t}`);
+    check(`PLATFORM  a platform admin's own session sees no ${t} (they act through the Edge Function only)`, !r.error && r.rows[0].n === 0, r.error || `saw ${r.rows[0]?.n}`);
+  }
+}
+
+// Settings a manager may save on their own company, and the ones nobody may touch.
+{
+  const okSet = [
+    ["name", `name = 'Renamed Ltd'`], ["time zone", `time_zone = 'Asia/Kolkata'`], ["currency", `currency = 'INR'`],
+    ["brand name", `brand_name = 'Client Time'`], ["breaks switch", `use_breaks = false`],
+    ["privacy contact", `privacy_contact = 'hr@a.test'`], ["retention text", `retention_text = '6 years'`],
+    ["rota switch", `use_rota = false`], ["pay switch", `show_pay = false`], ["on-site switch", `require_on_site = false`],
+  ];
+  for (const [label, set] of okSet) {
+    const r = await as(db, P.ownerA, `update companies set ${set} where id = $1`, [CO_A]);
+    check(`SETTINGS  a manager can save their company's ${label}`, !r.error && r.count === 1, r.error || `rows ${r.count}`);
+  }
+  {
+    const r = await as(db, P.ownerA, `update companies set name = 'X', time_zone = 'Asia/Kolkata', currency = 'INR', brand_name = 'Y', use_breaks = false, privacy_contact = 'p', retention_text = 'r' where id = $1`, [CO_A]);
+    check("SETTINGS  ...all at once, the way Company settings saves them", !r.error && r.count === 1, r.error || `rows ${r.count}`);
+  }
+  for (const [label, set] of [["id", `id = gen_random_uuid()`], ["created date", `created_at = now()`]]) {
+    const r = await as(db, P.ownerA, `update companies set ${set} where id = $1`, [CO_A]);
+    check(`SETTINGS  a manager cannot change their company's ${label}`, blocked(r), "it changed");
+  }
+  for (const [label, set] of [["a time zone that does not exist", `time_zone = 'Mars/Olympus'`], ["an empty time zone", `time_zone = ''`],
+                              ["a currency that is not three capital letters", `currency = 'pounds'`], ["a lower-case currency", `currency = 'gbp'`],
+                              ["a 61-character brand name", `brand_name = '${"x".repeat(61)}'`]]) {
+    const r = await as(db, P.ownerA, `update companies set ${set} where id = $1`, [CO_A]);
+    check(`SETTINGS  the database refuses ${label}`, !!r.error, "it was accepted");
+  }
+  for (const [label, set] of [["time zone", `time_zone = 'Asia/Tokyo'`], ["currency", `currency = 'USD'`], ["brand name", `brand_name = 'HACKED'`], ["breaks switch", `use_breaks = false`]]) {
+    const r = await as(db, P.staffA1, `update companies set ${set} where id = $1`, [CO_A]);
+    check(`SETTINGS  staff cannot change their company's ${label}`, blocked(r), "it changed");
+  }
+  const d = (await asOwner(db, `select time_zone, currency, brand_name from companies where id = $1`, [CO_A])).rows[0];
+  check("SETTINGS  a new company starts on Europe/London, GBP and no brand name", d.time_zone === "Europe/London" && d.currency === "GBP" && d.brand_name === "", JSON.stringify(d));
 }
 
 // ── report ───────────────────────────────────────────────────────────────

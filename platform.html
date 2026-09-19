@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Aero Platform | Add a client</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0E1420">
+<!--
+  The owner's tool for adding client companies. Deliberately its own file:
+  it is not part of what a client's staff or managers use, it has no manifest
+  (it is never installed), and it must not be reachable by a client. What
+  keeps it unreachable is NOT this page: the `platform` Edge Function checks
+  the caller is in platform_admins on the server, every time.
+-->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23E8871E'/%3E%3Cpath d='M21 43V32M32 43V21M43 43V28' stroke='%230E1420' stroke-width='5.5' stroke-linecap='round'/%3E%3C/svg%3E">
+
+<script>
+  window.APP_CONFIG = {
+    url: "https://ljrzcrphuepqtfrayeid.supabase.co",
+    key: "sb_publishable_nZARbee_a2fgpA6pkZ-P-w_pN2ruf9n"    // same two values as index.html
+  };
+</script>
+
+<style>
+  :root{
+    --page:#FFFFFF;--card:#FFFFFF;--surface:#F3F5F8;
+    --line:#DDE2E8;--ink:#0E1420;--ink-2:#4A5363;--accent:#9A5200;
+    --warn:#B42318;--warn-soft:#FEF1F0;--ok:#0F7B4A;--brand:#E8871E;--r:8px;
+    --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s6:24px;--s8:32px;--s12:48px;
+    --t1:14px;--t2:16px;--t3:20px;--t4:24px;--t5:32px;
+  }
+  *{box-sizing:border-box;letter-spacing:0;}
+  html,body{margin:0;background:var(--page);color:var(--ink);font:400 var(--t2)/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;}
+  body{padding-bottom:env(safe-area-inset-bottom);}
+  .hidden{display:none!important;}
+  .boot-status{padding:var(--s12) var(--s6);color:var(--ink-2);}
+  body:has(#app:not(.hidden),#login:not(.hidden))>.boot-status{display:none;}
+  h1,h2,h3,p{margin:0;}
+  h1,h2,h3,strong,b{font-weight:600;}
+  h1{font-size:var(--t5);line-height:1.2;}
+  h2{font-size:var(--t4);line-height:1.2;margin-bottom:var(--s4);}
+  h3{font-size:var(--t3);line-height:1.2;}
+  .num{font-variant-numeric:tabular-nums;}
+  button,input,select{font:inherit;color:inherit;}
+  button,a,input,select{touch-action:manipulation;}
+  button{cursor:pointer;}
+  button,a{transition:background-color 160ms,color 160ms;}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:4px;}
+  input,select{width:100%;min-width:0;max-width:100%;min-height:48px;padding:var(--s3);border:1px solid #819087;border-radius:var(--r);background:var(--card);font-size:var(--t2);line-height:1.5;}
+  label{display:block;margin:var(--s4) 0 var(--s2);color:var(--ink-2);}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);min-height:48px;padding:var(--s3) var(--s4);border:1px solid var(--ink);border-radius:var(--r);font-size:var(--t2);font-weight:600;background:var(--ink);color:#fff;}
+  .btn.g{background:var(--card);color:var(--ink);border-color:var(--line);}
+  .btn:active{filter:brightness(.94);}
+  .btn:disabled{cursor:wait;background:var(--surface);color:var(--ink-2);border-color:var(--line);}
+  .link{border:0;background:none;color:#D5DBE3;font-size:var(--t2);padding:var(--s3);min-height:48px;min-width:48px;}
+  .link:focus-visible{outline-color:#fff;}
+  .note{color:var(--ink-2);font-size:var(--t1);margin-top:var(--s2);}
+  .err{margin-top:var(--s4);padding:var(--s4);background:var(--warn-soft);color:var(--warn);border-left:4px solid var(--warn);overflow-wrap:anywhere;}
+
+  .login{max-width:432px;margin:var(--s12) auto;padding:var(--s6);}
+  .login p{margin:var(--s3) 0 var(--s8);color:var(--ink-2);}
+  .login .btn{width:100%;margin-top:var(--s4);}
+  .demoBar{padding:var(--s2) var(--s4);background:var(--surface);color:var(--ink-2);font-size:var(--t1);text-align:center;}
+  header{display:flex;align-items:center;justify-content:space-between;gap:var(--s4);padding:var(--s4);background:var(--ink);color:#fff;}
+  header>div{min-width:0;}
+  .brand{font-size:var(--t4);font-weight:600;}.brand span{color:var(--brand);}
+  header .sub{color:#D5DBE3;font-size:var(--t1);}
+  main{max-width:640px;margin:auto;padding:var(--s6) var(--s4) var(--s12);}
+  section+section{margin-top:var(--s12);}
+
+  .clients{list-style:none;margin:0;padding:0;border-top:1px solid var(--line);}
+  .clients li{padding:var(--s4) 0;border-bottom:1px solid var(--line);}
+  .clients .meta{color:var(--ink-2);font-size:var(--t1);overflow-wrap:anywhere;}
+  .empty{padding:var(--s8) var(--s4);color:var(--ink-2);text-align:center;border-block:1px solid var(--line);}
+  .pwrow{display:flex;gap:var(--s2);}
+  .pwrow input{flex:1;font-variant-numeric:tabular-nums;}
+  .two{display:grid;gap:0 var(--s4);}
+  @media(min-width:560px){.two{grid-template-columns:1fr 1fr;}}
+  .submit{margin-top:var(--s6);}
+  .done{padding:var(--s4);border-left:4px solid var(--ok);background:var(--surface);margin-bottom:var(--s6);}
+  .done dl{margin:var(--s4) 0;display:grid;grid-template-columns:max-content 1fr;gap:var(--s2) var(--s4);}
+  .done dt{color:var(--ink-2);}.done dd{margin:0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums;}
+  .toast{position:fixed;z-index:60;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);width:max-content;max-width:calc(100% - 32px);padding:var(--s4);border-radius:var(--r);background:var(--ink);color:#fff;}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important;}}
+</style>
+</head>
+<body>
+<div class="boot-status" role="status">Loading...</div>
+
+<div id="login" class="login hidden">
+  <h1>Platform</h1>
+  <p>Sign in with your platform login.</p>
+  <label for="email">Email</label>
+  <input id="email" type="email" placeholder="Email" autocomplete="username">
+  <label for="pw">Password</label>
+  <input id="pw" type="password" placeholder="Password" autocomplete="current-password">
+  <button class="btn" id="signin">Sign in</button>
+  <div id="loginErr" class="err hidden" role="alert"></div>
+</div>
+
+<div id="app" class="hidden">
+  <div id="demoBar" class="demoBar hidden">Demo &mdash; sample data, nothing saved.</div>
+  <header>
+    <div>
+      <div class="brand">aero<span>.</span></div>
+      <div class="sub">Platform</div>
+    </div>
+    <button class="link" id="signout" type="button">Sign out</button>
+  </header>
+  <main>
+    <section aria-labelledby="clientsTitle">
+      <h1 id="clientsTitle">Clients</h1>
+      <p class="note" id="clientsNote"></p>
+      <ul class="clients" id="clients"></ul>
+      <div id="clientsEmpty" class="empty hidden">No clients yet.</div>
+      <div id="listErr" class="err hidden" role="alert"></div>
+    </section>
+
+    <section aria-labelledby="addTitle">
+      <h2 id="addTitle">Add a client</h2>
+      <div id="doneBox" class="done hidden" role="status" tabindex="-1">
+        <strong id="doneTitle">Client added</strong>
+        <dl>
+          <dt>Company</dt><dd id="doneCompany"></dd>
+          <dt>Manager sign-in</dt><dd id="doneUrl"></dd>
+          <dt>Email</dt><dd id="doneEmail"></dd>
+          <dt>Starting password</dt><dd id="donePw"></dd>
+        </dl>
+        <p class="note">This is the only time the password is shown. It is not stored anywhere you can read it back. They choose their own at their first sign-in.</p>
+        <p class="note">Next, tell them: sign in, open Company settings and fill in the privacy contact and how long records are kept, add the worksites, then add staff.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">
+          <button class="btn" id="copyDone" type="button">Copy the message</button>
+          <button class="btn g" id="dismissDone" type="button">Done</button>
+        </div>
+      </div>
+
+      <form id="addForm" autocomplete="off">
+        <label for="companyName">Company name</label>
+        <input id="companyName" required maxlength="120" placeholder="e.g. Example Logistics Ltd">
+        <div class="two">
+          <div><label for="timeZone">Time zone</label><select id="timeZone"></select></div>
+          <div><label for="currency">Currency</label><select id="currency"></select></div>
+        </div>
+        <label for="managerName">First manager's name</label>
+        <input id="managerName" required maxlength="120" autocomplete="off">
+        <label for="managerEmail">First manager's email</label>
+        <input id="managerEmail" type="email" required autocomplete="off" autocapitalize="none" spellcheck="false">
+        <label for="startPw">Starting password</label>
+        <div class="pwrow">
+          <input id="startPw" required minlength="8" maxlength="72" autocomplete="off" autocapitalize="none" spellcheck="false">
+          <button class="btn g" id="genPw" type="button">Generate</button>
+        </div>
+        <p class="note">At least 8 characters. Hand it over in person or by phone, not in the same message as the email.</p>
+        <div id="addErr" class="err hidden" role="alert"></div>
+        <button class="btn submit" id="addBtn">Add client</button>
+      </form>
+    </section>
+  </main>
+</div>
+<div id="toast" class="toast hidden" role="status"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var CFG = window.APP_CONFIG || {};
+  var FORCED_DEMO = location.protocol === "file:" || /^\/demo(\/|$)/.test(location.pathname) || /[?&]demo\b/.test(location.search);
+  var DEMO = FORCED_DEMO || !CFG.url || !CFG.key;
+  var PLATFORM_FUNCTION = "platform";     // the slug the Edge Function is deployed under in Supabase
+  var sb = null, busy = false;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var show = function (id, on) { $(id).classList.toggle("hidden", !on); };
+  var esc = function (s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  };
+  var toastTimer = null;
+  function toast(msg) {
+    $("toast").textContent = msg; show("toast", true);
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { show("toast", false); }, 4000);
+  }
+
+  // ── demo data: made-up companies, kept in memory ──────────────────────
+  var DEMO_LIST = [
+    { id: "d1", name: "Example Logistics Ltd", time_zone: "Europe/London", currency: "GBP", created_at: "2026-08-02T09:00:00Z", staff: 25, owner: "Jo Hargreaves" },
+    { id: "d2", name: "Sample Cars Ltd", time_zone: "Europe/London", currency: "GBP", created_at: "2026-09-11T09:00:00Z", staff: 10, owner: "Priya Nair" }
+  ];
+
+  // ── calling the platform function ─────────────────────────────────────
+  // Anything that is not a plain success throws with the function's own words.
+  async function call(body) {
+    if (DEMO) {
+      if (body.action === "list") return { companies: DEMO_LIST.slice() };
+      DEMO_LIST.unshift({ id: "d" + Date.now(), name: body.company_name, time_zone: body.time_zone, currency: body.currency,
+        created_at: new Date().toISOString(), staff: 1, owner: body.manager_name });
+      return { company_id: "demo", name: body.company_name, email: body.manager_email };
+    }
+    var r = await sb.functions.invoke(PLATFORM_FUNCTION, { body: body });
+    if (!r.error) return r.data;
+    var msg = r.error.message, status = r.error.context && r.error.context.status;
+    try { var j = await r.error.context.json(); if (j) msg = j.error || j.message || msg; } catch (e) {}
+    if (/function was not found|Failed to send a request/i.test(msg)) msg = "The platform function is not deployed in Supabase yet (" + msg + ").";
+    var err = new Error(msg); err.status = status; throw err;
+  }
+
+  // ── time zones and currencies (same lists as Company settings) ────────
+  var COMMON_ZONES = ["Europe/London", "Europe/Dublin", "Europe/Paris", "Europe/Berlin", "Europe/Madrid", "Asia/Kolkata", "Asia/Dubai",
+    "Asia/Singapore", "Australia/Sydney", "America/New_York", "America/Chicago", "America/Los_Angeles", "UTC"];
+  var COMMON_CURRENCIES = ["GBP", "EUR", "USD", "INR", "AED", "AUD", "CAD", "CHF", "SGD", "PLN", "SEK", "NOK", "DKK", "NZD", "ZAR"];
+  function fillLocale() {
+    var all = [];
+    try { all = Intl.supportedValuesOf("timeZone") || []; } catch (e) {}
+    var rest = all.filter(function (z) { return COMMON_ZONES.indexOf(z) < 0; });
+    var pick = function (list) { return list.map(function (z) { return '<option value="' + esc(z) + '">' + esc(z.replace(/_/g, " ")) + "</option>"; }).join(""); };
+    $("timeZone").innerHTML = '<optgroup label="Common">' + pick(COMMON_ZONES) + "</optgroup>" + (rest.length ? '<optgroup label="All time zones">' + pick(rest) + "</optgroup>" : "");
+    $("timeZone").value = "Europe/London";
+    var names = null;
+    try { names = new Intl.DisplayNames(["en-GB"], { type: "currency" }); } catch (e) {}
+    $("currency").innerHTML = COMMON_CURRENCIES.map(function (c) {
+      var label = c; try { label = c + " – " + names.of(c); } catch (e) {}
+      return '<option value="' + esc(c) + '">' + esc(label) + "</option>";
+    }).join("");
+    $("currency").value = "GBP";
+  }
+
+  // ── the list ──────────────────────────────────────────────────────────
+  function niceDate(iso) {
+    try { return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); } catch (e) { return ""; }
+  }
+  function renderList(companies) {
+    $("clients").innerHTML = companies.map(function (c) {
+      return "<li><strong>" + esc(c.name) + '</strong><div class="meta">' +
+        (c.owner ? "Owner " + esc(c.owner) + " · " : "") + '<span class="num">' + esc(c.staff) + "</span> " + (c.staff === 1 ? "person" : "people") +
+        "</div>" + '<div class="meta">' + esc(c.time_zone) + " · " + esc(c.currency) + " · added " + esc(niceDate(c.created_at)) + "</div></li>";
+    }).join("");
+    show("clientsEmpty", companies.length === 0);
+    $("clientsNote").textContent = companies.length + (companies.length === 1 ? " company" : " companies");
+  }
+
+  async function loadList() {
+    show("listErr", false);
+    var r = await call({ action: "list" });
+    renderList(r.companies || []);
+  }
+
+  // ── signed in? ────────────────────────────────────────────────────────
+  function signedOutView(message) {
+    show("app", false); show("login", true);
+    $("loginErr").textContent = message || ""; show("loginErr", !!message);
+  }
+
+  async function load() {
+    if (DEMO) { show("login", false); show("app", true); show("demoBar", true); fillLocale(); await loadList(); return; }
+    var got = await sb.auth.getUser();
+    if (got.error || !got.data.user) return signedOutView("");
+    try {
+      await loadList();
+    } catch (e) {
+      if (e.status === 401) return signedOutView("You've been signed out. Please sign in again.");
+      if (e.status === 403) {
+        // Signed in as a real user who is not a platform admin (for example a client's manager).
+        // Nothing is shown; the server refused, and so does this page. Their session is left
+        // alone: it is shared with the manager app on this address.
+        return signedOutView("This login is not a platform admin. Sign in with your platform login.");
+      }
+      return signedOutView(e.message);
+    }
+    show("login", false); show("app", true); fillLocale();
+  }
+
+  async function signIn() {
+    show("loginErr", false);
+    if (DEMO) return load();
+    var r = await sb.auth.signInWithPassword({ email: $("email").value.trim(), password: $("pw").value });
+    if (r.error) { $("loginErr").textContent = r.error.message; show("loginErr", true); return; }
+    $("pw").value = "";
+    load();
+  }
+
+  // ── adding a client ───────────────────────────────────────────────────
+  function generatePassword() {
+    var alphabet = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";   // no 0/O/1/l/I to misread over the phone
+    var limit = 256 - (256 % alphabet.length), out = "";
+    while (out.length < 12) {
+      var bytes = crypto.getRandomValues(new Uint8Array(24));
+      for (var i = 0; i < bytes.length && out.length < 12; i++) if (bytes[i] < limit) out += alphabet[bytes[i] % alphabet.length];
+    }
+    return out;
+  }
+
+  var handOver = "";
+  async function addClient(e) {
+    e.preventDefault();
+    if (busy) return;
+    var body = {
+      action: "create",
+      company_name: $("companyName").value.trim(),
+      time_zone: $("timeZone").value,
+      currency: $("currency").value,
+      manager_name: $("managerName").value.trim(),
+      manager_email: $("managerEmail").value.trim(),
+      password: $("startPw").value
+    };
+    busy = true; $("addBtn").disabled = true; show("addErr", false);
+    try {
+      var made = await call(body);
+      var url = DEMO ? "https://example.invalid/manager" : location.origin + "/manager";
+      $("doneCompany").textContent = made.name;
+      $("doneUrl").textContent = url;
+      $("doneEmail").textContent = made.email;
+      $("donePw").textContent = body.password;
+      handOver = "Your " + made.name + " attendance app is ready.\n\nManager sign-in: " + url + "\nEmail: " + made.email +
+        "\nStarting password: " + body.password + "\n\nYou choose your own password the first time you sign in. Staff use " + (DEMO ? "https://example.invalid" : location.origin) + " once you add them.";
+      show("doneBox", true); $("doneBox").focus();
+      $("addForm").reset(); fillLocale();
+      try { await loadList(); } catch (err) { $("listErr").textContent = err.message; show("listErr", true); }
+    } catch (err) {
+      if (err.status === 401) return signedOutView("You've been signed out. Please sign in again.");
+      $("addErr").textContent = err.message; show("addErr", true);
+    } finally { busy = false; $("addBtn").disabled = false; }
+  }
+
+  async function copyDone() {
+    try { await navigator.clipboard.writeText(handOver); toast("Copied"); }
+    catch (e) { toast("Could not copy. Select the details above and copy them."); }
+  }
+  function dismissDone() {
+    show("doneBox", false); handOver = "";
+    $("donePw").textContent = "";     // do not leave a password sitting in the page
+  }
+
+  // ── start-up ──────────────────────────────────────────────────────────
+  $("signin").addEventListener("click", signIn);
+  $("pw").addEventListener("keydown", function (e) { if (e.key === "Enter") signIn(); });
+  $("signout").addEventListener("click", async function () { if (!DEMO) await sb.auth.signOut(); dismissDone(); signedOutView(""); });
+  $("addForm").addEventListener("submit", addClient);
+  $("genPw").addEventListener("click", function () { $("startPw").value = generatePassword(); $("startPw").focus(); });
+  $("copyDone").addEventListener("click", copyDone);
+  $("dismissDone").addEventListener("click", dismissDone);
+
+  if (!DEMO) sb = window.supabase.createClient(CFG.url, CFG.key);
+  load().catch(function (e) { signedOutView(e && e.message || "Something went wrong."); });
+})();
+</script>
+</body>
+</html>

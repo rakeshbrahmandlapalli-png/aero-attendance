@@ -9,8 +9,22 @@
       "destination": "/admin.html"
     },
     {
+      "source": "/demo/platform",
+      "destination": "/platform.html"
+    },
+    {
       "source": "/manager",
       "destination": "/admin.html"
+    },
+    {
+      "source": "/platform",
+      "destination": "/platform.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(platform|platform.html|demo/platform)",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     }
   ]
 }

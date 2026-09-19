@@ -35,6 +35,9 @@ checks/isolation.mjs  tenant isolation test: runs the REAL schema.sql in Postgre
 checks/harness.mjs    the Supabase stand-in the test runs on (roles, auth.uid(), no-op cron/net)
 supabase/functions/manage-staff/index.ts  Edge Function: add staff logins, remove/restore leavers
 supabase/functions/send-push/index.ts  Edge Function: phone notifications (web push)
+supabase/functions/platform/index.ts  Edge Function: the owner's "Add a client" (platform admins only)
+platform.html         the owner's own page at /platform: client list and one form to add a client
+setup/update-2026-09-clients-and-settings.sql  platform_admins, per-company time zone / currency / brand name, and the manager column grants (already inside schema.sql)
 setup/update-2026-09-notifications.sql  the notifications update on its own (already inside schema.sql)
 sw.js                 service worker: offline page, and showing push notifications
 setup/SETUP-GUIDE.txt  step-by-step Supabase setup for the owner
@@ -51,6 +54,11 @@ developer-only folder with its own package.json, kept out of the site by
 1. **Do not rewrite into a framework or start a parallel copy.** No Next.js,
    React, Vite or new folders holding "a new version". Improve these files.
    A separate Next.js prototype was built once and thrown away for this reason.
+   **One deliberate exception: `platform.html`.** It is the owner's own tool
+   (add a client), not another version of the staff or manager app, so it has
+   its own file, no manifest and `noindex`. It must never grow staff or
+   manager features, and nothing in it is a security boundary: the `platform`
+   Edge Function checks `platform_admins` on the server on every call.
 2. **One app for every client (multi-tenant).** Every row belongs to a
    `company_id`. A new client is a new row in `companies`, never a copied app
    or a second deployment. Never hardcode a company name outside demo data.
@@ -103,7 +111,9 @@ developer-only folder with its own package.json, kept out of the site by
     function. It proves the row-level-security policies and functions on the
     real SQL; it does NOT prove Supabase's own login, PostgREST or Edge
     Functions. Every new table needs `company_id`, a policy scoped to
-    `current_company_id()`, and a line in `TABLES` in the test.
+    `current_company_id()`, and a line in `TABLES` in the test. To prove a
+    check can fail, run the test on a deliberately broken copy of the schema:
+    `SCHEMA_FILE=path/to/broken.sql node isolation.mjs`.
 11. **The privacy notice must stay true.** `noticeHtml()` in index.html is what
     every member of staff is shown at first sign-in and under Account. It is the
     employer's notice to its staff (the company is the controller; this app and
@@ -218,6 +228,34 @@ Staff app structure — keep it:
   and manager demos at phone width. Check 360/390/430px and desktop for
   overflow, all navigation, forms, dialog errors, and the Clock screen.
   Calculate WCAG contrast ratios for text/background pairs.
+
+## Clients and per-company settings
+
+- **Adding a client is `/platform` only** (platform.html + the `platform` Edge
+  Function). It creates the company, the first manager's login
+  (`must_change_password`) and a profile with role `owner`, in that order, and
+  undoes each step if a later one fails. Do not go back to pasting company ids
+  into SQL: a wrong id puts staff in the wrong company.
+- `platform_admins(user_id)` has row-level security on and NO policy, and
+  `anon` / `authenticated` have no privileges on it, so only the service key
+  (the Edge Function) can read it. Never add a policy or grant on it. The
+  isolation test attacks it; it must stay unreachable from the app.
+- The owner becomes a platform admin by one-time SQL (SETUP-GUIDE.txt), never
+  from the app.
+- Per company, in Company settings (any manager): `companies.time_zone`
+  (default Europe/London: used by `send-push` for the times in notifications;
+  the pages themselves show the device's own zone), `currency` (default GBP:
+  `money()` in both pages uses it; changing it converts nothing) and
+  `brand_name` (blank = "Aero Attendance": the privacy notice, the tab title
+  and the manager board's wordmark). No accent colour per company and no
+  home-screen icon or name per company: both would need a per-client address.
+- **Every column a manager may change is listed in ONE grant** at the bottom
+  of schema.sql (`grant update (...) on table companies`). Adding a settings
+  column without adding it to that grant makes the whole Company settings
+  Save fail with "permission denied": that happened once (breaks and privacy
+  notice, found 19 Sep). The isolation test saves every column, so it fails.
+- Pages read each new setting with its own small query and fall back to the
+  default if it fails, so they keep working before the SQL is run.
 
 ## Staff accounts
 

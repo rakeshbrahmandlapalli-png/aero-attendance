@@ -360,7 +360,7 @@
             <div><span>Shifts</span><strong class="num" id="monthShifts">0</strong></div>
             <div><span>Days worked</span><strong class="num" id="monthDays">0</strong></div>
           </div>
-          <div class="pay hidden" id="payBox"><span>Estimated pay</span><strong class="num" id="monthPay">£0.00</strong><p class="note" id="payNote"></p></div>
+          <div class="pay hidden" id="payBox"><span>Estimated pay</span><strong class="num" id="monthPay">—</strong><p class="note" id="payNote"></p></div>
         </section>
         <section><div id="monthList" class="list"></div></section>
       </div>
@@ -415,6 +415,8 @@
   // allows clock-in inside a site zone (the database enforces it either way).
   var ON_SITE_ONLY = null;
   var USE_BREAKS = false, breakBusy = false;
+  // Per company (companies.currency, companies.brand_name). Blank/failed reads mean the defaults.
+  var CUR = "GBP", BRAND = "", PRODUCT = "Aero Attendance";
   // Icon shapes from Lucide (ISC licence, LUCIDE-LICENSE.txt), inlined so no icon library has to load.
   function icon(shapes) {
     return '<svg class="lucide" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + shapes + '</svg>';
@@ -931,7 +933,10 @@
     if (!$("staff-sheet").classList.contains("hidden")) loadMonth();
   }
 
-  function money(n) { return Number(n).toLocaleString("en-GB", { style: "currency", currency: "GBP" }); }
+  function money(n) {
+    try { return Number(n).toLocaleString("en-GB", { style: "currency", currency: CUR }); }
+    catch (e) { return CUR + " " + Number(n).toFixed(2); }
+  }
 
   // One calendar month at a time, fetched when needed, so staff can look back
   // further than the 30 days Home keeps.
@@ -1157,6 +1162,13 @@
     ME = prof.data;
     $("me").textContent = ME.full_name || user.email;
     $("company").textContent = (ME.companies && ME.companies.name) || "";
+
+    // The company's own currency and app name. If the settings update has not
+    // been run the read fails and the defaults (GBP, "Aero Attendance") stay.
+    var loc = await sb.from("companies").select("currency, brand_name").eq("id", ME.company_id).maybeSingle();
+    if (!loc.error && loc.data) { CUR = loc.data.currency || "GBP"; BRAND = loc.data.brand_name || ""; }
+    PRODUCT = BRAND || "Aero Attendance";
+    document.title = PRODUCT + " | Your working day";
 
     // Estimated pay is optional. If the pay tables aren't set up yet, or the
     // company hasn't switched it on, the app simply shows no money.
@@ -1393,6 +1405,7 @@
     ME = null; OPEN = null; REQUESTS=[];HISTORY=[];clearInterval(tick);
     stopWatch(); MAP.me = null;
     MONTH_ROWS = []; SHEET_MONTH = null; PAY = { on: false, rate: null }; SELECTED_DAY = null;
+    CUR = "GBP"; BRAND = ""; PRODUCT = "Aero Attendance"; document.title = "Aero Attendance | Your working day";
     ROTA = { on: false, shifts: [], avail: {}, off: [] }; availDirty = false; renderRota();
     show("clock", false); show("main", true);
     show("app", false);
@@ -1485,7 +1498,7 @@
       ? esc(PRIVACY.retention)
       : "For as long as " + co + " needs them for pay and legal records. For the exact period, ask: " + who + ".";
 
-    return "<p>" + co + " uses Aero Attendance to record when you work. This explains what is kept about you, why, and who can see it.</p>" +
+    return "<p>" + co + " uses " + esc(PRODUCT) + " to record when you work. This explains what is kept about you, why, and who can see it.</p>" +
       "<h3>What is kept</h3><ul>" + kept.map(function (x) { return "<li>" + x + "</li>"; }).join("") + "</ul>" +
       "<h3>Why</h3><p>So " + co + " can pay you correctly, keep the working-time records it needs, and run its rotas. It is never sold or used for advertising.</p>" +
       "<h3>Who can see it</h3><p>Your managers at " + co + " can see your hours, your clock-in and clock-out locations, your notes" + (ROTA.on ? " and your rota" : "") + ". Your colleagues can see your name and role.</p>" +

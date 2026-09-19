@@ -117,7 +117,28 @@
 ──────────────────────────────────────────────────────────────────────
  THEN — adding a client, and adding their staff
 ──────────────────────────────────────────────────────────────────────
- New client company:
+ NEW CLIENT COMPANY — use the Platform page, not SQL.
+   One time only, so the page knows you are the platform owner:
+   1. Supabase → Edge Functions → deploy the function in
+      supabase/functions/platform/index.ts under the name  platform
+      (if Supabase gives it a different address, change PLATFORM_FUNCTION in
+      platform.html to match; if it answers 401 for a signed-in owner,
+      switch "Verify JWT" off for this function, it checks the caller itself).
+   2. Run setup/update-2026-09-clients-and-settings.sql in the SQL Editor.
+   3. Authentication → Users → Add user: YOUR OWN platform login
+      (a real email + password, Auto Confirm). Keep it separate from any
+      client's owner login.
+   4. SQL Editor, with that email:
+        insert into platform_admins (user_id)
+        select id from auth.users where email = 'YOUR-EMAIL-HERE'
+        on conflict do nothing;
+   Then for every client: open  <your address>/platform, sign in, and fill in
+   the one form (company, time zone, currency, first manager's name, email
+   and a starting password). It makes the company, the manager's login and
+   their owner profile together, or none of them. Send them the sign-in
+   details it shows you; they choose their own password at first sign-in.
+
+ The old way (still works, and needed only if the Platform page is down):
    insert into companies (name) values ('A-Z Auto Spares') returning id;
 
  Their manager / each staff member:
