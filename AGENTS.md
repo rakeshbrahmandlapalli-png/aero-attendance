@@ -30,6 +30,9 @@ setup/schema.sql      the whole database: tables, row-level security, clock_in/c
 setup/update-2026-09-rota-and-staff.sql  the September update on its own (already inside schema.sql)
 setup/update-2026-09-breaks.sql  breaks: start/end break, minutes off paid hours (already inside schema.sql)
 setup/update-2026-09-privacy-notice.sql  privacy notice fields and the read-record (already inside schema.sql)
+setup/update-2026-09-tenant-integrity.sql  a shift may only point at its own company's people and sites (already inside schema.sql)
+checks/isolation.mjs  tenant isolation test: runs the REAL schema.sql in PostgreSQL (PGlite) and attacks it as two companies
+checks/harness.mjs    the Supabase stand-in the test runs on (roles, auth.uid(), no-op cron/net)
 supabase/functions/manage-staff/index.ts  Edge Function: add staff logins, remove/restore leavers
 supabase/functions/send-push/index.ts  Edge Function: phone notifications (web push)
 setup/update-2026-09-notifications.sql  the notifications update on its own (already inside schema.sql)
@@ -38,8 +41,10 @@ setup/SETUP-GUIDE.txt  step-by-step Supabase setup for the owner
 .vercelignore         keeps setup/, supabase/ and .env* OFF the public website — do not remove
 ```
 
-There is no build step, no framework and no package.json. Each HTML file holds
-its own CSS and JavaScript. The only external script is supabase-js from a CDN.
+There is no build step, no framework and no package.json in the app. Each HTML
+file holds its own CSS and JavaScript. (`checks/` is the one exception: a
+developer-only folder with its own package.json, kept out of the site by
+`.vercelignore`. The app never depends on it.) The only external script is supabase-js from a CDN.
 
 ## Rules that must not be broken
 
@@ -89,6 +94,16 @@ its own CSS and JavaScript. The only external script is supabase-js from a CDN.
     map. Keep both attributions. **Test on `localhost`, not `127.0.0.1`**: the
     key's origin list does not include 127.0.0.1 and the tiles read
     "Invalid key". CARTO's basemaps now need a key too; do not switch to them.
+12. **Run the tenant isolation test after ANY change to `setup/schema.sql`, a
+    policy, a view or a database function, and it must stay green:**
+    `cd checks && npm install && npm run isolation`. It signs in as every kind
+    of user in two companies and tries to read or change the other company's
+    data, promote itself, abuse functions with the other company's ids, and
+    reach anything signed out or removed. Add an attack for every new table or
+    function. It proves the row-level-security policies and functions on the
+    real SQL; it does NOT prove Supabase's own login, PostgREST or Edge
+    Functions. Every new table needs `company_id`, a policy scoped to
+    `current_company_id()`, and a line in `TABLES` in the test.
 11. **The privacy notice must stay true.** `noticeHtml()` in index.html is what
     every member of staff is shown at first sign-in and under Account. It is the
     employer's notice to its staff (the company is the controller; this app and

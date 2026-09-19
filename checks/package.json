@@ -1,0 +1,8 @@
+{
+  "name": "aero-attendance-checks",
+  "private": true,
+  "description": "Developer-only checks. NOT part of the app and never deployed (see ../.vercelignore). The app itself has no package.json on purpose.",
+  "type": "module",
+  "scripts": { "isolation": "node isolation.mjs" },
+  "dependencies": { "@electric-sql/pglite": "^0.3.0" }
+}

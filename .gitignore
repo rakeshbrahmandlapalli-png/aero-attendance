@@ -1,2 +1,5 @@
 .vercel
 .env*
+
+# developer-only checks: dependencies stay out of git and out of the site
+checks/node_modules/
