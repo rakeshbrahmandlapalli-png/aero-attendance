@@ -808,15 +808,19 @@
 
   function clearAlerts(list) {
     return withLock(async function () {
+      var cleared = 0, problem = null;
       for (var i = 0; i < list.length; i++) {
         if (!DEMO) {
           var r = await sb.rpc("dismiss_alert", { p_key: list[i].key, p_summary: list[i].summary });
-          if (r.error) { fail(r.error); break; }
+          if (r.error) { problem = r.error; break; }
         }
         DISMISSED[list[i].key] = true;
+        cleared++;
       }
       renderFlags(true);
-      toast(list.length > 1 ? "Alerts cleared" : "Alert cleared");
+      // Never claim success over a failure: the toast for one would wipe out the other.
+      if (problem) toast((cleared ? cleared + " cleared, then it stopped: " : "Could not clear: ") + problemText(problem));
+      else toast(cleared > 1 ? "Alerts cleared" : "Alert cleared");
     });
   }
   $("flags").addEventListener("click", function (e) {
@@ -860,7 +864,9 @@
   // double-tap on "Clock out" would otherwise fire two requests and two toasts.
   var writing = false;
   async function withLock(fn) {
-    if (writing) return;
+    // Say so rather than swallow the click: a slow request holds this for up to 20
+    // seconds, and a button that silently does nothing looks broken.
+    if (writing) { toast("Still working on your last action. Give it a moment."); return; }
     writing = true;
     try { await fn(); } catch(error) { fail(error); } finally { writing = false; }
   }
@@ -898,7 +904,18 @@
         toast("Clocked out"); await loadNow(); await runSheet(); return;
       }
       var r = await sb.rpc("clock_out_for", { p_shift_id: id, p_reason: reason });
-      if (r.error) { $("closeError").textContent = r.error.message; show("closeError", true); return; }
+      if (r.error) {
+        // A slow answer is not a failed clock-out: look before saying it did not work.
+        if (isNetworkError(r.error)) {
+          await loadNow();
+          if (!NOW.some(function (s) { return s.shift_id === id; })) {
+            $("closeDialog").close();
+            toast("Clocked out. The reply was slow, so I checked, and it went through.");
+            return;
+          }
+        }
+        $("closeError").textContent = problemText(r.error); show("closeError", true); return;
+      }
       $("closeDialog").close();
       toast("Clocked out");
       await loadNow();
@@ -2091,7 +2108,7 @@
       if (DEMO) same = { id: "jr" + Date.now(), name: name };
       else {
         var r = await sb.from("job_roles").insert({ company_id: ME.company_id, name: name }).select("id, name").single();
-        if (r.error) { $("pfError").textContent = r.error.message; return show("pfError", true); }
+        if (r.error) { $("pfError").textContent = problemText(r.error); return show("pfError", true); }
         same = r.data;
       }
       JOB_ROLES.push(same);
@@ -2110,7 +2127,7 @@
     if (!confirm('Remove the job role "' + jobRoleName(id) + '" from the list? ' + n + (n === 1 ? " person has" : " people have") + " it and will be left with no job role.")) return;
     if (!DEMO) {
       var r = await sb.from("job_roles").delete().eq("id", id);
-      if (r.error) { $("pfError").textContent = r.error.message; return show("pfError", true); }
+      if (r.error) { $("pfError").textContent = problemText(r.error); return show("pfError", true); }
     }
     JOB_ROLES = JOB_ROLES.filter(function (x) { return x.id !== id; });
     if (DEMO) D.jobRoles = JOB_ROLES;
@@ -2162,7 +2179,7 @@
       $("profileDialog").close();
       toast("Profile saved");
       await loadStaff();
-    } catch (error) { $("pfError").textContent = error.message; show("pfError", true); }
+    } catch (error) { $("pfError").textContent = problemText(error); show("pfError", true); }
     finally { $("pfSave").disabled = false; }
   }
   $("profileForm").addEventListener("submit", saveProfile);
@@ -2361,7 +2378,7 @@
         if (o.drop.length) bits.push(o.drop.length + " removed");
         toast(bits.join(", ") + (publish ? "" : ". Publish the week when it's ready."));
         if (publish) await publishWeekNow(); else await loadRotaWeek();
-      } catch (error) { $("wkError").textContent = error.message; show("wkError", true); }
+      } catch (error) { $("wkError").textContent = problemText(error); show("wkError", true); }
     });
   }
 
@@ -2534,7 +2551,7 @@
       NOTICES.unshift({ id: "n" + Date.now(), body: body, active: true, expires_at: expires, created_at: new Date().toISOString() });
     } else {
       var r = await sb.from("announcements").insert({ company_id: ME.company_id, author_id: ME.id, body: body, expires_at: expires });
-      if (r.error) { $("noticeError").textContent = r.error.message; return show("noticeError", true); }
+      if (r.error) { $("noticeError").textContent = problemText(r.error); return show("noticeError", true); }
       await loadNotices();
     }
     $("noticeBody").value = ""; $("noticeExpiry").value = "";
@@ -2547,7 +2564,7 @@
       NOTICES.forEach(function (n) { if (n.id === id) n.active = false; });
     } else {
       var r = await sb.from("announcements").update({ active: false }).eq("id", id);
-      if (r.error) { $("noticeError").textContent = r.error.message; return show("noticeError", true); }
+      if (r.error) { $("noticeError").textContent = problemText(r.error); return show("noticeError", true); }
       await loadNotices();
     }
     renderNotices(); renderNoticeList();
@@ -2646,11 +2663,25 @@
   function timedFetch(input, init) {
     var ctrl = new AbortController(), outer = init && init.signal;
     if (outer) { if (outer.aborted) ctrl.abort(); else outer.addEventListener("abort", function () { ctrl.abort(); }); }
-    var timer = setTimeout(function () { ctrl.abort(); }, REQUEST_TIMEOUT_MS);
-    return fetch(input, Object.assign({}, init, { signal: ctrl.signal })).finally(function () { clearTimeout(timer); });
+    var timedOut = false;
+    var timer = setTimeout(function () { timedOut = true; ctrl.abort(); }, REQUEST_TIMEOUT_MS);
+    return fetch(input, Object.assign({}, init, { signal: ctrl.signal })).catch(function (err) {
+      // The browser's own words for this are "signal is aborted without reason", which
+      // says nothing. Say what happened and which request it was, so it can be chased.
+      if (timedOut) {
+        var where = "";
+        try { where = new URL(typeof input === "string" ? input : input.url).pathname.replace("/rest/v1/", ""); } catch (e) { /* no address to show */ }
+        var slow = new Error("The database did not answer within " + REQUEST_TIMEOUT_MS / 1000 + " seconds" + (where ? " (" + where + ")" : "") + ", so this may not have gone through. Refresh to check before trying again.");
+        slow.name = "TimeoutError";
+        throw slow;
+      }
+      throw err;
+    }).finally(function () { clearTimeout(timer); });
   }
   function isNetworkError(err) {
-    var text = String((err && (err.message || err.name)) || err || "");
+    // The name AND the message: a timeout arrives as name "TimeoutError" with a
+    // sentence for a message, and supabase-js joins them as "<name>: <message>".
+    var text = err && (err.name || err.message) ? String(err.name || "") + " " + String(err.message || "") : String(err || "");
     return !navigator.onLine || /Failed to fetch|NetworkError|Load failed|network|AbortError|TimeoutError|aborted/i.test(text);
   }
   function isAuthError(err) {
@@ -2660,6 +2691,9 @@
   // One place for errors: a lost sign-in goes back to the sign-in screen,
   // connection problems get plain words, anything else shows the real message.
   function problemText(err) {
+    var said = String((err && (err.message || err.name)) || err || "");
+    // A request that timed out says which one; show that, without the "TimeoutError:" prefix.
+    if (/did not answer within/.test(said)) return said.replace(/^\w*Error:\s*/, "");
     if (!navigator.onLine) return "You're offline. Reconnect and try again.";
     if (isNetworkError(err)) return "Can't reach the server. The connection may be slow or down; try again.";
     return (err && err.message) || String(err);

@@ -40,6 +40,30 @@ cheapest way to notice.
 
 The send-push function retries transient push errors twice with short backoff. Expired subscriptions (404/410) are removed automatically. Check Edge Function logs for repeated failures and confirm VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY are present.
 
+### A button does nothing, or an action says the database "did not answer within 20 seconds"
+
+The message now names the request, for example `rpc/clock_out_for`. Two different things look alike:
+
+- **Reads work but one write hangs.** Something in the database is holding a lock, most often a
+  transaction left open, for example from the SQL editor. Run this in the Supabase SQL editor
+  while it is hanging:
+
+      select pid, state, wait_event_type, wait_event,
+             now() - xact_start as open_for, left(query, 100) as query
+        from pg_stat_activity
+       where datname = current_database() and pid <> pg_backend_pid()
+         and (state <> 'idle' or xact_start is not null)
+       order by xact_start;
+
+  A row that says `idle in transaction` and has been open for minutes is the culprit. Close it
+  with `select pg_terminate_backend(<its pid>);`. Then retry.
+- **Everything is slow.** That is the connection, not the database: try another network, and turn
+  off any VPN or browser proxy.
+
+A timed-out clock-out is checked against the board before it is reported as failed, because a slow
+answer is not a failed clock-out. A tap made while another action is still running now says so
+instead of being ignored.
+
 ### Posted a notice and nobody was told
 
 Same path and the same first check as the rota below: Verify JWT must be off for send-push, and the person has to have turned notifications on. A notice more than 10 minutes old is never sent, on purpose, so a restore cannot push old notices to phones.
@@ -69,6 +93,7 @@ Run from the checks folder:
 
     npm run smoke
     npm run embeds
+    npm run resilience
     npm run isolation
     npm run roundtrip
 

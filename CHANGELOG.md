@@ -5,6 +5,13 @@ or redeploy an Edge Function says so.
 
 ## Unreleased
 
+### Fixed (buttons that did nothing, and a staff rota that never updated)
+- **The staff rota never refreshed.** It loaded once at sign-in and again only when the Rota tab was tapped, so a phone left open on Home, or on the Rota tab, or resumed from the background, showed whatever it loaded first. It now refreshes every 30 seconds, the moment the app comes back to the front (which is also what tapping a notification does), and when a page is restored from the back/forward cache. A refresh in the background never blanks the rota or shows an error because the signal dipped.
+- **A tap while another action was still running did nothing at all, with no message.** A slow request holds that up for as long as 20 seconds, and during that time every button looked dead. It now says it is still working on the last action.
+- **Clear said "Alert cleared" even when the clear had failed**, and that toast hid the real error. It now reports the failure and the reason, and never claims success over one.
+- **A timed-out request showed the browser's own wording, "AbortError: signal is aborted without reason".** It now says the database did not answer within 20 seconds, names the request (for example rpc/clock_out_for), and that it may still have gone through. A clock-out that times out is checked against the board before it is reported as failed. The same plain wording is used in the dialogs added this week. OPS-RUNBOOK.md has what to run when the database itself is what is stuck.
+- **New check, npm run resilience.** Runs the real timeout and rota-refresh code from the pages against a request that never answers and a connection that drops. Proved by putting the old code back: it fails with the exact wording that was on screen.
+
 ### Changed (rota builder, second version)
 - **Build the week now edits what is already there.** The first version added shifts only and locked existing ones, so a shift added by mistake could not be taken off again. Now every cell is live: paint a shift over an existing one to change it, paint **Off** to remove it. A published shift that is removed stays on staff phones until the week is published, a draft is simply deleted, exactly as with the single-shift dialog.
 - **Faster to paint.** Pick Early, Late, Night or Off once, then tap, or drag across days with the mouse. Tap a **day heading** to paint everybody that day, or a **name** to paint Monday to Friday. **Undo** goes back a step and **Reset** clears the lot. A row at the bottom counts who is on each day, in red where nobody is.

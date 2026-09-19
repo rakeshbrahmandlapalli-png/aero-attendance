@@ -1108,10 +1108,13 @@
       esc(new Date(h.ended_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })) + "</span></div>";
   }
 
-  async function loadRota() {
+  // quiet = a refresh in the background. It must never blank the rota or throw an
+  // error because the signal dipped: if it cannot get an answer it leaves what is on screen.
+  async function loadRota(quiet) {
     if (DEMO) { renderRota(); return; }
     if (!ME) return;
     var co = await sb.from("companies").select("use_rota").eq("id", ME.company_id).maybeSingle();
+    if (co.error && quiet) return;
     if (co.error || !co.data || !co.data.use_rota) { ROTA = { on: false, shifts: [], avail: {}, off: [] }; renderRota(); return; }
     var midnight = new Date(); midnight.setHours(0, 0, 0, 0);
     var res = await Promise.all([
@@ -1122,7 +1125,7 @@
         .gte("last_day", localDay(new Date())).order("first_day")
     ]);
     var err = res[0].error || res[1].error || res[2].error;
-    if (err) { fail(err); return; }
+    if (err) { if (!quiet) fail(err); return; }
     ROTA.on = true;
     ROTA.shifts = (res[0].data || []).map(function (r) {
       return { id: r.id, starts_at: r.published_starts_at, ends_at: r.published_ends_at, worksite_id: r.published_worksite_id, note: r.published_note || "" };
@@ -1511,6 +1514,15 @@
   });
   $("refreshActivity").addEventListener('click',loadActivity);
   setInterval(function(){if(ME && !DEMO && navigator.onLine && document.visibilityState!=='hidden')loadActivity();},30000);
+  // The rota changes when a manager publishes, and the app is usually left open all
+  // day. It used to load once at sign-in and again only when the Rota tab was tapped,
+  // so anyone sitting on Home, on the Rota tab, or returning to the app from the
+  // background saw whatever it loaded first. Refresh every 30 seconds, and the moment
+  // the app comes back to the front (which is also what tapping a notification does).
+  function refreshRota(){if(ME && !DEMO && navigator.onLine && document.visibilityState!=='hidden')loadRota(true);}
+  setInterval(refreshRota,30000);
+  document.addEventListener('visibilitychange',refreshRota);
+  window.addEventListener('pageshow',refreshRota);
   var remindedShift = null;
   setInterval(function(){
     if(ME && OPEN && $("shiftReminder").checked && hoursBetween(OPEN.clock_in_at) > 13 && remindedShift !== OPEN.id) {

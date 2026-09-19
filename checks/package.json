@@ -8,7 +8,8 @@
     "smoke": "node smoke.mjs",
     "roundtrip": "node roundtrip.mjs",
     "restore": "node restore.mjs",
-    "embeds": "node embeds.mjs"
+    "embeds": "node embeds.mjs",
+    "resilience": "node resilience.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.3.0"
