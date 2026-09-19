@@ -392,14 +392,14 @@
     <section id="tab-audit"><h2>Audit history</h2><p class="note">A record of attendance corrections and rota changes for this company.</p><div class="bar"><label class="field">Action<select id="auditFilter"><option value="">All activity</option><option value="requested">Requests</option><option value="approved">Approvals</option><option value="rejected">Rejections</option><option value="created">Created</option><option value="updated">Updated</option><option value="removed">Removed</option></select></label><button class="g" id="refreshAudit">Refresh</button><button class="g" id="exportAudit">Export CSV</button><span class="notify-state" id="auditUpdated"></span></div><div id="auditEvents" aria-live="polite"></div></section>
   </main>
 </div>
-<dialog id="settingsDialog" aria-labelledby="settingsTitle"><form id="settingsForm"><h2 id="settingsTitle">Company settings</h2><label class="field">Company name<input id="companyName" required maxlength="120"></label><label class="field" id="brandWrap">Name shown in the app<input id="brandName" maxlength="60" autocomplete="off" placeholder="Aero Attendance"></label><p class="note" id="brandNote">Replaces &ldquo;Aero Attendance&rdquo; in the privacy notice and the heading of this board. Leave blank to keep it. The home-screen icon and its name cannot change.</p><label class="field" id="tzWrap">Time zone<select id="timeZone"></select></label><label class="field" id="curWrap">Currency<select id="currency"></select></label><p class="note" id="localeNote">Phone notifications show times in this time zone. Changing the currency does not convert any hourly rate: the numbers stay as they are.</p><label class="filter-check" id="payToggleWrap"><input type="checkbox" id="showPay">Show estimated pay</label><p class="note" id="payToggleNote">Staff see an estimate from their own hourly rate; managers see everyone's on Timesheets. Switch this on only once the data processing agreement is signed.</p><label class="filter-check" id="onSiteToggleWrap"><input type="checkbox" id="requireOnSite">Only allow clock-in on site</label><p class="note" id="onSiteToggleNote">Staff can only clock in inside a worksite zone, with location switched on. Clocking out is always allowed and flagged if they're away. Switch off for teams that work off-site.</p><label class="filter-check" id="breakToggleWrap"><input type="checkbox" id="useBreaks">Staff record breaks</label><p class="note" id="breakToggleNote">Staff tap Start break and End break themselves, and those minutes come off their paid hours. Switch off for teams that never stop.</p><label class="field" id="privacyContactWrap">Who staff ask about their data<input id="privacyContact" maxlength="200" autocomplete="off" placeholder="Name, role or email"></label><label class="field" id="retentionWrap">How long records are kept<input id="retentionText" maxlength="200" autocomplete="off" placeholder="e.g. Six years after you leave"></label><p class="note" id="privacyNote">Both appear in the privacy notice every member of staff is shown the first time they sign in.</p><label class="filter-check" id="rotaToggleWrap"><input type="checkbox" id="useRota">Use rota &amp; availability</label><p class="note" id="rotaToggleNote">Staff give their usual week and days off. You build and publish the rota on the Rota tab, and Now flags late starts and no-shows.</p><label class="field" id="otWrap">Overtime after (hours a week)<input id="overtimeHours" type="number" inputmode="decimal" min="0.5" max="168" step="0.5" autocomplete="off"></label><p class="note" id="otNote">Any week somebody works more than this is listed on the Review tab to approve or reject, and can be exported on its own for payroll. Weeks start on Monday in this company's time zone. Leave blank to switch it off.</p><div id="settingsError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelSettings">Cancel</button><button class="b" id="saveSettings">Save changes</button></div></form></dialog>
+<dialog id="settingsDialog" aria-labelledby="settingsTitle"><form id="settingsForm"><h2 id="settingsTitle">Company settings</h2><label class="field">Company name<input id="companyName" required maxlength="120"></label><label class="field" id="tzWrap">Time zone<select id="timeZone"></select></label><label class="field" id="curWrap">Currency<select id="currency"></select></label><label class="filter-check" id="payToggleWrap"><input type="checkbox" id="showPay">Show estimated pay</label><label class="filter-check" id="onSiteToggleWrap"><input type="checkbox" id="requireOnSite">Only allow clock-in on site</label><label class="filter-check" id="breakToggleWrap"><input type="checkbox" id="useBreaks">Staff record breaks</label><label class="field" id="privacyContactWrap">Privacy notice: who staff ask about their data<input id="privacyContact" maxlength="200" autocomplete="off"></label><label class="field" id="retentionWrap">Privacy notice: how long records are kept<input id="retentionText" maxlength="200" autocomplete="off"></label><label class="filter-check" id="rotaToggleWrap"><input type="checkbox" id="useRota">Use rota &amp; availability</label><label class="field" id="otWrap">Overtime after (hours a week)<input id="overtimeHours" type="number" inputmode="decimal" min="0.5" max="168" step="0.5" autocomplete="off"></label><div id="settingsError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelSettings">Cancel</button><button class="b" id="saveSettings">Save changes</button></div></form></dialog>
 <dialog id="rateDialog" aria-labelledby="rateTitle"><form id="rateForm"><h2 id="rateTitle">Hourly rate</h2><p class="note" id="rateWho"></p><label class="field">Pounds per hour<input id="rateValue" type="number" inputmode="decimal" min="0" max="1000" step="0.01"></label><p class="note">Used only to estimate pay from completed hours. Clear it and save to remove the rate.</p><div id="rateError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelRate">Cancel</button><button class="b" id="saveRate">Save rate</button></div></form></dialog>
 
 <dialog id="rotaDialog" aria-labelledby="rotaTitle"><form id="rotaForm"><h2 id="rotaTitle">Add shift</h2><label class="field">Staff member<select id="rotaWho" required></select></label><label class="field">Date<input id="rotaDate" type="date" required></label><div class="time-pair"><label class="field">Start<input id="rotaStart" type="time" required></label><label class="field">Finish<input id="rotaEnd" type="time" required></label></div><p class="note" id="rotaHint"></p><label class="field">Worksite<select id="rotaSite"></select></label><label class="field">Note for staff (optional)<input id="rotaNote" maxlength="300"></label><div id="rotaWarn" class="warn-line hidden" role="status"></div><div id="rotaError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g hidden" id="deleteRota">Remove shift</button><button type="button" class="g" id="cancelRota">Cancel</button><button class="b" id="saveRota">Save shift</button></div></form></dialog>
 <dialog id="staffDialog" aria-labelledby="staffTitle"><form id="staffForm" novalidate><h2 id="staffTitle">Add staff</h2><div id="staffFields"><label class="field">Full name<input id="newName" maxlength="120" autocomplete="off"></label><label class="field">Email<input id="newEmail" type="email" inputmode="email" autocomplete="off"></label><label class="field">Role<select id="newRole"><option value="staff">Staff</option><option value="admin">Manager</option></select></label><label class="field">Starting password<input id="newPassword" maxlength="72" autocomplete="new-password" spellcheck="false"></label><button type="button" class="g sm" id="suggestPassword">Suggest a password</button><p class="note">Give it to them in person or by text. They choose their own password the first time they sign in.</p></div><p id="staffDone" class="hidden"></p><div id="staffError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelStaff">Cancel</button><button class="b" id="saveStaff">Add staff</button></div></form></dialog>
 <dialog id="pwDialog" aria-labelledby="pwTitle"><form id="pwForm" novalidate><h2 id="pwTitle">Choose your password</h2><p class="note">You signed in with a starting password. Choose your own to keep your account private.</p><label class="field">New password<input id="newPw" type="password" autocomplete="new-password"></label><label class="field">Type it again<input id="newPw2" type="password" autocomplete="new-password"></label><div class="err hidden" id="pwError" role="alert"></div><div class="bar"><button class="b" id="savePw">Save password</button></div></form></dialog>
-<dialog id="closeDialog" aria-labelledby="closeTitle"><h2 id="closeTitle">Clock someone out</h2><p class="note" id="closeWho"></p><label class="field">Why (optional)<input id="closeReason" maxlength="200" autocomplete="off" placeholder="e.g. Drove off without clocking out"></label><p class="note">Recorded against your name in Audit history. If a break is still running it is closed, and those minutes come off the paid hours.</p><div id="closeError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelClose">Cancel</button><button type="button" class="b" id="confirmClose">Clock out</button></div></dialog>
-<dialog id="noticeDialog" aria-labelledby="noticeTitle"><h2 id="noticeTitle">Notices</h2><p class="note">Everyone in the company sees this on their home screen until they dismiss it.</p><label class="field">New notice<textarea id="noticeBody" maxlength="500" rows="3" placeholder="Something everyone needs to know today"></textarea></label><label class="field">Stop showing it<select id="noticeExpiry"><option value="">When I switch it off</option><option value="1">After 1 day</option><option value="3">After 3 days</option><option value="7">After 7 days</option></select></label><div id="noticeError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="b" id="saveNotice">Post notice</button></div><h3 class="notify-sub">Posted notices</h3><div id="noticeList"></div><div class="bar"><button type="button" class="g" id="closeNotice">Close</button></div></dialog>
+<dialog id="closeDialog" aria-labelledby="closeTitle"><h2 id="closeTitle">Clock someone out</h2><p class="note" id="closeWho"></p><label class="field">Why (optional)<input id="closeReason" maxlength="200" autocomplete="off"></label><p class="note">Recorded against your name in Audit history. If a break is still running it is closed, and those minutes come off the paid hours.</p><div id="closeError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelClose">Cancel</button><button type="button" class="b" id="confirmClose">Clock out</button></div></dialog>
+<dialog id="noticeDialog" aria-labelledby="noticeTitle"><h2 id="noticeTitle">Notices</h2><p class="note">Everyone in the company sees this on their home screen until they dismiss it.</p><label class="field">New notice<textarea id="noticeBody" maxlength="500" rows="3"></textarea></label><label class="field">Stop showing it<select id="noticeExpiry"><option value="">When I switch it off</option><option value="1">After 1 day</option><option value="3">After 3 days</option><option value="7">After 7 days</option></select></label><div id="noticeError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="b" id="saveNotice">Post notice</button></div><h3 class="notify-sub">Posted notices</h3><div id="noticeList"></div><div class="bar"><button type="button" class="g" id="closeNotice">Close</button></div></dialog>
 <dialog id="notifyDialog" aria-labelledby="notifyTitle"><h2 id="notifyTitle">Notifications</h2><p class="note" id="notifyState"></p><div class="bar notify-actions"><button type="button" class="b" id="notifyOn">Turn on notifications</button><button type="button" class="g hidden" id="notifyOff">Turn off for this device</button></div><h3 class="notify-sub">Tell me when</h3><div id="notifyPrefs"></div><div class="bar"><button type="button" class="g" id="closeNotify">Close</button></div></dialog>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
@@ -414,8 +414,8 @@
   var REQUESTS = [], AUDIT = [], editingSite = null, requestsLoaded = false, auditLoaded = false;
   var attentionIds = null;
   var PAY_ON = false, PAY_READY = false, RATES = {}, rateUser = null;
-  // Per company (time_zone, currency, brand_name). LOCALE_READY stays false until the settings SQL has been run.
-  var LOCALE_READY = false, TZ = "Europe/London", CUR = "GBP", BRAND = "";
+  // Per company (time_zone, currency). LOCALE_READY stays false until the settings SQL has been run.
+  var LOCALE_READY = false, TZ = "Europe/London", CUR = "GBP";
   var ON_SITE = true, ON_SITE_READY = false;
   var USE_BREAKS = false, BREAKS_READY = false;
   // The privacy notice: what only the company can supply, and who has read it.
@@ -469,7 +469,7 @@
 
   var D = {
     company: "Example Logistics Ltd",
-    showPay: true, timeZone: "Europe/London", currency: "GBP", brandName: "",
+    showPay: true, timeZone: "Europe/London", currency: "GBP",
     useRota: true, rota: [], avail: {}, off: [], requireOnSite: true,
     notices: [{ id: "a1", body: "Gate code changes to 4417 from Monday. Ask Jo if it doesn't work.",
                 active: true, expires_at: null, created_at: agoISO(26) }],
@@ -604,13 +604,6 @@
   function moneyWhole(n) {
     try { return Number(n).toLocaleString("en-GB", { style: "currency", currency: CUR, maximumFractionDigits: 0 }); }
     catch (e) { return CUR + " " + Number(n); }
-  }
-
-  // The company's own name for the app replaces the "aero." wordmark and the tab title.
-  function applyBrand() {
-    var mark = document.querySelector(".brand");
-    if (BRAND) mark.textContent = BRAND; else mark.innerHTML = "aero<span>.</span>";
-    document.title = (BRAND || "Aero Attendance") + " | Manager board";
   }
 
   // Time zones and currencies for the Company settings pickers.
@@ -1342,14 +1335,14 @@
     });
   }
   $('reviewFilter').addEventListener('change',renderReviews);
-  $('settings').addEventListener('click',function(){$('companyName').value=$('company').textContent;$('brandName').value=BRAND;fillLocale(TZ,CUR);['brandWrap','brandNote','tzWrap','curWrap','localeNote'].forEach(function(id){show(id,LOCALE_READY);});$('showPay').checked=PAY_ON;show('payToggleWrap',PAY_READY);show('payToggleNote',PAY_READY);$('useRota').checked=USE_ROTA;$('requireOnSite').checked=ON_SITE;$('useBreaks').checked=USE_BREAKS;show('breakToggleWrap',BREAKS_READY);show('breakToggleNote',BREAKS_READY);$('privacyContact').value=PRIVACY_CONTACT;$('retentionText').value=RETENTION_TEXT;show('privacyContactWrap',PRIVACY_READY);show('retentionWrap',PRIVACY_READY);show('privacyNote',PRIVACY_READY);show('onSiteToggleWrap',ON_SITE_READY);show('onSiteToggleNote',ON_SITE_READY);show('rotaToggleWrap',ROTA_READY);show('rotaToggleNote',ROTA_READY);$('overtimeHours').value=OT_HOURS==null?'':OT_HOURS;show('otWrap',OT_READY&&hasFeature('overtime'));show('otNote',OT_READY&&hasFeature('overtime'));show('settingsError',false);$('settingsDialog').showModal();});
+  $('settings').addEventListener('click',function(){$('companyName').value=$('company').textContent;fillLocale(TZ,CUR);['tzWrap','curWrap'].forEach(function(id){show(id,LOCALE_READY);});$('showPay').checked=PAY_ON;show('payToggleWrap',PAY_READY);$('useRota').checked=USE_ROTA;$('requireOnSite').checked=ON_SITE;$('useBreaks').checked=USE_BREAKS;show('breakToggleWrap',BREAKS_READY);$('privacyContact').value=PRIVACY_CONTACT;$('retentionText').value=RETENTION_TEXT;show('privacyContactWrap',PRIVACY_READY);show('retentionWrap',PRIVACY_READY);show('onSiteToggleWrap',ON_SITE_READY);show('rotaToggleWrap',ROTA_READY);$('overtimeHours').value=OT_HOURS==null?'':OT_HOURS;show('otWrap',OT_READY&&hasFeature('overtime'));show('settingsError',false);$('settingsDialog').showModal();});
   $('cancelSettings').addEventListener('click',function(){$('settingsDialog').close();});
   $('settingsForm').addEventListener('submit',async function(e){
     e.preventDefault();var name=$('companyName').value.trim();if(!name)return;$('saveSettings').disabled=true;show('settingsError',false);
     try{
-      if(DEMO){D.company=name;if(LOCALE_READY){D.timeZone=$('timeZone').value;D.currency=$('currency').value;D.brandName=$('brandName').value.trim();}D.showPay=$('showPay').checked;D.useRota=$('useRota').checked;D.requireOnSite=$('requireOnSite').checked;D.useBreaks=$('useBreaks').checked;D.privacyContact=$('privacyContact').value.trim();D.retentionText=$('retentionText').value.trim();if(OT_READY){var dv=$('overtimeHours').value.trim();D.overtimeHours=dv===''?null:Number(dv);OT_HOURS=D.overtimeHours;}}
-      else{var values={name:name};if(LOCALE_READY){values.time_zone=$('timeZone').value;values.currency=$('currency').value;values.brand_name=$('brandName').value.trim();}if(PAY_READY)values.show_pay=$('showPay').checked;if(ROTA_READY)values.use_rota=$('useRota').checked;if(ON_SITE_READY)values.require_on_site=$('requireOnSite').checked;if(BREAKS_READY)values.use_breaks=$('useBreaks').checked;if(PRIVACY_READY){values.privacy_contact=$('privacyContact').value.trim();values.retention_text=$('retentionText').value.trim();}if(OT_READY){var ov=$('overtimeHours').value.trim();if(ov!==''&&!(Number(ov)>0&&Number(ov)<=168))throw new Error('Overtime hours must be between 0.5 and 168, or blank.');values.overtime_weekly_hours=ov===''?null:Number(ov);}var r=await sb.from('companies').update(values).eq('id',ME.company_id);if(r.error)throw r.error;OT_HOURS=values.overtime_weekly_hours===undefined?OT_HOURS:values.overtime_weekly_hours;await loadOvertime();}
-      if(LOCALE_READY){TZ=$('timeZone').value;CUR=$('currency').value;BRAND=$('brandName').value.trim();applyBrand();}PAY_ON=PAY_READY&&$('showPay').checked;ON_SITE=ON_SITE_READY?$('requireOnSite').checked:ON_SITE;USE_BREAKS=BREAKS_READY?$('useBreaks').checked:USE_BREAKS;if(PRIVACY_READY){PRIVACY_CONTACT=$('privacyContact').value.trim();RETENTION_TEXT=$('retentionText').value.trim();}
+      if(DEMO){D.company=name;if(LOCALE_READY){D.timeZone=$('timeZone').value;D.currency=$('currency').value;}D.showPay=$('showPay').checked;D.useRota=$('useRota').checked;D.requireOnSite=$('requireOnSite').checked;D.useBreaks=$('useBreaks').checked;D.privacyContact=$('privacyContact').value.trim();D.retentionText=$('retentionText').value.trim();if(OT_READY){var dv=$('overtimeHours').value.trim();D.overtimeHours=dv===''?null:Number(dv);OT_HOURS=D.overtimeHours;}}
+      else{var values={name:name};if(LOCALE_READY){values.time_zone=$('timeZone').value;values.currency=$('currency').value;}if(PAY_READY)values.show_pay=$('showPay').checked;if(ROTA_READY)values.use_rota=$('useRota').checked;if(ON_SITE_READY)values.require_on_site=$('requireOnSite').checked;if(BREAKS_READY)values.use_breaks=$('useBreaks').checked;if(PRIVACY_READY){values.privacy_contact=$('privacyContact').value.trim();values.retention_text=$('retentionText').value.trim();}if(OT_READY){var ov=$('overtimeHours').value.trim();if(ov!==''&&!(Number(ov)>0&&Number(ov)<=168))throw new Error('Overtime hours must be between 0.5 and 168, or blank.');values.overtime_weekly_hours=ov===''?null:Number(ov);}var r=await sb.from('companies').update(values).eq('id',ME.company_id);if(r.error)throw r.error;OT_HOURS=values.overtime_weekly_hours===undefined?OT_HOURS:values.overtime_weekly_hours;await loadOvertime();}
+      if(LOCALE_READY){TZ=$('timeZone').value;CUR=$('currency').value;}PAY_ON=PAY_READY&&$('showPay').checked;ON_SITE=ON_SITE_READY?$('requireOnSite').checked:ON_SITE;USE_BREAKS=BREAKS_READY?$('useBreaks').checked:USE_BREAKS;if(PRIVACY_READY){PRIVACY_CONTACT=$('privacyContact').value.trim();RETENTION_TEXT=$('retentionText').value.trim();}
       var rotaWas=USE_ROTA;USE_ROTA=ROTA_READY&&$('useRota').checked;applyRota();if(USE_ROTA!==rotaWas){loadNow();if(USE_ROTA)loadRotaWeek();}
       $('company').textContent=name;$('settingsDialog').close();toast('Settings saved');renderSheet();renderStaff();
     }catch(error){$('settingsError').textContent=error.message;show('settingsError',true);}
@@ -1390,13 +1383,11 @@
   // Optional for each company (companies.use_rota). ROTA_READY stays false
   // until the rota SQL has been run, so the board keeps working without it.
   async function loadLocale() {
-    if (DEMO) { LOCALE_READY = true; TZ = D.timeZone; CUR = D.currency; BRAND = D.brandName; applyBrand(); return; }
-    var r = await sb.from("companies").select("time_zone, currency, brand_name").eq("id", ME.company_id).maybeSingle();
+    if (DEMO) { LOCALE_READY = true; TZ = D.timeZone; CUR = D.currency; return; }
+    var r = await sb.from("companies").select("time_zone, currency").eq("id", ME.company_id).maybeSingle();
     LOCALE_READY = !r.error && !!r.data;
     TZ = (LOCALE_READY && r.data.time_zone) || "Europe/London";
     CUR = (LOCALE_READY && r.data.currency) || "GBP";
-    BRAND = (LOCALE_READY && r.data.brand_name) || "";
-    applyBrand();
   }
 
   async function loadRotaFlag() {
@@ -2113,7 +2104,7 @@
   function signedOut() {
     ME = null; REQUESTS=[];requestsLoaded=false;attentionIds=null;clearInterval(poll);
     PAY_ON=false;PAY_READY=false;RATES={};
-    LOCALE_READY=false;TZ="Europe/London";CUR="GBP";BRAND="";applyBrand();
+    LOCALE_READY=false;TZ="Europe/London";CUR="GBP";
     USE_ROTA=false;ROTA_READY=false;ROTA_SHIFTS=[];AVAIL={};OFF=[];ROTA_WEEK=null;ROTA_DAY=null;TODAY_ROTA=[];RECENT=[];
     show("app", false); show("login", true);
   }
@@ -2187,14 +2178,19 @@
   window.addEventListener("online", function () { connection(); if (ME && !DEMO) { loadNow(); loadReviews(); } });
   connection();
   if (!DEMO) {
-    sb = window.supabase.createClient(CFG.url, CFG.key, { global: { fetch: timedFetch } });
+    // The manager board keeps its OWN login, separate from the staff app's. All the
+    // pages share one address and Supabase stores the session per project, so with
+    // one slot signing in here silently signed the staff page in as the same person.
+    // On a shared office computer that means the next member of staff to open the
+    // staff app clocks in as the manager. The staff app keeps the default slot, so
+    // nobody who is signed in there is signed out; managers sign in to the board once.
+    sb = window.supabase.createClient(CFG.url, CFG.key, { global: { fetch: timedFetch }, auth: { storageKey: "aero-manager-auth" } });
     sb.auth.onAuthStateChange(function (event, session) {
       if (event === "SIGNED_OUT" && ME) return sessionEnded();
-      // Somebody signed in as a DIFFERENT person in another tab on this address.
-      // The staff and manager apps share one session on purpose, so this board
-      // would otherwise keep showing one company's data backed by somebody
-      // else's login. That is worse than an error: start again as whoever is
-      // actually signed in now.
+      // Somebody signed in as a DIFFERENT person in another tab of this same board.
+      // Without this it keeps showing one company's data while every request goes
+      // out under somebody else's login. That is worse than an error: start again
+      // as whoever is actually signed in now.
       if (session && session.user && ME && session.user.id !== ME.id) location.reload();
     });
   }

@@ -215,8 +215,6 @@
     <h2 id="editTitle">Edit client</h2>
     <label for="editName">Company name</label>
     <input id="editName" required maxlength="120">
-    <label for="editBrand">Name shown in the app</label>
-    <input id="editBrand" maxlength="60" placeholder="Aero Attendance">
     <div class="two">
       <div><label for="editZone">Time zone</label><select id="editZone"></select></div>
       <div><label for="editCur">Currency</label><select id="editCur"></select></div>
@@ -334,7 +332,7 @@
       if (body.action === "list") return { companies: DEMO_LIST.slice() };
       if (body.action === "update") {
         var hit = DEMO_LIST.filter(function (c) { return c.id === body.company_id; })[0];
-        if (hit) { hit.name = body.company_name; hit.time_zone = body.time_zone; hit.currency = body.currency; hit.brand_name = body.brand_name; }
+        if (hit) { hit.name = body.company_name; hit.time_zone = body.time_zone; hit.currency = body.currency; }
         return { ok: true };
       }
       if (body.action === "delete") {
@@ -525,7 +523,7 @@
 
   function openEdit(id) {
     target = findCompany(id); if (!target) return;
-    $("editName").value = target.name; $("editBrand").value = target.brand_name || "";
+    $("editName").value = target.name;
     fillLocale("editZone", "editCur", target.time_zone, target.currency);
     show("editErr", false); $("editDialog").showModal(); $("editName").focus();
   }
@@ -534,7 +532,7 @@
     if (busy || !target) return;
     busy = true; $("editSave").disabled = true; show("editErr", false);
     try {
-      await call({ action: "update", company_id: target.id, company_name: $("editName").value.trim(), brand_name: $("editBrand").value.trim(),
+      await call({ action: "update", company_id: target.id, company_name: $("editName").value.trim(),
         time_zone: $("editZone").value, currency: $("editCur").value });
       $("editDialog").close(); toast("Saved");
       await loadList();
