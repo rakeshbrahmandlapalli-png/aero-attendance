@@ -18,6 +18,13 @@ or redeploy an Edge Function says so.
   now covered.
 
 ### Changed
+- **The Now board lists what needs attention by urgency, not by person.** Flags were built one
+  member of staff at a time, so whoever sorted first had their minor notice shown above somebody
+  else's forgotten clock-out, and every rota flag — including a shift nobody had turned up for —
+  landed below the lot. Order is now: a shift past 13 hours, then a rota'd shift running with
+  nobody on it, then an off-site clock-in, then a rota'd shift already missed, then someone working
+  off-rota, then an unverified location. A count sits at the top when there is more than one, so a
+  manager sees how many there are without scrolling.
 - **Clocking someone out now asks properly.** Instead of a browser pop-up saying only "Clock out
   <name> now?", a dialog names the person, their worksite, when they clocked in and the time they
   will be clocked out at, and takes an optional reason. Who did it, and why, is recorded in Audit
