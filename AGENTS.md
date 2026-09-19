@@ -19,7 +19,7 @@ see who is on shift, exceptions, timesheets, staff and worksites.
   Same files; `/demo` or `?demo` forces demo mode (rewrites in `vercel.json`).
   Demo data must use made-up names only — never a real client's company name.
 - Hosting: Vercel, auto-deploys from `main`
-- Database and login: Supabase
+- Database and login: Supabase, **EU region** (owner, 19 Sep 2026; the privacy notice says so, so tell the owner before ever moving it)
 
 ## Files
 

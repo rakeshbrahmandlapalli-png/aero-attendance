@@ -1462,7 +1462,11 @@
   // meaning changed so everybody is shown it again. There is no analytics or
   // tracking in these pages, and the notice says so by not mentioning any.
   var NOTICE_VERSION = 1;
-  var PROCESSOR = "AeroOne";
+  // Who runs the app for the client: the registered company, and the name it
+  // trades under. Owner's decision, 19 Sep 2026: AeroOne is a trading name of
+  // AeroPark Direct Ltd (Companies House 17211973) until the mark is filed.
+  // Change it here if that ever moves to another company.
+  var PROCESSOR = "AeroPark Direct Ltd (trading as AeroOne)";
   var PRIVACY = { contact: "", retention: "", tracked: false, ackVersion: 0 }, noticeBusy = false;
 
   function noticeHtml() {
@@ -1485,7 +1489,7 @@
       "<h3>What is kept</h3><ul>" + kept.map(function (x) { return "<li>" + x + "</li>"; }).join("") + "</ul>" +
       "<h3>Why</h3><p>So " + co + " can pay you correctly, keep the working-time records it needs, and run its rotas. It is never sold or used for advertising.</p>" +
       "<h3>Who can see it</h3><p>Your managers at " + co + " can see your hours, your clock-in and clock-out locations, your notes" + (ROTA.on ? " and your rota" : "") + ". Your colleagues can see your name and role.</p>" +
-      "<p>" + esc(PROCESSOR) + " built the app and runs it for " + co + ", and looks after the data on " + co + "'s instructions. It uses Supabase (database), Vercel (hosting) and MapTiler and OpenStreetMap (map pictures: they can see your device's IP address and the area of the map on screen). If you turn on notifications, your phone's own notification service delivers them.</p>" +
+      "<p>" + esc(PROCESSOR) + " built the app and runs it for " + co + ", and looks after the data on " + co + "'s instructions. It uses Supabase (the database, hosted in the EU), Vercel (hosting) and MapTiler and OpenStreetMap (map pictures: they can see your device's IP address and the area of the map on screen). If you turn on notifications, your phone's own notification service delivers them.</p>" +
       "<h3>How long it is kept</h3><p>" + howLong + "</p>" +
       "<h3>Your rights</h3><p>To see what is kept about you, to correct it, or to raise a concern, ask: " + who + ". You can also ask for a shift to be corrected under Timesheet. If you are unhappy with the answer, you can complain to the Information Commissioner's Office at ico.org.uk.</p>";
   }
