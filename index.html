@@ -1263,7 +1263,7 @@
     if (!user) return signedOut();
 
     var prof = await sb.from("profiles")
-      .select("id, full_name, role, company_id, companies(name)")
+      .select("id, full_name, role, company_id, companies!profiles_company_id_fkey(name)")
       .eq("id", user.id).maybeSingle();
 
     // Surface the real error. A crash rendered as "not allowed" is how an
