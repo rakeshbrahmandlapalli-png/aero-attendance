@@ -625,6 +625,66 @@ revoke execute on function publish_rota(timestamptz, timestamptz) from public, a
 grant execute on function publish_rota(timestamptz, timestamptz) to authenticated;
 
 
+-- ── ANNOUNCEMENTS ───────────────────────────────────────────────────────
+-- A manager writes a short message; everyone in that company sees it on Home
+-- until they dismiss it. Dismissing records that the person read it, so the
+-- manager can see who has not.
+create table if not exists announcements (
+  id          uuid primary key default gen_random_uuid(),
+  company_id  uuid not null references companies(id) on delete cascade,
+  author_id   uuid references profiles(id) on delete set null,
+  body        text not null check (length(btrim(body)) between 1 and 500),
+  created_at  timestamptz not null default now(),
+  expires_at  timestamptz,
+  active      boolean not null default true
+);
+create index if not exists announcements_company_idx on announcements(company_id, created_at desc);
+alter table announcements enable row level security;
+
+-- Staff see live ones only. Managers see every one, so they can reopen or
+-- switch off something they posted earlier.
+drop policy if exists announcements_read on announcements;
+create policy announcements_read on announcements for select to authenticated
+  using (company_id = current_company_id()
+         and (is_manager()
+              or (active and (expires_at is null or expires_at > now()))));
+
+drop policy if exists announcements_manage on announcements;
+create policy announcements_manage on announcements for all to authenticated
+  using (company_id = current_company_id() and is_manager())
+  with check (company_id = current_company_id() and is_manager()
+              and (author_id is null
+                   or exists (select 1 from profiles p
+                              where p.id = announcements.author_id
+                                and p.company_id = announcements.company_id)));
+
+-- Who has seen what. A read is a fact: it can be written once and never
+-- edited or withdrawn, so there is no update or delete grant below.
+create table if not exists announcement_reads (
+  announcement_id uuid not null references announcements(id) on delete cascade,
+  user_id         uuid not null references profiles(id) on delete cascade,
+  company_id      uuid not null references companies(id) on delete cascade,
+  read_at         timestamptz not null default now(),
+  primary key (announcement_id, user_id)
+);
+alter table announcement_reads enable row level security;
+
+drop policy if exists announcement_reads_read on announcement_reads;
+create policy announcement_reads_read on announcement_reads for select to authenticated
+  using (company_id = current_company_id() and (user_id = auth.uid() or is_manager()));
+
+drop policy if exists announcement_reads_own on announcement_reads;
+create policy announcement_reads_own on announcement_reads for insert to authenticated
+  with check (company_id = current_company_id() and user_id = auth.uid()
+              and exists (select 1 from announcements a
+                          where a.id = announcement_reads.announcement_id
+                            and a.company_id = announcement_reads.company_id));
+
+revoke all on table announcements, announcement_reads from anon;
+grant select, insert, update, delete on table announcements to authenticated;
+grant select, insert on table announcement_reads to authenticated;
+
+
 -- ── LEAVERS LOSE ACCESS ─────────────────────────────────────────────────
 -- A removed (inactive) person belongs to no company as far as the policies
 -- are concerned, so a session they still have open shows nothing. Managers
@@ -1334,5 +1394,143 @@ $$;
 
 revoke execute on function my_company_paused() from public, anon;
 grant execute on function my_company_paused() to authenticated;
+
+
+-- ── AUDIT HISTORY ───────────────────────────────────────────────────────
+-- Who did what, for the manager's Audit tab. Only the database writes to it:
+-- write_audit_event is revoked from `authenticated`, so a browser cannot forge
+-- or backdate an entry.
+create table if not exists audit_events (
+  id          uuid primary key default gen_random_uuid(),
+  company_id  uuid not null references companies(id) on delete cascade,
+  actor_id    uuid references profiles(id) on delete set null,
+  action      text not null check (length(trim(action)) between 1 and 80),
+  entity      text not null check (length(trim(entity)) between 1 and 80),
+  entity_id   uuid,
+  summary     text not null check (length(trim(summary)) between 1 and 500),
+  details     jsonb not null default '{}'::jsonb,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists audit_events_company_date
+  on audit_events(company_id, created_at desc);
+
+alter table audit_events enable row level security;
+drop policy if exists audit_events_manager_read on audit_events;
+create policy audit_events_manager_read on audit_events
+  for select to authenticated
+  using (company_id = current_company_id() and is_manager());
+
+revoke all on audit_events from anon, authenticated;
+grant select on audit_events to authenticated;
+
+create or replace function write_audit_event(
+  p_company_id uuid,
+  p_actor_id uuid,
+  p_action text,
+  p_entity text,
+  p_entity_id uuid,
+  p_summary text,
+  p_details jsonb default '{}'::jsonb
+) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  insert into audit_events(company_id, actor_id, action, entity, entity_id, summary, details)
+  values (p_company_id, p_actor_id, trim(p_action), trim(p_entity), p_entity_id,
+          left(trim(p_summary), 500), coalesce(p_details, '{}'::jsonb));
+end;
+$$;
+
+revoke all on function write_audit_event(uuid,uuid,text,text,uuid,text,jsonb) from public, anon, authenticated;
+
+create or replace function audit_shift_correction_event()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if tg_op = 'INSERT' then
+    perform write_audit_event(new.company_id, new.user_id, 'requested', 'shift_correction', new.id,
+      'Staff member requested a shift correction.', jsonb_build_object('status', new.status));
+  elsif tg_op = 'UPDATE' and (new.status is distinct from old.status or new.reviewed_by is distinct from old.reviewed_by) then
+    perform write_audit_event(new.company_id, new.reviewed_by, new.status, 'shift_correction', new.id,
+      'Manager ' || new.status || ' a shift correction.', jsonb_build_object('review_note', new.review_note));
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists shift_corrections_audit on shift_corrections;
+create trigger shift_corrections_audit
+  after insert or update on shift_corrections
+  for each row execute function audit_shift_correction_event();
+
+create or replace function audit_rota_event()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare v_action text;
+begin
+  v_action := case when tg_op = 'INSERT' then 'created'
+                   when coalesce(new.removed, false) and not coalesce(old.removed, false) then 'removed'
+                   when tg_op = 'UPDATE' then 'updated'
+                   else 'changed' end;
+  perform write_audit_event(new.company_id, auth.uid(), v_action, 'rota_shift', new.id,
+    'Manager ' || v_action || ' a rota shift.', jsonb_build_object('starts_at', new.starts_at, 'ends_at', new.ends_at));
+  return new;
+end;
+$$;
+
+drop trigger if exists rota_shifts_audit on rota_shifts;
+create trigger rota_shifts_audit
+  after insert or update on rota_shifts
+  for each row execute function audit_rota_event();
+
+
+-- ── A MANAGER CLOSING A FORGOTTEN SHIFT ─────────────────────────────────
+-- Somebody drives off without clocking out and the manager has to close it.
+-- This MUST NOT be a plain update on shifts: clock_out() is what closes an
+-- open break, and skipping it leaves break_started_at set and those minutes
+-- never taken off the paid hours. It also records who did it, because a shift
+-- somebody else ended is pay data and has to be attributable.
+create or replace function clock_out_for(p_shift_id uuid, p_reason text default '')
+returns shifts
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_shift shifts;
+  v_mins  integer := 0;
+  v_who   text;
+begin
+  if not coalesce(is_manager(), false) then
+    raise exception 'Manager access required.';
+  end if;
+
+  select * into v_shift from shifts
+   where id = p_shift_id and company_id = current_company_id();
+  if not found then
+    raise exception 'That shift is not one of yours.';
+  end if;
+  if v_shift.clock_out_at is not null then
+    raise exception 'That shift is already closed.';
+  end if;
+
+  if v_shift.break_started_at is not null then
+    v_mins := greatest(0, round(extract(epoch from (now() - v_shift.break_started_at)) / 60)::int);
+  end if;
+
+  update shifts set
+    clock_out_at     = now(),
+    clock_out_ok     = null,        -- a manager closed it: nobody knows where they were
+    break_minutes    = break_minutes + v_mins,
+    break_started_at = null
+  where id = v_shift.id
+  returning * into v_shift;
+
+  select full_name into v_who from profiles where id = v_shift.user_id;
+  perform write_audit_event(v_shift.company_id, auth.uid(), 'clocked_out', 'shift', v_shift.id,
+    'Manager clocked out ' || coalesce(v_who, 'a member of staff') || '.',
+    jsonb_build_object('reason', nullif(trim(p_reason), ''), 'break_minutes_added', v_mins));
+
+  return v_shift;
+end;
+$$;
+revoke execute on function clock_out_for(uuid, text) from public, anon;
+grant execute on function clock_out_for(uuid, text) to authenticated;
 
 commit;

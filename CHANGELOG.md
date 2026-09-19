@@ -3,6 +3,42 @@
 Aero Attendance, by AeroOne. Newest first. Dates are 2026. Anything that needs the owner to run SQL
 or redeploy an Edge Function says so.
 
+## Unreleased
+
+### Fixed
+- **A manager clocking somebody out did not close a break they had left running**, so those minutes
+  were never taken off the paid hours and the shift was paid for time on break. The board used a
+  plain update on `shifts`, which skips `clock_out()`. It now goes through a new `clock_out_for()`
+  in the database, which closes the break, counts the minutes, and refuses a shift that is not the
+  manager's own company's or is already closed. *Needs:
+  `setup/update-2026-09-manager-clock-out.sql` (run the audit SQL first).*
+- **The audit SQL had never been folded into `setup/schema.sql`.** A client set up from that file
+  alone got no `audit_events` table, so their Audit tab only ever showed an error — and because the
+  isolation test runs `schema.sql`, none of its attacks had ever touched the audit history. Both are
+  now covered.
+
+### Changed
+- **The Now board lists what needs attention by urgency, not by person.** Flags were built one
+  member of staff at a time, so whoever sorted first had their minor notice shown above somebody
+  else's forgotten clock-out, and every rota flag — including a shift nobody had turned up for —
+  landed below the lot. Order is now: a shift past 13 hours, then a rota'd shift running with
+  nobody on it, then an off-site clock-in, then a rota'd shift already missed, then someone working
+  off-rota, then an unverified location. A count sits at the top when there is more than one, so a
+  manager sees how many there are without scrolling.
+- **Clocking someone out now asks properly.** Instead of a browser pop-up saying only "Clock out
+  <name> now?", a dialog names the person, their worksite, when they clocked in and the time they
+  will be clocked out at, and takes an optional reason. Who did it, and why, is recorded in Audit
+  history — a shift somebody else ended is pay data, so it has to be attributable.
+
+### Added
+- **Notices.** A manager posts a short message from the Now tab; everyone in that company sees it
+  on Home until they tap "Got it". Dismissing records that the person read it, so the manager sees
+  a "seen by" count and can switch a notice off or let it expire after 1, 3 or 7 days. A notice
+  stays on screen if the read fails to save, so it is never silently lost. *Needs:
+  `setup/update-2026-09-announcements.sql`.*
+  - Not yet wired to phone notifications: a notice appears the next time the app is opened. Pushing
+    it needs a `send-push` change and a redeploy, so it is a separate job.
+
 ## 1.0 (19 September)
 
 The first version sold to a client. What "1.0" means, and what it does not:

@@ -40,6 +40,9 @@ platform.html         the owner's own page at /platform: client list and one for
 CHANGELOG.md          what changed and when; add an entry with every release
 setup/update-2026-09-pause-client.sql  companies.suspended, current_company_id()/is_manager() honour it, my_company_paused() (already inside schema.sql)
 setup/update-2026-09-roles.sql  profiles_guard: who may change whose role (already inside schema.sql)
+setup/update-2026-09-announcements.sql  announcements and who has read them (already inside schema.sql)
+setup/update-2026-09-audit.sql  audit_events and the triggers that fill it (already inside schema.sql)
+setup/update-2026-09-manager-clock-out.sql  clock_out_for(): a manager closing a forgotten shift (already inside schema.sql)
 setup/update-2026-09-clients-and-settings.sql  platform_admins, per-company time zone / currency / brand name, and the manager column grants (already inside schema.sql)
 setup/update-2026-09-notifications.sql  the notifications update on its own (already inside schema.sql)
 sw.js                 service worker: offline page, and showing push notifications

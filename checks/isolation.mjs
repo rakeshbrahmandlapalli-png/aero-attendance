@@ -25,6 +25,7 @@ const P = {           // people
 const SHIFT_A1 = U(3001), SHIFT_A2 = U(3002), SHIFT_B1 = U(3003);
 const CORR_A = U(4001);
 const ROTA_A_PUB = U(5001), ROTA_A_DRAFT = U(5002);
+const ANN_A = U(6001), ANN_A2 = U(6002), ANN_A_OFF = U(6003), ANN_A_GONE = U(6004), ANN_B = U(6005);
 
 const results = [];
 function check(name, ok, detail = "") { results.push({ name, ok: !!ok, detail }); }
@@ -62,12 +63,21 @@ await db.exec(`
   insert into push_subscriptions (user_id, company_id, endpoint, p256dh, auth) values ('${P.staffA1}','${CO_A}','https://push.example/a1','k','a');
   insert into notification_prefs (user_id, company_id) values ('${P.staffA1}','${CO_A}');
   insert into privacy_ack (user_id, company_id, version) values ('${P.staffA1}','${CO_A}',1);
+  insert into announcements (id, company_id, author_id, body, active, expires_at) values
+    ('${ANN_A}','${CO_A}','${P.mgrA}','Gate code changes Monday', true, null),
+    ('${ANN_A2}','${CO_A}','${P.mgrA}','Second live notice', true, null),
+    ('${ANN_A_OFF}','${CO_A}','${P.mgrA}','A switched-off notice', false, null),
+    ('${ANN_A_GONE}','${CO_A}','${P.mgrA}','A expired notice', true, now() - interval '1 hour'),
+    ('${ANN_B}','${CO_B}','${P.ownerB}','B depot notice', true, null);
+  insert into announcement_reads (announcement_id, user_id, company_id) values
+    ('${ANN_A}','${P.staffA1}','${CO_A}'), ('${ANN_A}','${P.staffA2}','${CO_A}');
   insert into auth.users (id, email) values ('${P.platform}','platform@aero.test');
   insert into platform_admins (user_id) values ('${P.platform}');
 `);
 
-const TABLES = ["availability", "notification_prefs", "pay_rates", "privacy_ack", "profiles", "push_subscriptions",
-                "rota_shifts", "shift_corrections", "shifts", "time_off", "worksites", "on_shift_now"];
+const TABLES = ["announcement_reads", "announcements", "audit_events", "availability", "notification_prefs", "pay_rates",
+                "privacy_ack", "profiles", "push_subscriptions", "rota_shifts", "shift_corrections", "shifts", "time_off",
+                "worksites", "on_shift_now"];
 
 // ── 1. READ ISOLATION: nobody sees the other company's rows ──────────────
 const others = { A: CO_B, B: CO_A };
@@ -109,7 +119,7 @@ for (const t of [...TABLES, "companies"]) {
   check(`ANON  signed-out visitors cannot read ${t}`, !!r.error || r.rows[0].n === 0, `saw ${r.rows[0]?.n}`);
 }
 for (const fn of ["clock_in($1,1,1,1)", "clock_out(1,1,'x')", "start_break()", "end_break()", "publish_rota(now(), now())",
-                  "review_shift_correction($1,true,'x')", "acknowledge_privacy(1)"]) {
+                  "review_shift_correction($1,true,'x')", "acknowledge_privacy(1)", "clock_out_for($1,'x')"]) {
   const r = await as(db, "anon", `select ${fn.includes("$1") ? fn.replace("$1", `'${W_A}'::uuid`) : fn}`);
   check(`ANON  signed-out visitors cannot run ${fn.split("(")[0]}()`, !!r.error, "it ran");
 }
@@ -341,7 +351,7 @@ gap("a manager can set another company's person's pay rate in their own company"
 // would start failing (or, worse, leave that company's rows orphaned). Seeds one company
 // with a row in EVERY table and deletes it.
 {
-  const CO_C = U(1003), O = U(31), S = U(32), WC = U(2003), SH = U(3031);
+  const CO_C = U(1003), O = U(31), S = U(32), WC = U(2003), SH = U(3031), ANN_C = U(6031);
   await db.exec(`
     insert into companies (id, name) values ('${CO_C}', 'Doomed Ltd');
     insert into auth.users (id, email) values ('${O}','o@c.test'),('${S}','s@c.test');
@@ -357,6 +367,8 @@ gap("a manager can set another company's person's pay rate in their own company"
     insert into push_subscriptions (user_id, company_id, endpoint, p256dh, auth) values ('${S}','${CO_C}','https://p.example/c','k','a');
     insert into notification_prefs (user_id, company_id) values ('${S}','${CO_C}');
     insert into privacy_ack (user_id, company_id, version) values ('${S}','${CO_C}',1);
+    insert into announcements (id, company_id, author_id, body) values ('${ANN_C}','${CO_C}','${O}','C notice');
+    insert into announcement_reads (announcement_id, user_id, company_id) values ('${ANN_C}','${S}','${CO_C}');
   `);
   const before = (await asOwner(db, `select count(*)::int n from profiles where company_id = $1`, [CO_C])).rows[0].n;
   let err = "";
@@ -364,7 +376,7 @@ gap("a manager can set another company's person's pay rate in their own company"
   check("DELETE  removing a company succeeds", before === 2 && !err, err || `seeded ${before} people`);
   const left = [];
   for (const t of ["profiles", "worksites", "shifts", "pay_rates", "availability", "time_off", "rota_shifts", "shift_corrections",
-                   "push_subscriptions", "notification_prefs", "privacy_ack"]) {
+                   "push_subscriptions", "notification_prefs", "privacy_ack", "announcements", "announcement_reads", "audit_events"]) {
     const n = (await asOwner(db, `select count(*)::int n from ${t} where company_id = $1`, [CO_C])).rows[0].n;
     if (n) left.push(`${t}:${n}`);
   }
@@ -471,6 +483,112 @@ gap("a manager can set another company's person's pay rate in their own company"
   }
   await db.exec(`update companies set suspended = false where id = '${CO_D}'`);
   check("PAUSE  un-pausing brings everything back, untouched", Number(await sees(SD)) > 0 && Number(await sees(OD)) > 0, `saw ${await sees(SD)}`);
+}
+
+// ── 13. ANNOUNCEMENTS: managers write, staff only read what is live ──────
+// Section 11 promotes staffA2 to admin for good, so the plain-staff view has to
+// be tested as staffA1. Assert that, rather than trusting it to stay true.
+{
+  let r = await asOwner(db, `select role from profiles where id = $1`, [P.staffA1]);
+  check("ANN  (precondition) staffA1 is still plain staff", r.rows[0]?.role === "staff", `role is ${r.rows[0]?.role}`);
+
+  r = await as(db, P.staffA1, `select id from announcements`);
+  const seen = (r.rows || []).map((x) => x.id);
+  check("ANN  staff see the live announcements (sanity)", !r.error && seen.includes(ANN_A) && seen.includes(ANN_A2), r.error || JSON.stringify(seen));
+  check("ANN  staff cannot see a switched-off announcement", !seen.includes(ANN_A_OFF), "they saw it");
+  check("ANN  staff cannot see an expired announcement", !seen.includes(ANN_A_GONE), "they saw it");
+  check("ANN  staff see nothing of the other company's", !seen.includes(ANN_B), "they saw it");
+  r = await as(db, P.mgrA, `select id from announcements`);
+  check("ANN  a manager DOES see switched-off and expired ones (sanity)", !r.error && r.rows.length === 4, r.error || `saw ${r.rows.length}`);
+
+  r = await as(db, P.staffA1, `insert into announcements (company_id, body) values ($1,'staff notice')`, [CO_A]);
+  check("ANN  staff cannot post an announcement", blocked(r), "it posted");
+  r = await as(db, P.staffA1, `update announcements set active = false where id = $1`, [ANN_A]);
+  check("ANN  staff cannot switch an announcement off", blocked(r), "it changed");
+  r = await as(db, P.staffA1, `delete from announcements where id = $1`, [ANN_A]);
+  check("ANN  staff cannot delete an announcement", blocked(r), "it deleted");
+
+  r = await as(db, P.ownerB, `insert into announcements (company_id, body) values ($1,'B posting into A')`, [CO_A]);
+  check("ANN  another company's owner cannot post into A", blocked(r), "it posted");
+  r = await as(db, P.ownerB, `update announcements set body = 'hijacked' where id = $1`, [ANN_A]);
+  check("ANN  another company's owner cannot edit A's announcement", blocked(r), "it changed");
+  r = await as(db, P.ownerB, `delete from announcements where id = $1`, [ANN_A]);
+  check("ANN  another company's owner cannot delete A's announcement", blocked(r), "it deleted");
+  r = await as(db, P.mgrA, `insert into announcements (company_id, author_id, body) values ($1,$2,'wrong author')`, [CO_A, P.staffB1]);
+  check("ANN  a manager cannot credit another company's person as author", blocked(r), "it posted");
+
+  // A read is a fact: written once, by yourself, about your own company's notice.
+  r = await as(db, P.staffA1, `insert into announcement_reads (announcement_id, user_id, company_id) values ($1,$2,$3)`, [ANN_A2, P.staffA1, CO_A]);
+  check("ANN  staff can record their own read (sanity)", !r.error, r.error);
+  r = await as(db, P.staffA1, `insert into announcement_reads (announcement_id, user_id, company_id) values ($1,$2,$3)`, [ANN_A2, P.staffA2, CO_A]);
+  check("ANN  staff cannot record a read for a colleague", blocked(r), "it wrote");
+  r = await as(db, P.staffA1, `insert into announcement_reads (announcement_id, user_id, company_id) values ($1,$2,$3)`, [ANN_B, P.staffA1, CO_A]);
+  check("ANN  staff cannot record a read against another company's announcement", blocked(r), "it wrote");
+  r = await as(db, P.staffA1, `insert into announcement_reads (announcement_id, user_id, company_id) values ($1,$2,$3)`, [ANN_A_OFF, P.staffA1, CO_A]);
+  check("ANN  staff cannot record a read against an announcement they cannot see", blocked(r), "it wrote");
+  r = await as(db, P.staffA1, `delete from announcement_reads where user_id = $1`, [P.staffA1]);
+  check("ANN  a read cannot be withdrawn", blocked(r), "it deleted");
+  r = await as(db, P.staffA1, `update announcement_reads set read_at = now() - interval '5 days' where user_id = $1`, [P.staffA1]);
+  check("ANN  a read cannot be back-dated", blocked(r), "it changed");
+
+  r = await as(db, P.staffA1, `select user_id from announcement_reads where user_id <> $1`, [P.staffA1]);
+  check("ANN  staff cannot see who else has read it", !r.error && r.rows.length === 0, r.error || `saw ${r.rows.length}`);
+  r = await as(db, P.mgrA, `select user_id from announcement_reads where announcement_id = $1`, [ANN_A]);
+  check("ANN  a manager DOES see who has read it (sanity)", !r.error && r.rows.length === 2, r.error || `saw ${r.rows.length}`);
+}
+
+// ── 14. A MANAGER CLOSING A FORGOTTEN SHIFT, AND THE AUDIT TRAIL ─────────
+// The bug this guards: closing a shift with a plain update skips clock_out(),
+// so an open break is never closed and those minutes get paid.
+{
+  const SHIFT_BRK = U(3041);
+  await db.exec(`
+    insert into shifts (id, company_id, user_id, worksite_id, clock_in_at, break_started_at, break_minutes)
+    values ('${SHIFT_BRK}','${CO_A}','${P.staffA1}','${W_A}', now() - interval '6 hours', now() - interval '30 minutes', 10);
+  `);
+
+  let r = await as(db, P.staffA1, `select clock_out_at from clock_out_for($1,'')`, [SHIFT_BRK]);
+  check("SHUT  staff cannot close a shift for anybody", !!r.error, "it ran");
+  r = await as(db, P.ownerB, `select clock_out_at from clock_out_for($1,'')`, [SHIFT_BRK]);
+  check("SHUT  another company's owner cannot close A's shift", !!r.error, "it ran");
+  r = await as(db, P.mgrA, `select clock_out_at from clock_out_for($1,'')`, [SHIFT_B1]);
+  check("SHUT  a manager cannot close the OTHER company's shift", !!r.error, "it ran");
+
+  // The happy path runs as two statements on one connection rather than through
+  // as(): a row written inside a statement is not visible to another part of
+  // that same statement, so the audit entry could not be seen any other way.
+  // as() also rolls back, and closing the shift has to stick for the re-run check.
+  let row = {}, audited = -1, ranTwice = false;
+  await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [P.mgrA]);
+  await db.exec(`set role authenticated`);
+  try {
+    row = (await db.query(`select clock_out_at, break_minutes, break_started_at from clock_out_for($1,'Drove off')`, [SHIFT_BRK])).rows[0] || {};
+    audited = (await db.query(`select count(*)::int n from audit_events where entity_id = $1 and action = 'clocked_out' and actor_id = $2`,
+                              [SHIFT_BRK, P.mgrA])).rows[0].n;
+    try { await db.query(`select clock_out_at from clock_out_for($1,'')`, [SHIFT_BRK]); ranTwice = true; } catch (e) { /* refused, as it should be */ }
+  } finally {
+    await db.exec(`reset role`);
+    await db.query(`select set_config('request.jwt.claim.sub', '', false)`);
+  }
+
+  check("SHUT  a manager CAN close a forgotten shift (sanity)", !!row.clock_out_at, JSON.stringify(row));
+  check("SHUT  ...and the open break is closed", row.break_started_at === null, `break_started_at is ${row.break_started_at}`);
+  check("SHUT  ...and its minutes are added to the paid deduction", Number(row.break_minutes) >= 39 && Number(row.break_minutes) <= 41,
+        `break_minutes is ${row.break_minutes} (expected 10 + about 30)`);
+  check("SHUT  ...and it is recorded against the manager who did it", audited === 1, `found ${audited} audit rows`);
+  check("SHUT  a shift that is already closed is refused", !ranTwice, "it ran twice");
+
+  // The audit trail itself: managers read their own, nobody writes it by hand.
+  r = await as(db, P.staffA1, `select id from audit_events`);
+  check("AUDIT staff cannot read the audit history", !r.error && r.rows.length === 0, r.error || `saw ${r.rows.length}`);
+  r = await as(db, P.mgrA, `select id from audit_events where company_id = $1`, [CO_B]);
+  check("AUDIT a manager sees none of the other company's audit history", !r.error && r.rows.length === 0, r.error || `saw ${r.rows.length}`);
+  r = await as(db, P.mgrA, `insert into audit_events (company_id, action, entity, summary) values ($1,'forged','shift','I did not do this')`, [CO_A]);
+  check("AUDIT a manager cannot forge an audit entry", blocked(r), "it wrote");
+  r = await as(db, P.mgrA, `select write_audit_event($1,$2,'forged','shift',null,'by hand')`, [CO_A, P.mgrA]);
+  check("AUDIT nobody can call write_audit_event from the browser", !!r.error, "it ran");
+  r = await as(db, P.mgrA, `delete from audit_events where company_id = $1`, [CO_A]);
+  check("AUDIT a manager cannot delete their own audit history", blocked(r), "it deleted");
 }
 
 // ── report ───────────────────────────────────────────────────────────────
