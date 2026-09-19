@@ -115,7 +115,7 @@ developer-only folder with its own package.json, kept out of the site by
     check can fail, run the test on a deliberately broken copy of the schema:
     `SCHEMA_FILE=path/to/broken.sql node isolation.mjs`.
 11. **The privacy notice must stay true.** `noticeHtml()` in index.html is what
-    every member of staff is shown at first sign-in and under Account. It is the
+    every member of staff can open under Account. It never pops up by itself (owner's decision, 19 Sep 2026); opening it records that they read it, for the manager's Staff tab. It is the
     employer's notice to its staff (the company is the controller; this app and
     AeroOne are the processor), built from what the app really does and from
     `companies.privacy_contact` / `retention_text`. If a change collects, shows

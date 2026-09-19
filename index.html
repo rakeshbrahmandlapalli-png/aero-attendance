@@ -395,7 +395,7 @@
 <dialog id="offDialog" aria-labelledby="offTitle"><form id="offForm"><h2 id="offTitle">Add days off</h2><p class="note">Your manager sees these when making the rota.</p><label for="offFrom">First day</label><input id="offFrom" type="date" required><label for="offTo">Last day</label><input id="offTo" type="date" required><label for="offReason">Reason (optional)</label><input id="offReason" maxlength="200"><div class="err hidden" id="offError" role="alert"></div><div class="dialog-actions"><button type="button" class="link" id="cancelOff">Cancel</button><button class="btn" id="saveOff">Add days off</button></div></form></dialog>
 
 <dialog id="pwDialog" aria-labelledby="pwTitle"><form id="pwForm" novalidate><h2 id="pwTitle">Choose your password</h2><p class="note">You signed in with a starting password. Choose your own to keep your account private.</p><label for="newPw">New password</label><input id="newPw" type="password" autocomplete="new-password"><label for="newPw2">Type it again</label><input id="newPw2" type="password" autocomplete="new-password"><div class="err hidden" id="pwError" role="alert"></div><div class="dialog-actions"><button class="btn" id="savePw">Save password</button></div></form></dialog>
-<dialog id="privacyDialog" aria-labelledby="privacyTitle"><div class="privacy"><h2 id="privacyTitle"></h2><div id="privacyBody"></div><div class="dialog-actions"><button type="button" class="btn g" id="closePrivacy">Close</button><button type="button" class="btn hidden" id="ackPrivacy">I've read this</button></div></div></dialog>
+<dialog id="privacyDialog" aria-labelledby="privacyTitle"><div class="privacy"><h2 id="privacyTitle"></h2><div id="privacyBody"></div><div class="dialog-actions"><button type="button" class="btn g" id="closePrivacy">Close</button></div></div></dialog>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 (function () {
@@ -1212,7 +1212,6 @@
     refreshMap();
     updateAccount(); loadActivity();
     if (user.user_metadata && user.user_metadata.must_change_password) askNewPassword();
-    else maybeShowNotice();
   }
 
   async function onAction() {
@@ -1480,7 +1479,7 @@
   // AeroPark Direct Ltd (Companies House 17211973) until the mark is filed.
   // Change it here if that ever moves to another company.
   var PROCESSOR = "AeroPark Direct Ltd (trading as AeroOne)";
-  var PRIVACY = { contact: "", retention: "", tracked: false, ackVersion: 0 }, noticeBusy = false;
+  var PRIVACY = { contact: "", retention: "", tracked: false, ackVersion: 0 };
 
   function noticeHtml() {
     var co = esc($("company").textContent || "Your employer");
@@ -1509,8 +1508,8 @@
 
   // The company's contact and retention wording, and whether this person has
   // read the current version. A failed read of the read-record means the
-  // privacy update has not been run: with nowhere to record it, nobody is
-  // asked, and the notice is still there under Account.
+  // privacy update has not been run: with nowhere to record it, opening the
+  // notice simply records nothing.
   async function loadPrivacy() {
     if (DEMO) return;
     var c = await sb.from("companies").select("privacy_contact, retention_text").eq("id", ME.company_id).maybeSingle();
@@ -1520,39 +1519,21 @@
     PRIVACY.ackVersion = (!a.error && a.data && a.data.version) || 0;
   }
 
-  function openPrivacy(first) {
+  // Nothing pops up: the notice sits under Account for anyone who wants it.
+  // Opening it there records that this person has read this version, quietly,
+  // so the manager's Staff tab can say who has. A failure changes nothing.
+  function openPrivacy() {
     $("privacyTitle").textContent = "How " + ($("company").textContent || "your employer") + " uses your information";
     $("privacyBody").innerHTML = noticeHtml() + '<p class="note">Notice version ' + NOTICE_VERSION + "</p>";
-    show("ackPrivacy", !!first);
-    $("closePrivacy").textContent = first ? "Not now" : "Close";
     $("privacyDialog").showModal();
-  }
-
-  // Once per person and version. Never while the choose-a-password box is up
-  // (it is shown right after), and never in the sales demo.
-  function maybeShowNotice() {
-    if (DEMO || !PRIVACY.tracked || PRIVACY.ackVersion >= NOTICE_VERSION || $("pwDialog").open) return;
-    openPrivacy(true);
-  }
-
-  $("openPrivacy").addEventListener("click", function () { openPrivacy(false); });
-  $("closePrivacy").addEventListener("click", function () { $("privacyDialog").close(); });
-  $("ackPrivacy").addEventListener("click", async function () {
-    if (noticeBusy) return;
-    noticeBusy = true; $("ackPrivacy").disabled = true;
-    try {
-      var r = await sb.rpc("acknowledge_privacy", { p_version: NOTICE_VERSION });
-      if (r.error) throw r.error;
+    if (!DEMO && PRIVACY.tracked && PRIVACY.ackVersion < NOTICE_VERSION) {
       PRIVACY.ackVersion = NOTICE_VERSION;
-    } catch (error) {
-      // Nobody is kept from clocking in over a notice: say what went wrong and
-      // let them through. They are simply asked again next time.
-      fail(error);
-    } finally {
-      noticeBusy = false; $("ackPrivacy").disabled = false;
-      $("privacyDialog").close();
+      sb.rpc("acknowledge_privacy", { p_version: NOTICE_VERSION }).then(function (r) { if (r.error) PRIVACY.ackVersion = 0; });
     }
-  });
+  }
+
+  $("openPrivacy").addEventListener("click", openPrivacy);
+  $("closePrivacy").addEventListener("click", function () { $("privacyDialog").close(); });
 
   $("openClock").addEventListener("click", openClock);
 
@@ -1629,7 +1610,6 @@
       var r = await sb.auth.updateUser({ password: a, data: { must_change_password: false } });
       if (r.error) throw r.error;
       $("pwDialog").close(); toast("Password saved");
-      maybeShowNotice();
     } catch (error) { $("pwError").textContent = error.message; show("pwError", true); }
     finally { $("savePw").disabled = false; }
   });
