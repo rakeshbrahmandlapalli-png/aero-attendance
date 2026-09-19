@@ -81,6 +81,11 @@
   .done{padding:var(--s4);border-left:4px solid var(--ok);background:var(--surface);margin-bottom:var(--s6);}
   .done dl{margin:var(--s4) 0;display:grid;grid-template-columns:max-content 1fr;gap:var(--s2) var(--s4);}
   .done dt{color:var(--ink-2);}.done dd{margin:0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums;}
+  .paused,.stale{color:var(--warn);font-weight:600;}
+  .toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:var(--s3);margin:var(--s3) 0 var(--s4);}
+  .toolbar .note{margin:0;flex:1 1 220px;}
+  dialog h3{margin:var(--s6) 0 var(--s2);}
+  dialog h3:first-of-type{margin-top:var(--s4);}
   .row-actions{display:flex;gap:var(--s2);flex-wrap:wrap;margin-top:var(--s3);}
   .btn.danger{background:var(--warn);border-color:var(--warn);color:#fff;}
   .btn.danger:disabled{background:var(--surface);border-color:var(--line);color:var(--ink-2);}
@@ -119,6 +124,10 @@
     <section aria-labelledby="clientsTitle">
       <h1 id="clientsTitle">Clients</h1>
       <p class="note" id="clientsNote"></p>
+      <div class="toolbar">
+        <p class="note" id="backupNote"></p>
+        <button class="btn g" id="backupAll" type="button">Back up everything</button>
+      </div>
       <ul class="clients" id="clients"></ul>
       <div id="clientsEmpty" class="empty hidden">No clients yet.</div>
       <div id="listErr" class="err hidden" role="alert"></div>
@@ -163,6 +172,17 @@
         <button class="btn submit" id="addBtn">Add client</button>
       </form>
     </section>
+
+    <section aria-labelledby="openTitle">
+      <h2 id="openTitle">Open an encrypted backup</h2>
+      <p class="note">A backup you locked with a passphrase is unreadable without it. Choose the file and type the passphrase to get the plain backup back. Nothing leaves this page.</p>
+      <label for="openFile">Backup file</label>
+      <input id="openFile" type="file" accept=".json,application/json">
+      <label for="openPass">Passphrase</label>
+      <input id="openPass" type="password" autocomplete="off">
+      <div id="openErr" class="err hidden" role="alert"></div>
+      <button class="btn submit" id="openGo" type="button">Unlock and download</button>
+    </section>
   </main>
 </div>
 <dialog id="editDialog" aria-labelledby="editTitle">
@@ -184,6 +204,58 @@
   </form>
 </dialog>
 
+<dialog id="backupDialog" aria-labelledby="backupTitle">
+  <form id="backupForm" autocomplete="off">
+    <h2 id="backupTitle">Back up</h2>
+    <p id="backupWhat"></p>
+    <p class="note">The file holds names, emails, clock-in locations and pay rates. Lock it with a passphrase, and keep it somewhere private. Passwords are never in it.</p>
+    <label for="backupPass">Passphrase (leave empty for an unlocked file)</label>
+    <input id="backupPass" type="password" autocomplete="new-password">
+    <label for="backupPass2">Type it again</label>
+    <input id="backupPass2" type="password" autocomplete="new-password">
+    <p class="note">If you forget the passphrase the backup cannot be opened, by anyone.</p>
+    <div id="backupErr" class="err hidden" role="alert"></div>
+    <div class="dialog-actions">
+      <button type="button" class="btn g" id="backupCancel">Cancel</button>
+      <button class="btn" id="backupGo">Download backup</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="mgrDialog" aria-labelledby="mgrTitle">
+  <h2 id="mgrTitle">Managers</h2>
+  <div id="mgrDone" class="done hidden" role="status" tabindex="-1">
+    <strong id="mgrDoneTitle"></strong>
+    <dl>
+      <dt>Sign-in</dt><dd id="mgrDoneUrl"></dd>
+      <dt>Email</dt><dd id="mgrDoneEmail"></dd>
+      <dt>Password</dt><dd id="mgrDonePw"></dd>
+    </dl>
+    <p class="note">Shown once. They choose their own password at their next sign-in.</p>
+    <button class="btn" id="mgrCopy" type="button">Copy the message</button>
+  </div>
+  <form id="mgrAddForm" autocomplete="off">
+    <h3>Add a manager</h3>
+    <label for="mgrName">Name</label>
+    <input id="mgrName" required maxlength="120">
+    <label for="mgrEmail">Email</label>
+    <input id="mgrEmail" type="email" required autocapitalize="none" spellcheck="false">
+    <label for="mgrPw">Starting password</label>
+    <div class="pwrow"><input id="mgrPw" required minlength="8" maxlength="72" autocapitalize="none" spellcheck="false"><button class="btn g" id="mgrGen" type="button">Generate</button></div>
+    <div id="mgrAddErr" class="err hidden" role="alert"></div>
+    <button class="btn submit" id="mgrAddGo">Add manager</button>
+  </form>
+  <form id="mgrResetForm" autocomplete="off">
+    <h3>Reset the owner's password</h3>
+    <p class="note" id="mgrOwner"></p>
+    <label for="mgrResetPw">New password</label>
+    <div class="pwrow"><input id="mgrResetPw" required minlength="8" maxlength="72" autocapitalize="none" spellcheck="false"><button class="btn g" id="mgrResetGen" type="button">Generate</button></div>
+    <div id="mgrResetErr" class="err hidden" role="alert"></div>
+    <button class="btn submit" id="mgrResetGo">Reset password</button>
+  </form>
+  <div class="dialog-actions"><button type="button" class="btn g" id="mgrClose">Close</button></div>
+</dialog>
+
 <dialog id="deleteDialog" aria-labelledby="deleteTitle">
   <form id="deleteForm" autocomplete="off">
     <h2 id="deleteTitle">Delete client</h2>
@@ -193,6 +265,7 @@
     <input id="deleteConfirm" autocomplete="off" autocapitalize="none" spellcheck="false">
     <div id="deleteErr" class="err hidden" role="alert"></div>
     <div class="dialog-actions">
+      <button type="button" class="btn g" id="deleteBackup">Back up first</button>
       <button type="button" class="btn g" id="deleteCancel">Cancel</button>
       <button class="btn danger" id="deleteGo" disabled>Delete for good</button>
     </div>
@@ -245,6 +318,19 @@
         DEMO_LIST = DEMO_LIST.filter(function (c) { return c !== gone; });
         return { ok: true, people: gone.staff, logins_not_removed: 0 };
       }
+      if (/^(suspend|reset_owner_password|add_manager)$/.test(body.action)) {
+        var co = DEMO_LIST.filter(function (c) { return c.id === body.company_id; })[0];
+        if (!co) throw new Error("That company no longer exists.");
+        if (body.action === "suspend") { co.suspended = body.suspended; return { ok: true }; }
+        if (body.action === "reset_owner_password") return { ok: true, full_name: co.owner, email: "owner@example.invalid" };
+        co.staff += 1;
+        return { company_id: co.id, name: co.name, email: body.manager_email };
+      }
+      if (body.action === "backup") {
+        var picked = DEMO_LIST.filter(function (c) { return !body.company_id || c.id === body.company_id; });
+        return { format: "aero-attendance-backup", version: 1, exported_at: new Date().toISOString(), note: "Demo data.",
+          companies: picked.map(function (c) { return { company: { id: c.id, name: c.name }, tables: { profiles: [], shifts: [] } }; }) };
+      }
       DEMO_LIST.unshift({ id: "d" + Date.now(), name: body.company_name, time_zone: body.time_zone, currency: body.currency,
         created_at: new Date().toISOString(), staff: 1, shifts: 0, brand_name: "", owner: body.manager_name });
       return { company_id: "demo", name: body.company_name, email: body.manager_email };
@@ -290,10 +376,15 @@
     $("clients").innerHTML = companies.map(function (c) {
       return "<li><strong>" + esc(c.name) + '</strong><div class="meta">' +
         (c.owner ? "Owner " + esc(c.owner) + " · " : "") + '<span class="num">' + esc(c.staff) + "</span> " + (c.staff === 1 ? "person" : "people") +
-        "</div>" + '<div class="meta">' + esc(c.time_zone) + " · " + esc(c.currency) + " · added " + esc(niceDate(c.created_at)) + "</div>" +
+        "</div>" + '<div class="meta">' + esc(c.time_zone) + " · " + esc(c.currency) + " · added " + esc(niceDate(c.created_at)) +
+        (c.suspended ? ' · <span class="paused">Paused</span>' : "") + "</div>" +
         '<div class="row-actions"><button class="btn g" type="button" data-edit="' + esc(c.id) + '">Edit</button>' +
+        '<button class="btn g" type="button" data-mgr="' + esc(c.id) + '">Managers</button>' +
+        '<button class="btn g" type="button" data-backup="' + esc(c.id) + '">Back up</button>' +
+        '<button class="btn g" type="button" data-pause="' + esc(c.id) + '">' + (c.suspended ? "Resume" : "Pause") + "</button>" +
         '<button class="btn g" type="button" data-delete="' + esc(c.id) + '">Delete</button></div></li>';
     }).join("");
+    showBackupNote();
     show("clientsEmpty", companies.length === 0);
     $("clientsNote").textContent = companies.length + (companies.length === 1 ? " company" : " companies");
   }
@@ -445,12 +536,191 @@
     var b = e.target.closest("button"); if (!b) return;
     if (b.dataset.edit) openEdit(b.dataset.edit);
     if (b.dataset.delete) openDelete(b.dataset.delete);
+    if (b.dataset.pause) togglePause(b.dataset.pause);
+    if (b.dataset.mgr) openManagers(b.dataset.mgr);
+    if (b.dataset.backup) openBackup(b.dataset.backup);
   });
   $("editForm").addEventListener("submit", saveEdit);
   $("editCancel").addEventListener("click", function () { $("editDialog").close(); });
   $("deleteForm").addEventListener("submit", confirmDelete);
   $("deleteCancel").addEventListener("click", function () { $("deleteDialog").close(); });
   $("deleteConfirm").addEventListener("input", function () { $("deleteGo").disabled = !target || $("deleteConfirm").value.trim() !== target.name; });
+
+  // ── pausing a client ──────────────────────────────────────────────────
+  // Nothing is deleted. The database stops showing a paused company's people anything, or letting
+  // them do anything, until it is resumed. Pausing is undone with one tap.
+  async function togglePause(id) {
+    var c = findCompany(id); if (!c || busy) return;
+    var pausing = !c.suspended;
+    var ask = pausing
+      ? "Pause " + c.name + "? Their staff and managers will see nothing and cannot clock in until you resume them. No data is deleted."
+      : "Resume " + c.name + "? Their people can sign in and clock in again straight away.";
+    if (!confirm(ask)) return;
+    busy = true;
+    try {
+      await call({ action: "suspend", company_id: id, suspended: pausing });
+      toast(pausing ? c.name + " paused" : c.name + " resumed");
+      await loadList();
+    } catch (err) {
+      if (err.status === 401) return signedOutView("You've been signed out. Please sign in again.");
+      toast(err.message);
+    } finally { busy = false; }
+  }
+
+  // ── managers: add another, or reset the owner's password ─────────────
+  var mgrHandOver = "";
+  function openManagers(id) {
+    target = findCompany(id); if (!target) return;
+    $("mgrTitle").textContent = "Managers · " + target.name;
+    $("mgrOwner").textContent = target.owner ? "Owner: " + target.owner + ". They choose their own password again at their next sign-in." : "This company has no active owner.";
+    ["mgrName", "mgrEmail", "mgrPw", "mgrResetPw"].forEach(function (f) { $(f).value = ""; });
+    show("mgrDone", false); show("mgrAddErr", false); show("mgrResetErr", false);
+    $("mgrDialog").showModal();
+  }
+  function closeManagers() {
+    $("mgrDialog").close(); mgrHandOver = ""; $("mgrDonePw").textContent = "";
+    ["mgrPw", "mgrResetPw"].forEach(function (f) { $(f).value = ""; });
+  }
+  function managerHandOver(title, company, email, password, text) {
+    $("mgrDoneTitle").textContent = title;
+    $("mgrDoneUrl").textContent = DEMO ? "https://example.invalid/manager" : location.origin + "/manager";
+    $("mgrDoneEmail").textContent = email; $("mgrDonePw").textContent = password;
+    mgrHandOver = text.replace("{url}", $("mgrDoneUrl").textContent);
+    show("mgrDone", true); $("mgrDone").focus();
+  }
+  async function addManager(e) {
+    e.preventDefault();
+    if (busy || !target) return;
+    busy = true; $("mgrAddGo").disabled = true; show("mgrAddErr", false);
+    var password = $("mgrPw").value;
+    try {
+      var r = await call({ action: "add_manager", company_id: target.id, manager_name: $("mgrName").value.trim(), manager_email: $("mgrEmail").value.trim(), password: password });
+      managerHandOver("Manager added", r.name, r.email, password,
+        "Your " + r.name + " manager sign-in is ready.\n\nSign in at: {url}\nEmail: " + r.email + "\nStarting password: " + password + "\n\nYou choose your own password the first time you sign in.");
+      ["mgrName", "mgrEmail", "mgrPw"].forEach(function (f) { $(f).value = ""; });
+      try { await loadList(); } catch (err) {}
+    } catch (err) {
+      if (err.status === 401) { closeManagers(); return signedOutView("You've been signed out. Please sign in again."); }
+      $("mgrAddErr").textContent = err.message; show("mgrAddErr", true);
+    } finally { busy = false; $("mgrAddGo").disabled = false; }
+  }
+  async function resetOwner(e) {
+    e.preventDefault();
+    if (busy || !target) return;
+    if (!confirm("Reset the owner's password for " + target.name + "? Their old password stops working now.")) return;
+    busy = true; $("mgrResetGo").disabled = true; show("mgrResetErr", false);
+    var password = $("mgrResetPw").value;
+    try {
+      var r = await call({ action: "reset_owner_password", company_id: target.id, password: password });
+      managerHandOver("Password reset for " + r.full_name, target.name, r.email, password,
+        "Your " + target.name + " password has been reset.\n\nSign in at: {url}\nEmail: " + r.email + "\nNew password: " + password + "\n\nYou will be asked to choose your own password when you sign in.");
+      $("mgrResetPw").value = "";
+    } catch (err) {
+      if (err.status === 401) { closeManagers(); return signedOutView("You've been signed out. Please sign in again."); }
+      $("mgrResetErr").textContent = err.message; show("mgrResetErr", true);
+    } finally { busy = false; $("mgrResetGo").disabled = false; }
+  }
+
+  // ── backups ───────────────────────────────────────────────────────────
+  // The whole of one client's data (or every client's) as one file, kept by the owner, optionally
+  // locked with a passphrase (AES-256-GCM, key from PBKDF2-SHA256, 600,000 rounds, all in this browser).
+  // It is a COPY of the data. Nothing here restores it by itself.
+  var BACKUP_KEY = "aeroBackupTimes", STALE_DAYS = 7, backupFor = null;   // backupFor: company id, or null for everything
+  function backupTimes() { try { return JSON.parse(localStorage.getItem(BACKUP_KEY) || "{}") || {}; } catch (e) { return {}; } }
+  function markBackup(key) { try { var t = backupTimes(); t[key] = new Date().toISOString(); localStorage.setItem(BACKUP_KEY, JSON.stringify(t)); } catch (e) {} }
+  function showBackupNote() {
+    var at = backupTimes().all, note = $("backupNote");
+    var days = at ? Math.floor((Date.now() - new Date(at).getTime()) / 864e5) : null;
+    if (days === null) { note.textContent = "No full backup has been made from this browser yet."; note.className = "note stale"; }
+    else if (days >= STALE_DAYS) { note.textContent = "Last full backup: " + days + " days ago. Make a new one."; note.className = "note stale"; }
+    else { note.textContent = "Last full backup: " + (days === 0 ? "today" : days === 1 ? "yesterday" : days + " days ago") + "."; note.className = "note"; }
+  }
+
+  function b64(bytes) { var s = ""; for (var i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s); }
+  function unb64(text) { var s = atob(text), out = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) out[i] = s.charCodeAt(i); return out; }
+  var ROUNDS = 600000;
+  async function deriveKey(pass, salt, rounds, usage) {
+    var base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveKey"]);
+    return crypto.subtle.deriveKey({ name: "PBKDF2", salt: salt, iterations: rounds, hash: "SHA-256" }, base, { name: "AES-GCM", length: 256 }, false, [usage]);
+  }
+  async function lockText(text, pass) {
+    var salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+    var key = await deriveKey(pass, salt, ROUNDS, "encrypt");
+    var data = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, new TextEncoder().encode(text)));
+    return JSON.stringify({ format: "aero-attendance-backup-encrypted", version: 1, kdf: "PBKDF2-SHA256", iterations: ROUNDS, salt: b64(salt), iv: b64(iv), data: b64(data) });
+  }
+  async function unlockText(text, pass) {
+    var box; try { box = JSON.parse(text); } catch (e) { throw new Error("That is not a backup file."); }
+    if (!box || box.format !== "aero-attendance-backup-encrypted") throw new Error("That file is not an encrypted backup.");
+    try {
+      var key = await deriveKey(pass, unb64(box.salt), Number(box.iterations) || ROUNDS, "decrypt");
+      return new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(box.iv) }, key, unb64(box.data)));
+    } catch (e) { throw new Error("Wrong passphrase, or the file is damaged."); }
+  }
+  function saveFile(name, text) {
+    var url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+    var a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+  }
+  function slug(text) { return String(text).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "client"; }
+
+  function openBackup(id) {
+    backupFor = id || null;
+    var c = id ? findCompany(id) : null;
+    $("backupTitle").textContent = c ? "Back up " + c.name : "Back up everything";
+    $("backupWhat").textContent = c ? "One file with everything for this client: people, worksites, shifts, corrections, pay rates, rota, availability."
+                                    : "One file with every client's data: " + COMPANIES.length + (COMPANIES.length === 1 ? " company" : " companies") + ".";
+    $("backupPass").value = ""; $("backupPass2").value = ""; show("backupErr", false);
+    $("backupGo").disabled = false;
+    $("backupDialog").showModal(); $("backupPass").focus();
+  }
+  async function makeBackup(e) {
+    e.preventDefault();
+    if (busy) return;
+    var pass = $("backupPass").value;
+    if (pass !== $("backupPass2").value) { $("backupErr").textContent = "The two passphrases do not match."; show("backupErr", true); return; }
+    if (pass && pass.length < 8) { $("backupErr").textContent = "Use at least 8 characters for the passphrase."; show("backupErr", true); return; }
+    busy = true; $("backupGo").disabled = true; $("backupGo").textContent = "Preparing..."; show("backupErr", false);
+    try {
+      var data = await call(backupFor ? { action: "backup", company_id: backupFor } : { action: "backup" });
+      var text = JSON.stringify(data, null, 1);
+      var day = new Date().toISOString().slice(0, 10);
+      var who = backupFor ? slug((findCompany(backupFor) || {}).name) : "all-clients";
+      if (pass) saveFile("aero-backup-" + who + "-" + day + ".encrypted.json", await lockText(text, pass));
+      else saveFile("aero-backup-" + who + "-" + day + ".json", text);
+      markBackup(backupFor || "all"); showBackupNote();
+      $("backupDialog").close();
+      toast(pass ? "Backup downloaded (locked)" : "Backup downloaded (NOT locked: keep it private)");
+    } catch (err) {
+      if (err.status === 401) { $("backupDialog").close(); return signedOutView("You've been signed out. Please sign in again."); }
+      $("backupErr").textContent = err.message; show("backupErr", true);
+    } finally { busy = false; $("backupGo").disabled = false; $("backupGo").textContent = "Download backup"; }
+  }
+  async function openBackupFile() {
+    show("openErr", false);
+    var file = $("openFile").files[0], pass = $("openPass").value;
+    if (!file || !pass) { $("openErr").textContent = "Choose the file and type its passphrase."; show("openErr", true); return; }
+    try {
+      var plain = await unlockText(await file.text(), pass);
+      saveFile(file.name.replace(/\.encrypted\.json$|\.json$/i, "") + ".unlocked.json", plain);
+      $("openPass").value = ""; toast("Unlocked. The plain file was downloaded: keep it private.");
+    } catch (err) { $("openErr").textContent = err.message; show("openErr", true); }
+  }
+
+  $("backupAll").addEventListener("click", function () { openBackup(null); });
+  $("backupForm").addEventListener("submit", makeBackup);
+  $("backupCancel").addEventListener("click", function () { $("backupDialog").close(); });
+  $("openGo").addEventListener("click", openBackupFile);
+  $("deleteBackup").addEventListener("click", function () { var id = target && target.id; $("deleteDialog").close(); if (id) openBackup(id); });
+  $("mgrAddForm").addEventListener("submit", addManager);
+  $("mgrResetForm").addEventListener("submit", resetOwner);
+  $("mgrGen").addEventListener("click", function () { $("mgrPw").value = generatePassword(); });
+  $("mgrResetGen").addEventListener("click", function () { $("mgrResetPw").value = generatePassword(); });
+  $("mgrClose").addEventListener("click", closeManagers);
+  $("mgrDialog").addEventListener("cancel", function () { mgrHandOver = ""; $("mgrDonePw").textContent = ""; });
+  $("mgrCopy").addEventListener("click", async function () {
+    try { await navigator.clipboard.writeText(mgrHandOver); toast("Copied"); } catch (e) { toast("Could not copy. Select the details above and copy them."); }
+  });
 
   // ── start-up ──────────────────────────────────────────────────────────
   $("signin").addEventListener("click", signIn);

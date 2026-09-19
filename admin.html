@@ -66,6 +66,7 @@
   .date-line,.today{margin-top:var(--s2);}
   .login{max-width:432px;margin:var(--s12) auto;padding:var(--s6);}
   .login p{margin:var(--s3) 0 var(--s8);color:var(--ink-2);}
+  .version{margin-top:var(--s6);color:var(--ink-2);font-size:var(--t1);}
   .login input{margin-bottom:var(--s4);}
   .login label{display:block;margin:var(--s4) 0 var(--s2);}
   .login .btn{width:100%;margin-top:var(--s4);}
@@ -257,6 +258,7 @@
   <input id="pw" type="password" placeholder="Password" autocomplete="current-password">
   <button class="b" id="signin" style="width:100%">Sign in</button>
   <div id="loginErr" class="err hidden"></div>
+  <div class="version">Aero Attendance v1.0 · by AeroOne</div>
 </div>
 
 <div id="app" class="hidden">
@@ -1737,7 +1739,14 @@
       if (isNetworkError(prof.error)) return bootProblem();
       alert("Could not load profile: " + prof.error.message); return;
     }
-    if (!prof.data) { alert("You are not attached to a company yet."); return signedOut(); }
+    if (!prof.data) {
+      // A paused company shows its people nothing at all, which looks exactly like "no company".
+      var paused = await sb.rpc("my_company_paused");
+      alert(!paused.error && paused.data === true
+        ? "Your company's account is paused. Please contact your provider."
+        : "You are not attached to a company yet.");
+      return signedOut();
+    }
     if (prof.data.role === "staff") {
       alert("This screen is for managers. Use the staff app to clock in.");
       return signedOut();

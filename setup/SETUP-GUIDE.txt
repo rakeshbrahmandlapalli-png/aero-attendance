@@ -132,6 +132,8 @@
         insert into platform_admins (user_id)
         select id from auth.users where email = 'YOUR-EMAIL-HERE'
         on conflict do nothing;
+   Also run setup/update-2026-09-pause-client.sql and setup/update-2026-09-roles.sql
+   once, and redeploy the platform function after every change to it.
    Then for every client: open  <your address>/platform, sign in, and fill in
    the one form (company, time zone, currency, first manager's name, email
    and a starting password). It makes the company, the manager's login and

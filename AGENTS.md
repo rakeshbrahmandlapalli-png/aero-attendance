@@ -37,6 +37,8 @@ supabase/functions/manage-staff/index.ts  Edge Function: add staff logins, remov
 supabase/functions/send-push/index.ts  Edge Function: phone notifications (web push)
 supabase/functions/platform/index.ts  Edge Function: the owner's "Add a client" (platform admins only)
 platform.html         the owner's own page at /platform: client list and one form to add a client
+CHANGELOG.md          what changed and when; add an entry with every release
+setup/update-2026-09-pause-client.sql  companies.suspended, current_company_id()/is_manager() honour it, my_company_paused() (already inside schema.sql)
 setup/update-2026-09-roles.sql  profiles_guard: who may change whose role (already inside schema.sql)
 setup/update-2026-09-clients-and-settings.sql  platform_admins, per-company time zone / currency / brand name, and the manager column grants (already inside schema.sql)
 setup/update-2026-09-notifications.sql  the notifications update on its own (already inside schema.sql)
@@ -237,6 +239,24 @@ Staff app structure — keep it:
   (`must_change_password`) and a profile with role `owner`, in that order, and
   undoes each step if a later one fails. Do not go back to pasting company ids
   into SQL: a wrong id puts staff in the wrong company.
+- **Pause.** `/platform` pauses a client: `companies.suspended` is set by the
+  platform function only (it is NOT in the manager grant, and the isolation test
+  checks a client cannot pause or un-pause itself). `current_company_id()` and
+  `is_manager()` return nothing for a paused company, so every policy and function
+  goes dark at once; `my_company_paused()` lets the pages say "paused" instead of
+  "not attached to a company". Nothing is deleted. Rota reminders from send-push
+  can still fire for a paused company's published shifts; that is known and minor.
+- **Backups.** `/platform` downloads one client's data, or all clients', as JSON
+  (the `backup` action pages through every table 1,000 rows at a time and adds
+  emails from the login system). It can be locked with a passphrase in the browser
+  (AES-256-GCM, PBKDF2-SHA256 600,000 rounds); the same page unlocks it. Passwords
+  and phone push keys are not in it. It is a COPY, not a restore: no restore tool
+  exists and none has been rehearsed. Say so plainly to anyone who asks. Every new
+  table with client data must be added to `TABLES` in the `backup` action.
+- **Managers on /platform.** Add another manager (role `admin`) or reset the owner's
+  password (they must choose their own at next sign-in).
+- **Version.** `Aero Attendance v1.0 · by AeroOne` on both sign-in screens and
+  under Account. Keep it in step with CHANGELOG.md.
 - **Edit and Delete on /platform.** Edit changes name, brand name, time zone and
   currency. Delete is permanent: the `platform` function requires the exact
   company name typed (checked on the server, not just in the page), refuses if

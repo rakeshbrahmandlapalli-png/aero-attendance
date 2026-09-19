@@ -417,6 +417,62 @@ gap("a manager can set another company's person's pay rate in their own company"
   }
 }
 
+// ── 12. A PAUSED CLIENT SEES AND DOES NOTHING; NOBODY ELSE IS AFFECTED ────
+// Pausing is one flag on the company row, set only by the platform function (service key).
+// With it set, current_company_id() and is_manager() stop recognising that company's people, so
+// every policy and every function goes dark for them at once. Nothing is deleted.
+{
+  const CO_D = U(1004), OD = U(41), SD = U(42), WD = U(2004);
+  await db.exec(`
+    insert into companies (id, name, show_pay, use_rota) values ('${CO_D}', 'Paused Ltd', true, true);
+    insert into auth.users (id, email) values ('${OD}','o@d.test'),('${SD}','s@d.test');
+    insert into profiles (id, company_id, full_name, role) values ('${OD}','${CO_D}','Owner D','owner'),('${SD}','${CO_D}','Staff D','staff');
+    insert into worksites (id, company_id, name, lat, lng, radius_m) values ('${WD}','${CO_D}','D Yard',51,0,100);
+    insert into shifts (company_id, user_id, worksite_id, clock_in_at, clock_out_at) values ('${CO_D}','${SD}','${WD}', now() - interval '9 hours', now() - interval '1 hour');
+    insert into pay_rates (user_id, company_id, hourly_rate) values ('${SD}','${CO_D}',10);
+  `);
+  const sees = async (who) => (await as(db, who, `select (select count(*) from shifts) + (select count(*) from profiles) + (select count(*) from worksites) + (select count(*) from pay_rates) + (select count(*) from companies) as n`)).rows[0]?.n;
+  check("PAUSE  before pausing, the company's people see their data (sanity)", Number(await sees(SD)) > 0 && Number(await sees(OD)) > 0);
+  await db.exec(`update companies set suspended = true where id = '${CO_D}'`);   // what the platform function does
+  check("PAUSE  a paused company's staff see nothing", Number(await sees(SD)) === 0, `saw ${await sees(SD)}`);
+  check("PAUSE  a paused company's owner sees nothing", Number(await sees(OD)) === 0, `saw ${await sees(OD)}`);
+  for (const [label, who, sql] of [
+    ["clock in", SD, `select clock_in('${WD}'::uuid, 51, 0, 5)`],
+    ["clock out", SD, `select clock_out(51, 0, 'x')`],
+    ["start a break", SD, `select start_break()`],
+    ["publish a rota", OD, `select publish_rota(now() - interval '1 day', now() + interval '30 days')`],
+    ["acknowledge the privacy notice", SD, `select acknowledge_privacy(1)`],
+    ["add a worksite", OD, `insert into worksites (company_id, name, lat, lng) values ('${CO_D}','X',0,0)`],
+    ["change company settings", OD, `update companies set name = 'X' where id = '${CO_D}'`],
+    ["change a role", OD, `update profiles set role = 'admin' where id = '${SD}'`],
+  ]) {
+    const r = await as(db, who, sql);
+    check(`PAUSE  a paused company cannot ${label}`, !!r.error || r.count === 0, "it worked");
+  }
+  {
+    const r = await as(db, SD, `select my_company_paused() p`);
+    check("PAUSE  the app can tell the person their company is paused", !r.error && r.rows[0].p === true, r.error || JSON.stringify(r.rows));
+    const a = await as(db, P.ownerA, `select my_company_paused() p`);
+    check("PAUSE  ...and other companies are not paused", !a.error && a.rows[0].p === false, a.error || JSON.stringify(a.rows));
+    const n = await as(db, "anon", `select my_company_paused() p`);
+    check("PAUSE  signed-out visitors cannot ask", !!n.error, "it answered");
+  }
+  {
+    const before = Number(await sees(P.staffA1));
+    check("PAUSE  another company is completely unaffected", before > 0 && (await as(db, P.ownerA, `select count(*)::int n from shifts`)).rows[0].n === 2, `A staff saw ${before}`);
+  }
+  for (const [label, who] of [["a paused company's owner", OD], ["an ordinary owner", P.ownerA]]) {
+    const r = await as(db, who, `update companies set suspended = ${who === OD ? "false" : "true"} where id = $1`, [who === OD ? CO_D : CO_A]);
+    check(`PAUSE  ${label} cannot pause or un-pause a company from the app`, blocked(r), "it changed");
+  }
+  {
+    const r = await as(db, P.ownerB, `update companies set suspended = true where id = $1`, [CO_A]);
+    check("PAUSE  another company's owner cannot pause A", blocked(r), "it changed");
+  }
+  await db.exec(`update companies set suspended = false where id = '${CO_D}'`);
+  check("PAUSE  un-pausing brings everything back, untouched", Number(await sees(SD)) > 0 && Number(await sees(OD)) > 0, `saw ${await sees(SD)}`);
+}
+
 // ── report ───────────────────────────────────────────────────────────────
 const failed = results.filter((r) => !r.ok);
 for (const r of results) if (!r.ok) console.log(`FAIL  ${r.name}${r.detail ? "  →  " + r.detail : ""}`);

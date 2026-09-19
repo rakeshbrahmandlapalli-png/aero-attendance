@@ -69,6 +69,7 @@
   .date-line,.today{margin-top:var(--s2);}
   .login{max-width:432px;margin:var(--s12) auto;padding:var(--s6);}
   .login p{margin:var(--s3) 0 var(--s8);color:var(--ink-2);}
+  .version{margin-top:var(--s6);color:var(--ink-2);font-size:var(--t1);}
   .login input{margin-bottom:var(--s4);}
   .login label{display:block;margin:var(--s4) 0 var(--s2);}
   .login .btn{width:100%;margin-top:var(--s4);}
@@ -301,6 +302,7 @@
   <input id="pw" type="password" autocomplete="current-password">
   <button class="btn" id="signin">Sign in</button>
   <div id="loginErr" class="err hidden"></div>
+  <div class="version">Aero Attendance v1.0 · by AeroOne</div>
   <!-- No self-serve reset on purpose: the manager sets a new password on the
        spot, which is faster than an email nobody reads at 5am. -->
   <p class="note">Forgotten your password? Ask your manager to set a new one for you.</p>
@@ -365,7 +367,7 @@
         <section><div id="monthList" class="list"></div></section>
       </div>
       <div id="staff-inbox" class="hidden" role="tabpanel" aria-labelledby="nav-inbox"><div class="section-head"><h2>Activity</h2><button class="link" id="refreshActivity">Refresh</button></div><div id="activity" aria-live="polite"></div></div>
-      <div id="staff-account" class="hidden" role="tabpanel" aria-labelledby="nav-account"><div class="section-head"><h2>Your account</h2></div><div class="account-row"><span>Name</span><strong id="accountName"></strong></div><div class="account-row"><span>Company</span><strong id="accountCompany"></strong></div><div id="notifyBox" class="notify hidden"><h3>Notifications</h3><p class="note" id="notifyState"></p><button type="button" class="btn" id="notifyOn">Turn on notifications</button><button type="button" class="btn g hidden" id="notifyOff">Turn off for this phone</button><div id="notifyPrefs"></div></div><label class="check"><input type="checkbox" id="shiftReminder" checked>Show long-shift reminders while the app is open</label><div class="account-row"><span>Location</span><strong>Clock-in and clock-out only</strong></div><button class="btn hidden" id="installApp">Install Aero</button><p class="note" id="installStatus"></p><button type="button" class="btn g" id="openPrivacy">Privacy notice</button><button class="btn g signout" id="signout">Sign out</button></div>
+      <div id="staff-account" class="hidden" role="tabpanel" aria-labelledby="nav-account"><div class="section-head"><h2>Your account</h2></div><div class="account-row"><span>Name</span><strong id="accountName"></strong></div><div class="account-row"><span>Company</span><strong id="accountCompany"></strong></div><div id="notifyBox" class="notify hidden"><h3>Notifications</h3><p class="note" id="notifyState"></p><button type="button" class="btn" id="notifyOn">Turn on notifications</button><button type="button" class="btn g hidden" id="notifyOff">Turn off for this phone</button><div id="notifyPrefs"></div></div><label class="check"><input type="checkbox" id="shiftReminder" checked>Show long-shift reminders while the app is open</label><div class="account-row"><span>Location</span><strong>Clock-in and clock-out only</strong></div><div class="account-row"><span>Version</span><strong>1.0 · by AeroOne</strong></div><button class="btn hidden" id="installApp">Install Aero</button><p class="note" id="installStatus"></p><button type="button" class="btn g" id="openPrivacy">Privacy notice</button><button class="btn g signout" id="signout">Sign out</button></div>
     </main>
 
     <nav class="staff-nav" aria-label="Staff views"><button id="nav-work" aria-controls="staff-work" aria-selected="true" data-view="work"><span>Home</span></button><button id="nav-rota" class="hidden" aria-controls="staff-rota" aria-selected="false" data-view="rota"><span>Rota</span></button><button id="nav-sheet" aria-controls="staff-sheet" aria-selected="false" data-view="sheet"><span>Timesheet</span></button><button id="nav-inbox" aria-controls="staff-inbox" aria-selected="false" data-view="inbox"><span>Activity <span class="num" id="inboxCount"></span></span></button><button id="nav-account" aria-controls="staff-account" aria-selected="false" data-view="account"><span>Account</span></button></nav>
@@ -1155,7 +1157,11 @@
       return;
     }
     if (!prof.data) {
-      alert("Your login works, but you have not been added to a company yet. Ask your manager.");
+      // A paused company shows its people nothing at all, which looks exactly like "no company".
+      var paused = await sb.rpc("my_company_paused");
+      alert(!paused.error && paused.data === true
+        ? "Your company's account is paused. Please contact your manager."
+        : "Your login works, but you have not been added to a company yet. Ask your manager.");
       return signedOut();
     }
 

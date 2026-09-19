@@ -13,6 +13,10 @@
 //                       manager_name, manager_email, password }
 //   { action: "update", company_id, company_name, time_zone, currency, brand_name }
 //   { action: "delete", company_id, confirm_name }   permanent: see below
+//   { action: "suspend", company_id, suspended }     pause / un-pause a client (nothing is deleted)
+//   { action: "reset_owner_password", company_id, password }
+//   { action: "add_manager", company_id, manager_name, manager_email, password }
+//   { action: "backup", company_id? }                everything for one client, or for all of them
 //
 // "create" makes the company, the manager's login (which must choose their own
 // password at the first sign-in) and their profile as OWNER of that company,
@@ -55,8 +59,12 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch { return reply(400, { error: "Bad request." }); }
 
   if (body.action === "list") {
-    const { data: companies, error } = await admin.from("companies")
+    let listed = await admin.from("companies")
+      .select("id, name, brand_name, time_zone, currency, suspended, created_at").order("created_at", { ascending: false });
+    // Before the pause SQL is run there is no `suspended` column: list without it.
+    if (listed.error) listed = await admin.from("companies")
       .select("id, name, brand_name, time_zone, currency, created_at").order("created_at", { ascending: false });
+    const { data: companies, error } = listed;
     if (error) return reply(400, { error: error.message });
     const { data: owners } = await admin.from("profiles").select("company_id, full_name").eq("role", "owner").eq("active", true);
     const counts = await Promise.all((companies ?? []).map((c) =>
@@ -162,6 +170,114 @@ Deno.serve(async (req) => {
       if (delError) left++;
     }
     return reply(200, { ok: true, people: ids.length, logins_not_removed: left });
+  }
+
+  if (body.action === "suspend") {
+    const id = String(body.company_id ?? "");
+    if (!uuid.test(id) || typeof body.suspended !== "boolean") return reply(400, { error: "Unknown company." });
+    const { data, error } = await admin.from("companies").update({ suspended: body.suspended }).eq("id", id).select("id");
+    if (error) {
+      return reply(400, { error: /suspended/.test(error.message) ? "Pausing is not set up yet. Run the pause-client SQL first." : error.message });
+    }
+    if (!data || data.length === 0) return reply(404, { error: "That company no longer exists." });
+    return reply(200, { ok: true });
+  }
+
+  if (body.action === "reset_owner_password") {
+    const id = String(body.company_id ?? "");
+    const password = String(body.password ?? "");
+    if (!uuid.test(id)) return reply(400, { error: "Unknown company." });
+    if (password.length < 8 || password.length > 72) return reply(400, { error: "The new password needs 8 to 72 characters." });
+    const { data: owner } = await admin.from("profiles").select("id, full_name")
+      .eq("company_id", id).eq("role", "owner").eq("active", true).limit(1).maybeSingle();
+    if (!owner) return reply(404, { error: "That company has no active owner." });
+    const { data: login } = await admin.auth.admin.getUserById(owner.id);
+    // Same as a manager resetting a member of staff: they must choose their own at the next sign-in.
+    const { error } = await admin.auth.admin.updateUserById(owner.id, { password, user_metadata: { must_change_password: true } });
+    if (error) return reply(400, { error: error.message });
+    return reply(200, { ok: true, full_name: owner.full_name, email: login?.user?.email ?? "" });
+  }
+
+  if (body.action === "add_manager") {
+    const id = String(body.company_id ?? "");
+    const name = String(body.manager_name ?? "").trim();
+    const email = String(body.manager_email ?? "").trim().toLowerCase();
+    const password = String(body.password ?? "");
+    if (!uuid.test(id)) return reply(400, { error: "Unknown company." });
+    if (!name || name.length > 120) return reply(400, { error: "Enter the manager's name." });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return reply(400, { error: "Enter a valid email address for the manager." });
+    if (password.length < 8 || password.length > 72) return reply(400, { error: "The starting password needs 8 to 72 characters." });
+    const { data: company } = await admin.from("companies").select("id, name").eq("id", id).maybeSingle();
+    if (!company) return reply(404, { error: "That company no longer exists." });
+
+    const { data: created, error: userError } = await admin.auth.admin.createUser({
+      email, password, email_confirm: true, user_metadata: { must_change_password: true },
+    });
+    if (userError || !created.user) {
+      return reply(400, { error: /already|registered|exists/i.test(userError?.message ?? "") ? "That email already has a login." : (userError?.message ?? "Could not create the login.") });
+    }
+    const { error: profileError } = await admin.from("profiles")
+      .insert({ id: created.user.id, company_id: id, full_name: name, role: "admin" });
+    if (profileError) {
+      await admin.auth.admin.deleteUser(created.user.id);      // never a login that belongs to nobody
+      return reply(400, { error: profileError.message });
+    }
+    return reply(200, { company_id: id, name: company.name, email });
+  }
+
+  // A full copy of one client's data (or of every client's), for the owner to keep.
+  // Not included: passwords (they cannot be read back), and phone push keys (a phone just
+  // subscribes again). Rows come 1,000 at a time, in a fixed order, so no page repeats or skips.
+  if (body.action === "backup") {
+    const only = body.company_id == null ? null : String(body.company_id);
+    if (only !== null && !uuid.test(only)) return reply(400, { error: "Unknown company." });
+    let q = admin.from("companies").select("*").order("created_at");
+    if (only) q = q.eq("id", only);
+    const { data: companies, error: companyListError } = await q;
+    if (companyListError) return reply(400, { error: companyListError.message });
+    if (only && (!companies || companies.length === 0)) return reply(404, { error: "That company no longer exists." });
+
+    const TABLES: [string, string[]][] = [
+      ["profiles", ["id"]], ["worksites", ["id"]], ["shifts", ["id"]], ["shift_corrections", ["id"]], ["pay_rates", ["user_id"]],
+      ["availability", ["user_id", "weekday"]], ["time_off", ["id"]], ["rota_shifts", ["id"]], ["privacy_ack", ["user_id"]],
+      ["notification_prefs", ["user_id"]],
+    ];
+    const fetchAll = async (table: string, order: string[], companyId: string) => {
+      const rows: Record<string, unknown>[] = [];
+      for (let from = 0; ; from += 1000) {
+        let r = admin.from(table).select("*").eq("company_id", companyId);
+        for (const col of order) r = r.order(col);
+        const { data, error } = await r.range(from, from + 999);
+        if (error) throw new Error(`${table}: ${error.message}`);
+        rows.push(...(data ?? []));
+        if (!data || data.length < 1000) return rows;
+      }
+    };
+    // Email addresses live in the login system, not in profiles.
+    const emails = new Map<string, string>();
+    for (let page = 1; ; page++) {
+      const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+      if (error) return reply(400, { error: error.message });
+      for (const u of data?.users ?? []) if (u.email) emails.set(u.id, u.email);
+      if (!data?.users || data.users.length < 1000) break;
+    }
+
+    try {
+      const out = [];
+      for (const c of companies ?? []) {
+        const tables: Record<string, Record<string, unknown>[]> = {};
+        for (const [t, order] of TABLES) tables[t] = await fetchAll(t, order, c.id);
+        tables.profiles = tables.profiles.map((p) => ({ ...p, email: emails.get(String(p.id)) ?? null }));
+        out.push({ company: c, tables });
+      }
+      return reply(200, {
+        format: "aero-attendance-backup", version: 1, exported_at: new Date().toISOString(),
+        note: "Contains personal data (names, emails, locations, pay rates). Keep it private.",
+        companies: out,
+      });
+    } catch (e) {
+      return reply(500, { error: String((e as Error).message ?? e) });
+    }
   }
 
   return reply(400, { error: "Unknown action." });
