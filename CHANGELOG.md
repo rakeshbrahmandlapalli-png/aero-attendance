@@ -31,17 +31,20 @@ or redeploy an Edge Function says so.
   history — a shift somebody else ended is pay data, so it has to be attributable.
 
 ### Added
-- **Overtime approval — database only so far, nothing on screen yet.** A company can be given a
-  weekly threshold (`companies.overtime_weekly_hours`, off by default and no behaviour change while
-  it is unset). `overtime_weeks()` lists any week somebody worked more than that, with the hours
-  worked out from the shifts each time rather than stored, so a corrected shift can never leave a
-  stale figure behind. `decide_overtime()` records an approval or rejection, recomputing the hours
-  itself rather than trusting the browser, and writes it to Audit history. Only that function can
-  write a decision: the table has no insert grant, so every decision has an author.
-  Weeks start Monday in the company's own time zone.
-  **Still to build: the threshold in Company settings, approve/reject on the Review tab, the
-  approved-overtime column in the CSV export, and the status on the staff timesheet.**
+- **Overtime approval.** Off by default: nothing changes until a manager sets a weekly threshold
+  under Company settings. Any week somebody works more than that is listed on the Review tab to
+  approve or reject with a note, and the tab's badge counts those alongside correction requests.
+  Staff see their own weeks and where they have got to at the top of their Timesheet. Every
+  decision goes into Audit history against the manager who made it.
+  The hours are worked out from the shifts each time rather than stored, so a corrected shift can
+  never leave a stale figure behind, and `decide_overtime()` recomputes them again at the moment of
+  the decision rather than trusting the browser. The decisions table has no insert grant: that
+  function is the only way in, so every decision has an author. Weeks start Monday in the company's
+  own time zone, so a Sunday night shift falls in the week the people working it would say it does.
   *Needs: `setup/update-2026-09-overtime.sql` (run the audit SQL first).*
+  - Overtime has **its own CSV export**, on the Review tab, rather than a column on the timesheet
+    export. Overtime is a figure for a whole week; repeating it on every shift row of that week is
+    how a payroll run ends up paying it several times over.
 - **Handover.** Staff have always written a note when they clock out, and until now only a manager
   ever read it. Home now shows the note the last person left on the worksite you are working, under
   "Left for you". It comes from a new `my_handover()` in the database, which takes no worksite to

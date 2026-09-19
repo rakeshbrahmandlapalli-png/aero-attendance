@@ -372,6 +372,10 @@
         <section aria-labelledby="offTitleHead"><div class="section-head"><h2 id="offTitleHead">Days off</h2><button type="button" class="link" id="addOff">Add days off</button></div><div id="offList"></div></section>
       </div>
       <div id="staff-sheet" class="hidden" role="tabpanel" aria-labelledby="nav-sheet">
+        <section id="myOvertime" class="hidden" aria-labelledby="myOvertimeTitle">
+          <div class="section-head"><h2 id="myOvertimeTitle">Overtime</h2></div>
+          <div id="myOvertimeBody"></div>
+        </section>
         <section>
           <div class="month-nav"><button type="button" class="icon-btn" id="prevMonth" aria-label="Previous month"></button><h2 id="monthLabel">This month</h2><button type="button" class="icon-btn" id="nextMonth" aria-label="Next month"></button></div>
           <div class="sheet-stats">
@@ -493,6 +497,7 @@
     open: null,
     notices: [{ id: "a1", body: "Gate code changes to 4417 from Monday. Ask Jo if it doesn't work.",
                 created_at: new Date(Date.now() - 26 * 3600000).toISOString() }],
+    overtime: [{ week_start: "2026-09-07", hours: 47.5, threshold: 40, overtime: 7.5, status: "approved", note: "Agreed with Jo." }],
     handover: { note: "Barrier 3 is sticking — lift it by hand until the engineer's been. Two vans left in bay 14 overnight.",
                 ended_at: new Date(Date.now() - 5 * 3600000).toISOString(), worksite: "Main yard" },
     history: [
@@ -1054,6 +1059,34 @@
     renderNotices();
   }
 
+  // ── MY OVERTIME ────────────────────────────
+  // Only your own weeks: row-level security on the function's tables sees to
+  // that, so there is nothing to filter here.
+  async function loadMyOvertime() {
+    if (DEMO) return renderMyOvertime(D.overtime || []);
+    if (!ME) return;
+    var to = localDay(new Date()), from = localDay(new Date(Date.now() - 56 * 864e5));
+    var r = await sb.rpc("overtime_weeks", { p_from: from, p_to: to });
+    // Overtime off, or the SQL not run yet. Either way there is nothing to say.
+    if (r.error) return renderMyOvertime([]);
+    renderMyOvertime(r.data || []);
+  }
+
+  function renderMyOvertime(rows) {
+    show("myOvertime", rows.length > 0);
+    if (!rows.length) { $("myOvertimeBody").innerHTML = ""; return; }
+    $("myOvertimeBody").innerHTML = rows.map(function (o) {
+      var state = o.status === "approved" ? "Approved"
+                : o.status === "rejected" ? "Not approved"
+                : "Waiting for your manager";
+      return '<div class="notice-card plain"><p>Week from ' +
+        esc(new Date(o.week_start + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "long" })) +
+        ": you worked " + hoursText(Number(o.hours)) + ", which is " + hoursText(Number(o.overtime)) +
+        " over the " + esc(String(o.threshold)) + "h this company counts as a normal week.</p>" +
+        '<span class="tiny">' + esc(state) + (o.note ? " &middot; " + esc(o.note) : "") + "</span></div>";
+    }).join("");
+  }
+
   // ── HANDOVER ───────────────────────────────
   // What the last person on this worksite wrote when they clocked out. The
   // database picks the worksite from your own shift and hands back the note
@@ -1210,7 +1243,7 @@
     USE_BREAKS = true;
     PRIVACY = { contact: "Jo Hargreaves, office manager", retention: "Six years after you leave, then deleted.", tracked: false, ackVersion: 0 };
     ROTA.on = true; ROTA.shifts = D.rota; ROTA.avail = D.avail; ROTA.off = D.off;
-    renderRota(); loadPrefs(); loadNotices(); loadHandover();
+    renderRota(); loadPrefs(); loadNotices(); loadHandover(); loadMyOvertime();
     OPEN = D.open;
     renderHistory((D.open ? [D.open] : []).concat(D.history));
     renderStatus();
@@ -1297,6 +1330,7 @@
     await loadRota();
     await loadNotices();
     await loadHandover();
+    await loadMyOvertime();
     loadPrefs();
     await loadPrivacy();
 

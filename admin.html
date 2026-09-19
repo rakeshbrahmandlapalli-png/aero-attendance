@@ -388,11 +388,11 @@
         <tbody id="siteBody"></tbody>
       </table></div>
     </section>
-    <section id="tab-reviews"><h2>Correction requests</h2><div class="bar"><select id="reviewFilter" aria-label="Request status"><option value="pending">Awaiting review</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="all">All requests</option></select><label class="filter-check"><input type="checkbox" id="boardAlerts" checked>In-app alerts</label><span class="notify-state" id="reviewUpdated"></span></div><div id="reviews" aria-live="polite"></div></section>
+    <section id="tab-reviews"><h2>Correction requests</h2><div class="bar"><select id="reviewFilter" aria-label="Request status"><option value="pending">Awaiting review</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="all">All requests</option></select><label class="filter-check"><input type="checkbox" id="boardAlerts" checked>In-app alerts</label><span class="notify-state" id="reviewUpdated"></span></div><div id="reviews" aria-live="polite"></div><div id="otSection" class="hidden"><h2>Overtime</h2><div class="bar"><span class="notify-state" id="otSummary"></span><button class="g" id="otCsv">Export overtime CSV</button></div><div id="overtime" aria-live="polite"></div></div></section>
     <section id="tab-audit"><h2>Audit history</h2><p class="note">A record of attendance corrections and rota changes for this company.</p><div class="bar"><label class="field">Action<select id="auditFilter"><option value="">All activity</option><option value="requested">Requests</option><option value="approved">Approvals</option><option value="rejected">Rejections</option><option value="created">Created</option><option value="updated">Updated</option><option value="removed">Removed</option></select></label><button class="g" id="refreshAudit">Refresh</button><button class="g" id="exportAudit">Export CSV</button><span class="notify-state" id="auditUpdated"></span></div><div id="auditEvents" aria-live="polite"></div></section>
   </main>
 </div>
-<dialog id="settingsDialog" aria-labelledby="settingsTitle"><form id="settingsForm"><h2 id="settingsTitle">Company settings</h2><label class="field">Company name<input id="companyName" required maxlength="120"></label><label class="field" id="brandWrap">Name shown in the app<input id="brandName" maxlength="60" autocomplete="off" placeholder="Aero Attendance"></label><p class="note" id="brandNote">Replaces &ldquo;Aero Attendance&rdquo; in the privacy notice and the heading of this board. Leave blank to keep it. The home-screen icon and its name cannot change.</p><label class="field" id="tzWrap">Time zone<select id="timeZone"></select></label><label class="field" id="curWrap">Currency<select id="currency"></select></label><p class="note" id="localeNote">Phone notifications show times in this time zone. Changing the currency does not convert any hourly rate: the numbers stay as they are.</p><label class="filter-check" id="payToggleWrap"><input type="checkbox" id="showPay">Show estimated pay</label><p class="note" id="payToggleNote">Staff see an estimate from their own hourly rate; managers see everyone's on Timesheets. Switch this on only once the data processing agreement is signed.</p><label class="filter-check" id="onSiteToggleWrap"><input type="checkbox" id="requireOnSite">Only allow clock-in on site</label><p class="note" id="onSiteToggleNote">Staff can only clock in inside a worksite zone, with location switched on. Clocking out is always allowed and flagged if they're away. Switch off for teams that work off-site.</p><label class="filter-check" id="breakToggleWrap"><input type="checkbox" id="useBreaks">Staff record breaks</label><p class="note" id="breakToggleNote">Staff tap Start break and End break themselves, and those minutes come off their paid hours. Switch off for teams that never stop.</p><label class="field" id="privacyContactWrap">Who staff ask about their data<input id="privacyContact" maxlength="200" autocomplete="off" placeholder="Name, role or email"></label><label class="field" id="retentionWrap">How long records are kept<input id="retentionText" maxlength="200" autocomplete="off" placeholder="e.g. Six years after you leave"></label><p class="note" id="privacyNote">Both appear in the privacy notice every member of staff is shown the first time they sign in.</p><label class="filter-check" id="rotaToggleWrap"><input type="checkbox" id="useRota">Use rota &amp; availability</label><p class="note" id="rotaToggleNote">Staff give their usual week and days off. You build and publish the rota on the Rota tab, and Now flags late starts and no-shows.</p><div id="settingsError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelSettings">Cancel</button><button class="b" id="saveSettings">Save changes</button></div></form></dialog>
+<dialog id="settingsDialog" aria-labelledby="settingsTitle"><form id="settingsForm"><h2 id="settingsTitle">Company settings</h2><label class="field">Company name<input id="companyName" required maxlength="120"></label><label class="field" id="brandWrap">Name shown in the app<input id="brandName" maxlength="60" autocomplete="off" placeholder="Aero Attendance"></label><p class="note" id="brandNote">Replaces &ldquo;Aero Attendance&rdquo; in the privacy notice and the heading of this board. Leave blank to keep it. The home-screen icon and its name cannot change.</p><label class="field" id="tzWrap">Time zone<select id="timeZone"></select></label><label class="field" id="curWrap">Currency<select id="currency"></select></label><p class="note" id="localeNote">Phone notifications show times in this time zone. Changing the currency does not convert any hourly rate: the numbers stay as they are.</p><label class="filter-check" id="payToggleWrap"><input type="checkbox" id="showPay">Show estimated pay</label><p class="note" id="payToggleNote">Staff see an estimate from their own hourly rate; managers see everyone's on Timesheets. Switch this on only once the data processing agreement is signed.</p><label class="filter-check" id="onSiteToggleWrap"><input type="checkbox" id="requireOnSite">Only allow clock-in on site</label><p class="note" id="onSiteToggleNote">Staff can only clock in inside a worksite zone, with location switched on. Clocking out is always allowed and flagged if they're away. Switch off for teams that work off-site.</p><label class="filter-check" id="breakToggleWrap"><input type="checkbox" id="useBreaks">Staff record breaks</label><p class="note" id="breakToggleNote">Staff tap Start break and End break themselves, and those minutes come off their paid hours. Switch off for teams that never stop.</p><label class="field" id="privacyContactWrap">Who staff ask about their data<input id="privacyContact" maxlength="200" autocomplete="off" placeholder="Name, role or email"></label><label class="field" id="retentionWrap">How long records are kept<input id="retentionText" maxlength="200" autocomplete="off" placeholder="e.g. Six years after you leave"></label><p class="note" id="privacyNote">Both appear in the privacy notice every member of staff is shown the first time they sign in.</p><label class="filter-check" id="rotaToggleWrap"><input type="checkbox" id="useRota">Use rota &amp; availability</label><p class="note" id="rotaToggleNote">Staff give their usual week and days off. You build and publish the rota on the Rota tab, and Now flags late starts and no-shows.</p><label class="field" id="otWrap">Overtime after (hours a week)<input id="overtimeHours" type="number" inputmode="decimal" min="0.5" max="168" step="0.5" autocomplete="off" placeholder="Leave blank for none"></label><p class="note" id="otNote">Any week somebody works more than this is listed on the Review tab to approve or reject, and can be exported on its own for payroll. Weeks start on Monday in this company's time zone. Leave blank to switch it off.</p><div id="settingsError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelSettings">Cancel</button><button class="b" id="saveSettings">Save changes</button></div></form></dialog>
 <dialog id="rateDialog" aria-labelledby="rateTitle"><form id="rateForm"><h2 id="rateTitle">Hourly rate</h2><p class="note" id="rateWho"></p><label class="field">Pounds per hour<input id="rateValue" type="number" inputmode="decimal" min="0" max="1000" step="0.01"></label><p class="note">Used only to estimate pay from completed hours. Clear it and save to remove the rate.</p><div id="rateError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelRate">Cancel</button><button class="b" id="saveRate">Save rate</button></div></form></dialog>
 
 <dialog id="rotaDialog" aria-labelledby="rotaTitle"><form id="rotaForm"><h2 id="rotaTitle">Add shift</h2><label class="field">Staff member<select id="rotaWho" required></select></label><label class="field">Date<input id="rotaDate" type="date" required></label><div class="time-pair"><label class="field">Start<input id="rotaStart" type="time" required></label><label class="field">Finish<input id="rotaEnd" type="time" required></label></div><p class="note" id="rotaHint"></p><label class="field">Worksite<select id="rotaSite"></select></label><label class="field">Note for staff (optional)<input id="rotaNote" maxlength="300"></label><div id="rotaWarn" class="warn-line hidden" role="status"></div><div id="rotaError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g hidden" id="deleteRota">Remove shift</button><button type="button" class="g" id="cancelRota">Cancel</button><button class="b" id="saveRota">Save shift</button></div></form></dialog>
@@ -474,6 +474,11 @@
     notices: [{ id: "a1", body: "Gate code changes to 4417 from Monday. Ask Jo if it doesn't work.",
                 active: true, expires_at: null, created_at: agoISO(26) }],
     noticeReads: { a1: ["p1", "p2"] },
+    overtimeHours: 40,
+    overtime: [
+      { user_id: "p1", full_name: "Sam Whitfield", week_start: "2026-09-07", hours: 47.5, threshold: 40, overtime: 7.5, status: null, note: "" },
+      { user_id: "p3", full_name: "Danny Obi", week_start: "2026-09-07", hours: 43.25, threshold: 40, overtime: 3.25, status: "approved", note: "Covered two nights for Marek." }
+    ],
     privacyContact: "Jo Hargreaves, office manager", retentionText: "Six years after you leave, then deleted.",
     rates: { p1: 12.5, p2: 12.5, p3: 12.21, p4: 15 },
     now: [
@@ -1270,7 +1275,8 @@
   }
   function renderReviews() {
     var drafts={};document.querySelectorAll('#reviews textarea').forEach(function(el){drafts[el.id]=el.value;});
-    var pending=REQUESTS.filter(function(r){return r.status==='pending';}).length;
+    // The badge counts everything waiting on this tab, corrections and overtime.
+    var pending=REQUESTS.filter(function(r){return r.status==='pending';}).length+otPending();
     $('reviewCount').textContent=pending?'('+pending+')':'';
     var filter=$('reviewFilter').value,rows=REQUESTS.filter(function(r){return filter==='all'||r.status===filter;});
     $('reviews').innerHTML=rows.length?rows.map(function(r){
@@ -1333,13 +1339,13 @@
     });
   }
   $('reviewFilter').addEventListener('change',renderReviews);
-  $('settings').addEventListener('click',function(){$('companyName').value=$('company').textContent;$('brandName').value=BRAND;fillLocale(TZ,CUR);['brandWrap','brandNote','tzWrap','curWrap','localeNote'].forEach(function(id){show(id,LOCALE_READY);});$('showPay').checked=PAY_ON;show('payToggleWrap',PAY_READY);show('payToggleNote',PAY_READY);$('useRota').checked=USE_ROTA;$('requireOnSite').checked=ON_SITE;$('useBreaks').checked=USE_BREAKS;show('breakToggleWrap',BREAKS_READY);show('breakToggleNote',BREAKS_READY);$('privacyContact').value=PRIVACY_CONTACT;$('retentionText').value=RETENTION_TEXT;show('privacyContactWrap',PRIVACY_READY);show('retentionWrap',PRIVACY_READY);show('privacyNote',PRIVACY_READY);show('onSiteToggleWrap',ON_SITE_READY);show('onSiteToggleNote',ON_SITE_READY);show('rotaToggleWrap',ROTA_READY);show('rotaToggleNote',ROTA_READY);show('settingsError',false);$('settingsDialog').showModal();});
+  $('settings').addEventListener('click',function(){$('companyName').value=$('company').textContent;$('brandName').value=BRAND;fillLocale(TZ,CUR);['brandWrap','brandNote','tzWrap','curWrap','localeNote'].forEach(function(id){show(id,LOCALE_READY);});$('showPay').checked=PAY_ON;show('payToggleWrap',PAY_READY);show('payToggleNote',PAY_READY);$('useRota').checked=USE_ROTA;$('requireOnSite').checked=ON_SITE;$('useBreaks').checked=USE_BREAKS;show('breakToggleWrap',BREAKS_READY);show('breakToggleNote',BREAKS_READY);$('privacyContact').value=PRIVACY_CONTACT;$('retentionText').value=RETENTION_TEXT;show('privacyContactWrap',PRIVACY_READY);show('retentionWrap',PRIVACY_READY);show('privacyNote',PRIVACY_READY);show('onSiteToggleWrap',ON_SITE_READY);show('onSiteToggleNote',ON_SITE_READY);show('rotaToggleWrap',ROTA_READY);show('rotaToggleNote',ROTA_READY);$('overtimeHours').value=OT_HOURS==null?'':OT_HOURS;show('otWrap',OT_READY);show('otNote',OT_READY);show('settingsError',false);$('settingsDialog').showModal();});
   $('cancelSettings').addEventListener('click',function(){$('settingsDialog').close();});
   $('settingsForm').addEventListener('submit',async function(e){
     e.preventDefault();var name=$('companyName').value.trim();if(!name)return;$('saveSettings').disabled=true;show('settingsError',false);
     try{
-      if(DEMO){D.company=name;if(LOCALE_READY){D.timeZone=$('timeZone').value;D.currency=$('currency').value;D.brandName=$('brandName').value.trim();}D.showPay=$('showPay').checked;D.useRota=$('useRota').checked;D.requireOnSite=$('requireOnSite').checked;D.useBreaks=$('useBreaks').checked;D.privacyContact=$('privacyContact').value.trim();D.retentionText=$('retentionText').value.trim();}
-      else{var values={name:name};if(LOCALE_READY){values.time_zone=$('timeZone').value;values.currency=$('currency').value;values.brand_name=$('brandName').value.trim();}if(PAY_READY)values.show_pay=$('showPay').checked;if(ROTA_READY)values.use_rota=$('useRota').checked;if(ON_SITE_READY)values.require_on_site=$('requireOnSite').checked;if(BREAKS_READY)values.use_breaks=$('useBreaks').checked;if(PRIVACY_READY){values.privacy_contact=$('privacyContact').value.trim();values.retention_text=$('retentionText').value.trim();}var r=await sb.from('companies').update(values).eq('id',ME.company_id);if(r.error)throw r.error;}
+      if(DEMO){D.company=name;if(LOCALE_READY){D.timeZone=$('timeZone').value;D.currency=$('currency').value;D.brandName=$('brandName').value.trim();}D.showPay=$('showPay').checked;D.useRota=$('useRota').checked;D.requireOnSite=$('requireOnSite').checked;D.useBreaks=$('useBreaks').checked;D.privacyContact=$('privacyContact').value.trim();D.retentionText=$('retentionText').value.trim();if(OT_READY){var dv=$('overtimeHours').value.trim();D.overtimeHours=dv===''?null:Number(dv);OT_HOURS=D.overtimeHours;}}
+      else{var values={name:name};if(LOCALE_READY){values.time_zone=$('timeZone').value;values.currency=$('currency').value;values.brand_name=$('brandName').value.trim();}if(PAY_READY)values.show_pay=$('showPay').checked;if(ROTA_READY)values.use_rota=$('useRota').checked;if(ON_SITE_READY)values.require_on_site=$('requireOnSite').checked;if(BREAKS_READY)values.use_breaks=$('useBreaks').checked;if(PRIVACY_READY){values.privacy_contact=$('privacyContact').value.trim();values.retention_text=$('retentionText').value.trim();}if(OT_READY){var ov=$('overtimeHours').value.trim();if(ov!==''&&!(Number(ov)>0&&Number(ov)<=168))throw new Error('Overtime hours must be between 0.5 and 168, or blank.');values.overtime_weekly_hours=ov===''?null:Number(ov);}var r=await sb.from('companies').update(values).eq('id',ME.company_id);if(r.error)throw r.error;OT_HOURS=values.overtime_weekly_hours===undefined?OT_HOURS:values.overtime_weekly_hours;await loadOvertime();}
       if(LOCALE_READY){TZ=$('timeZone').value;CUR=$('currency').value;BRAND=$('brandName').value.trim();applyBrand();}PAY_ON=PAY_READY&&$('showPay').checked;ON_SITE=ON_SITE_READY?$('requireOnSite').checked:ON_SITE;USE_BREAKS=BREAKS_READY?$('useBreaks').checked:USE_BREAKS;if(PRIVACY_READY){PRIVACY_CONTACT=$('privacyContact').value.trim();RETENTION_TEXT=$('retentionText').value.trim();}
       var rotaWas=USE_ROTA;USE_ROTA=ROTA_READY&&$('useRota').checked;applyRota();if(USE_ROTA!==rotaWas){loadNow();if(USE_ROTA)loadRotaWeek();}
       $('company').textContent=name;$('settingsDialog').close();toast('Settings saved');renderSheet();renderStaff();
@@ -1814,6 +1820,117 @@
   if('serviceWorker' in navigator && location.protocol==='https:' && !DEMO)navigator.serviceWorker.register('/sw.js').catch(function(error){fail(error);});
 
   // ── boot ─────────────────────────────────
+  // ── OVERTIME ───────────────────────────────
+  // Off until a company sets a weekly threshold. The database works the hours
+  // out from the shifts each time and decide_overtime() recomputes them again
+  // when the decision is made, so nothing here is trusted for pay.
+  var OT_READY = false, OT_HOURS = null, OVERTIME = [];
+
+  function weekLabel(d) {
+    return new Date(d + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  }
+
+  async function loadOvertimeSetting() {
+    if (DEMO) { OT_READY = true; OT_HOURS = D.overtimeHours == null ? null : D.overtimeHours; return; }
+    var co = await sb.from("companies").select("overtime_weekly_hours").eq("id", ME.company_id).maybeSingle();
+    // The overtime SQL may not have been run yet: treat that as "overtime off",
+    // the way a failed pay query is treated as "pay off".
+    if (co.error) { OT_READY = false; OT_HOURS = null; return; }
+    OT_READY = true;
+    OT_HOURS = co.data ? co.data.overtime_weekly_hours : null;
+  }
+
+  async function loadOvertime() {
+    if (!OT_READY || OT_HOURS == null) { OVERTIME = []; return renderOvertime(); }
+    if (DEMO) { OVERTIME = (D.overtime || []).slice(); return renderOvertime(); }
+    var to = localDay(new Date()), from = localDay(new Date(Date.now() - 56 * 864e5));
+    var r = await sb.rpc("overtime_weeks", { p_from: from, p_to: to });
+    OVERTIME = r.error ? [] : (r.data || []);
+    renderOvertime();
+  }
+
+  function otPending() { return OVERTIME.filter(function (o) { return !o.status; }).length; }
+
+  function renderOvertime() {
+    show("otSection", OVERTIME.length > 0);
+    if (!OVERTIME.length) { $("overtime").innerHTML = ""; $("otSummary").textContent = ""; return; }
+    var pending = otPending();
+    $("otSummary").textContent = OVERTIME.length + " week" + (OVERTIME.length === 1 ? "" : "s") +
+      " over " + OT_HOURS + "h" + (pending ? ", " + pending + " awaiting review" : "");
+    $("overtime").innerHTML = OVERTIME.map(function (o) {
+      var key = esc(o.user_id + "-" + o.week_start), done = !!o.status;
+      return '<article class="review-item"><h3>' + esc(o.full_name) + "</h3>" +
+        '<span class="st ' + (done ? "ok" : "away") + '"><i></i>' +
+        esc(done ? (o.status === "approved" ? "Approved" : "Rejected") : "Awaiting review") + "</span>" +
+        '<div class="review-times"><div><span>Week from</span><strong class="num">' + esc(weekLabel(o.week_start)) + "</strong></div>" +
+        '<div><span>Worked</span><strong class="num">' + hrs(Number(o.hours)) + " against " + esc(String(o.threshold)) + "h</strong></div></div>" +
+        "<p>" + hrs(Number(o.overtime)) + " over the threshold.</p>" +
+        (done
+          ? "<p>" + esc(o.note || "No note") + "</p>"
+          : '<label class="field" for="otn-' + key + '">Note (optional)</label>' +
+            '<textarea id="otn-' + key + '" maxlength="300"></textarea>' +
+            '<div class="bar"><button class="b" data-ot="' + key + '" data-ok="true">Approve overtime</button>' +
+            '<button class="g" data-ot="' + key + '" data-ok="false">Reject</button></div>') +
+        "</article>";
+    }).join("");
+    Array.prototype.forEach.call($("overtime").querySelectorAll("[data-ot]"), function (b) {
+      b.addEventListener("click", function () { decideOvertime(b.getAttribute("data-ot"), b.getAttribute("data-ok") === "true"); });
+    });
+  }
+
+  async function decideOvertime(key, approve) {
+    var row = OVERTIME.find(function (o) { return o.user_id + "-" + o.week_start === key; });
+    if (!row) return;
+    var note = ($("otn-" + key) || {}).value || "";
+    return withLock(async function () {
+      if (DEMO) {
+        row.status = approve ? "approved" : "rejected";
+        row.note = note.trim();
+        D.audit = D.audit || [];
+        D.audit.unshift({ id: "ot" + Date.now(), action: row.status, entity: "overtime",
+                          summary: "Manager " + row.status + " overtime for " + row.full_name + ".",
+                          created_at: new Date().toISOString() });
+      } else {
+        var r = await sb.rpc("decide_overtime", {
+          p_user_id: row.user_id, p_week_start: row.week_start,
+          p_status: approve ? "approved" : "rejected", p_note: note.trim()
+        });
+        if (r.error) { fail(r.error); return; }
+        await loadOvertime();
+        if (auditLoaded) await loadAudit();
+      }
+      renderOvertime();
+      renderReviews();
+      toast(approve ? "Overtime approved" : "Overtime rejected");
+    });
+  }
+
+  // Its own export, not a column on the timesheet CSV: overtime is a figure for
+  // a whole week, and repeating it on every shift row of that week is how a
+  // payroll run ends up paying it several times over.
+  function exportOvertimeCsv() {
+    if (!OVERTIME.length) { toast("Nothing to export"); return; }
+    var cell = function (v) {
+      var s = String(v == null ? "" : v);
+      if (/^\s*[=+\-@]/.test(s) || /^[\t\r\n]/.test(s)) s = "'" + s;
+      return '"' + s.replace(/"/g, '""') + '"';
+    };
+    var lines = [["Name", "Week from (Monday)", "Hours worked", "Threshold", "Overtime hours", "Status", "Note"].join(",")];
+    OVERTIME.forEach(function (o) {
+      lines.push([cell(o.full_name), cell(o.week_start), cell(Number(o.hours).toFixed(2)),
+                  cell(o.threshold), cell(Number(o.overtime).toFixed(2)),
+                  cell(o.status || "awaiting review"), cell(o.note)].join(","));
+    });
+    var blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "overtime-to-" + localDay(new Date()) + ".csv";
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  }
+
+  $("otCsv").addEventListener("click", exportOvertimeCsv);
+
   // ── NOTICES ────────────────────────────────
   // A manager posts a short message; everyone in the company sees it on Home
   // until they dismiss it. Dismissing records the read, so the manager can see
@@ -1918,6 +2035,7 @@
       $("to").value   = localDay(new Date());
       show("login", false); show("app", true); show("demoBar", true);
       loadRotaFlag(); loadPrefs(); loadPay(); loadNow(); loadStaff(); loadSites(); runSheet(); loadReviews(); loadNotices();
+      loadOvertimeSetting().then(loadOvertime).then(renderReviews);
       clearInterval(poll);
       poll = setInterval(function(){if(!navigator.onLine)return;loadNow();loadReviews();}, 30000);
       return;
@@ -1961,7 +2079,8 @@
     if (user.user_metadata && user.user_metadata.must_change_password) askNewPassword();
     await loadRotaFlag();
     loadPrefs();
-    await Promise.all([loadPay(), loadNow(), loadStaff(), loadSites(), loadReviews(), loadNotices()]);
+    await Promise.all([loadPay(), loadNow(), loadStaff(), loadSites(), loadReviews(), loadNotices(), loadOvertimeSetting()]);
+    await loadOvertime();
     await runSheet();
     renderStaff();
 
