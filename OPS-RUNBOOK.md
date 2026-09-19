@@ -46,6 +46,8 @@ Same path and the same first check as the rota below: Verify JWT must be off for
 
 ### Published a rota and nobody was told
 
+**Start with the button.** On the manager board, Notifications, **Send me a test**. It sends a real test down the same route a publish uses and tells you in a sentence what is wrong. Everything below is what it is checking.
+
 Check in this order. The first two cause almost every case.
 
 1. **Verify JWT must be OFF for send-push.** The database calls it with no login, so with Verify JWT on, Supabase answers 401 and the notification is dropped without a word. Redeploying from the dashboard can switch it back on: after every redeploy of send-push, open the function, Settings, and check. To see what the database got back, run this in the SQL editor straight after publishing:
