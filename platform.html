@@ -306,7 +306,7 @@
   var FORCED_DEMO = location.protocol === "file:" || /^\/demo(\/|$)/.test(location.pathname) || /[?&]demo\b/.test(location.search);
   var DEMO = FORCED_DEMO || !CFG.url || !CFG.key;
   var PLATFORM_FUNCTION = "platform";     // the slug the Edge Function is deployed under in Supabase
-  var sb = null, busy = false;
+  var sb = null, busy = false, ADMIN_ID = null;
 
   var $ = function (id) { return document.getElementById(id); };
   var show = function (id, on) { $(id).classList.toggle("hidden", !on); };
@@ -439,14 +439,18 @@
     if (DEMO) { show("login", false); show("app", true); show("demoBar", true); fillLocale(); await loadList(); return; }
     var got = await sb.auth.getUser();
     if (got.error || !got.data.user) return signedOutView("");
+    ADMIN_ID = got.data.user.id;
     try {
       await loadList();
     } catch (e) {
       if (e.status === 401) return signedOutView("You've been signed out. Please sign in again.");
       if (e.status === 403) {
-        // Signed in as a real user who is not a platform admin (for example a client's manager).
-        // Nothing is shown; the server refused, and so does this page. Their session is left
-        // alone: it is shared with the manager app on this address.
+        // A real login, but not a platform admin -- a client's manager, say. The server
+        // refused and so does this page. Clear it out of THIS page's session rather than
+        // leaving them half signed in: since this page has its own storage slot, that
+        // does not touch whatever they are signed into on the staff or manager app.
+        ADMIN_ID = null;
+        await sb.auth.signOut();
         return signedOutView("This login is not a platform admin. Sign in with your platform login.");
       }
       return signedOutView(e.message);
@@ -821,7 +825,24 @@
   $("copyDone").addEventListener("click", copyDone);
   $("dismissDone").addEventListener("click", dismissDone);
 
-  if (!DEMO) sb = window.supabase.createClient(CFG.url, CFG.key);
+  // Its OWN storage slot, not the one the staff and manager apps use.
+  // All three pages sit on one address, and Supabase keeps the session in local
+  // storage per project, so by default signing in on /admin.html replaced the
+  // session here and the other way round -- the owner's own tool and a client's
+  // manager fighting over a single login. They are separate now: signing in or
+  // out here does nothing to the apps, and nothing they do reaches this page.
+  if (!DEMO) {
+    sb = window.supabase.createClient(CFG.url, CFG.key, { auth: { storageKey: "aero-platform-auth" } });
+    // And react when THIS page's session ends or becomes somebody else, instead of
+    // leaving a client list on screen that the next click is going to fail on.
+    sb.auth.onAuthStateChange(function (event, session) {
+      if (event === "SIGNED_OUT") {
+        if (ADMIN_ID) { ADMIN_ID = null; signedOutView("You've been signed out. Please sign in again."); }
+        return;
+      }
+      if (session && session.user && ADMIN_ID && session.user.id !== ADMIN_ID) location.reload();
+    });
+  }
   load().catch(function (e) { signedOutView(e && e.message || "Something went wrong."); });
 })();
 </script>

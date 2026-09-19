@@ -2183,7 +2183,15 @@
   connection();
   if (!DEMO) {
     sb = window.supabase.createClient(CFG.url, CFG.key, { global: { fetch: timedFetch } });
-    sb.auth.onAuthStateChange(function (event) { if (event === "SIGNED_OUT" && ME) sessionEnded(); });
+    sb.auth.onAuthStateChange(function (event, session) {
+      if (event === "SIGNED_OUT" && ME) return sessionEnded();
+      // Somebody signed in as a DIFFERENT person in another tab on this address.
+      // The staff and manager apps share one session on purpose, so this board
+      // would otherwise keep showing one company's data backed by somebody
+      // else's login. That is worse than an error: start again as whoever is
+      // actually signed in now.
+      if (session && session.user && ME && session.user.id !== ME.id) location.reload();
+    });
   }
 
   document.querySelectorAll("nav button").forEach(function (b) {
