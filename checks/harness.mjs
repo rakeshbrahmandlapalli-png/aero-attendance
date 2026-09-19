@@ -53,9 +53,18 @@ const STUBS = `
   -- Nothing is sent, but what WOULD have been is kept, so a test can read the
   -- message a publish or a clock-in queued for the send-push function.
   create table net._calls (id bigint generated always as identity primary key, url text, body jsonb);
+  -- What pg_net keeps once the function has answered. The stub always says 200.
+  create table net._http_response (id bigint primary key, status_code integer, content text, timed_out boolean, error_msg text,
+                                   created timestamptz not null default now());
   create function net.http_post(url text, body jsonb default '{}', params jsonb default '{}',
     headers jsonb default '{}', timeout_milliseconds integer default 5000) returns bigint
-    language plpgsql as $$ begin insert into net._calls (url, body) values (url, body); return 1; end $$;
+    language plpgsql as $$
+    declare v_id bigint;
+    begin
+      insert into net._calls (url, body) values (url, body) returning id into v_id;
+      insert into net._http_response (id, status_code, content, timed_out, error_msg) values (v_id, 200, '{"ok":true,"sent":1}', false, null);
+      return v_id;
+    end $$;
 
   -- What a fresh Supabase project grants by default. The schema's own REVOKEs
   -- are the security; if these defaults were missing, the test would be too kind.

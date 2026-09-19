@@ -51,6 +51,7 @@ setup/update-2026-09-overtime.sql  overtime threshold, overtime_weeks(), decide_
 setup/update-2026-09-add-ons.sql  company_features + has_feature(): which add-ons a client has been given (already inside schema.sql)
 setup/update-2026-09-rota-notify.sql  publish_rota() records who a publish affected (removals too); rota_reach() (already inside schema.sql)
 setup/update-2026-09-profiles-alerts-notices.sql  job_roles, staff_details (private), dismiss_alert(), notice push (already inside schema.sql)
+setup/update-2026-09-push-check.sql  push_check() / push_check_result(): a real test down the database-to-send-push route (already inside schema.sql)
 setup/update-2026-09-clients-and-settings.sql  platform_admins, per-company time zone / currency / brand name, and the manager column grants (already inside schema.sql)
 setup/update-2026-09-notifications.sql  the notifications update on its own (already inside schema.sql)
 sw.js                 service worker: offline page, and showing push notifications

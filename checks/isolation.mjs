@@ -985,6 +985,36 @@ gap("a manager can set another company's person's pay rate in their own company"
   check("NOTE  people can switch notice alerts off (and they start on)", pref && pref.notices === true, JSON.stringify(pref));
 }
 
+// ── 20. "DO NOTIFICATIONS WORK?" ─────────────────────────────────────────
+// The check has to travel the SAME route as a real notification: the database calling
+// send-push, not the page. A test fired from the page would pass with the manager's
+// login even when the real route is broken.
+{
+  const asMgr = async (who, fn) => {
+    await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [who]);
+    await db.exec(`set role authenticated`);
+    try { return await fn(); } finally { await db.exec(`reset role`); await db.query(`select set_config('request.jwt.claim.sub', '', false)`); }
+  };
+  let r = await as(db, P.staffA1, `select push_check()`);
+  check("PING  staff cannot run the notification check", !!r.error, "it ran");
+  r = await as(db, "anon", `select push_check()`);
+  check("PING  signed-out visitors cannot run it", !!r.error, "it ran");
+
+  const id = await asMgr(P.mgrA, async () => (await db.query(`select push_check() id`)).rows[0].id);
+  const sent = (await asOwner(db, `select body from net._calls where id = $1`, [id])).rows[0]?.body;
+  check("PING  a manager's check goes through the database, as a test for themselves",
+        sent?.type === "test" && sent?.user_id === P.mgrA, JSON.stringify(sent));
+  r = await as(db, P.mgrA, `select status_code, timed_out, sent from push_check_result($1)`, [id]);
+  check("PING  ...and reads back what the function answered", !r.error && r.rows[0]?.status_code === 200 && r.rows[0]?.sent === 1, r.error || JSON.stringify(r.rows));
+  r = await as(db, P.staffA1, `select status_code from push_check_result($1)`, [id]);
+  check("PING  staff cannot read a check's answer", !r.error && r.rows.length === 0, r.error || JSON.stringify(r.rows));
+
+  await db.exec(`delete from push_config`);
+  r = await as(db, P.mgrA, `select push_check()`);
+  check("PING  with nowhere to send, it says so instead of pretending", !!r.error && /no function address/.test(r.error), r.error || "it ran");
+  await db.exec(`insert into push_config (function_url) values ('https://ljrzcrphuepqtfrayeid.supabase.co/functions/v1/send-push')`);
+}
+
 // ── report ───────────────────────────────────────────────────────────────
 const failed = results.filter((r) => !r.ok);
 for (const r of results) if (!r.ok) console.log(`FAIL  ${r.name}${r.detail ? "  →  " + r.detail : ""}`);

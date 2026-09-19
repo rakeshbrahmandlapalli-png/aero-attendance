@@ -113,21 +113,32 @@
   .flag-count{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);font-weight:600;}
   .flag .act{display:flex;gap:var(--s2);flex-wrap:wrap;}
   #pfJobWrap,#pfDetailsWrap{margin-top:var(--s2);}
-  #weekDialog{width:min(820px,calc(100% - 32px));}
-  .wk-type{display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap;margin-bottom:var(--s2);}
-  .wk-type label{display:flex;align-items:center;gap:var(--s2);min-width:96px;min-height:48px;margin:0;color:var(--ink);}
+  #weekDialog{width:min(940px,calc(100% - 32px));}
+  .wk-type{display:flex;align-items:center;gap:var(--s2);margin-bottom:var(--s1);}
+  .wk-type label{display:flex;align-items:center;gap:var(--s2);flex:0 0 96px;min-height:44px;margin:0;color:var(--ink);}
+  .wk-type span{flex:none;}
   .wk-type input[type=radio]{width:24px;height:24px;min-height:24px;flex:none;margin:0;accent-color:var(--accent);}
-  .wk-type input[type=time]{width:auto;flex:1 1 112px;}
+  .wk-type input[type=time]{width:auto;flex:1 1 0;min-width:0;min-height:44px;padding:var(--s2);}
   .wk-scroll{overflow-x:auto;margin-top:var(--s3);border:1px solid var(--line);border-radius:var(--r);}
-  .wk{min-width:520px;}
-  .wk-row{display:grid;grid-template-columns:minmax(120px,1.4fr) repeat(7,minmax(52px,1fr));border-bottom:1px solid var(--line-soft);}
+  .wk{min-width:500px;user-select:none;-webkit-user-select:none;}
+  .wk-row{display:grid;grid-template-columns:minmax(108px,1.2fr) repeat(7,minmax(56px,1fr));border-bottom:1px solid var(--line-soft);}
   .wk-row:last-child{border-bottom:0;}
-  .wk-head>div{padding:var(--s2) var(--s1);text-align:center;color:var(--ink-2);font-size:var(--t1);line-height:1.3;}
-  .wk-name{position:sticky;left:0;z-index:1;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:var(--s1);padding:var(--s2) var(--s3);background:var(--card);font-weight:600;overflow-wrap:anywhere;}
+  .wk-day{min-height:48px;padding:var(--s2) var(--s1);border:0;border-radius:0;background:transparent;color:var(--ink-2);font-size:var(--t1);font-weight:500;line-height:1.3;}
+  .wk-day:hover{background:var(--surface);color:var(--ink);}
+  .wk-name{position:sticky;left:0;z-index:1;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:0;min-height:56px;padding:var(--s2) var(--s3);border:0;border-radius:0;background:var(--card);font-weight:600;text-align:left;overflow-wrap:anywhere;}
+  button.wk-name{cursor:pointer;}
+  button.wk-name:hover{background:var(--surface);}
   .wk-cell{display:flex;align-items:center;justify-content:center;min-height:56px;padding:var(--s1);border:0;border-left:1px solid var(--line-soft);border-radius:0;background:var(--card);color:var(--ink);font-size:var(--t1);text-align:center;}
   button.wk-cell{cursor:pointer;}
-  .wk-cell.on{background:var(--accent-soft);color:var(--accent);font-weight:600;}
+  button.wk-cell:hover{background:var(--surface);}
   .wk-cell.have{background:var(--surface);color:var(--ink-2);}
+  .wk-cell.on{background:var(--accent-soft);color:var(--accent);font-weight:600;}
+  .wk-cell.chg{outline:2px solid var(--brand);outline-offset:-2px;}
+  .wk-cell.gone{background:var(--warn-soft);color:var(--warn);text-decoration:line-through;}
+  .wk-cell.warn{color:var(--warn);}
+  .wk-foot{background:var(--surface);}
+  .wk-count{color:var(--ink-2);font-weight:600;background:transparent;}
+  .wk-count.gap{color:var(--warn);background:var(--warn-soft);}
   .coverage{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s6);padding-bottom:var(--s6);border-bottom:1px solid var(--line);}
   .coverage strong{display:block;font-size:var(--t4);font-weight:600;}
   .coverage span{font-size:var(--t1);color:var(--ink-2);}
@@ -417,9 +428,9 @@
 <dialog id="pwDialog" aria-labelledby="pwTitle"><form id="pwForm" novalidate><h2 id="pwTitle">Choose your password</h2><p class="note">You signed in with a starting password. Choose your own to keep your account private.</p><label class="field">New password<input id="newPw" type="password" autocomplete="new-password"></label><label class="field">Type it again<input id="newPw2" type="password" autocomplete="new-password"></label><div class="err hidden" id="pwError" role="alert"></div><div class="bar"><button class="b" id="savePw">Save password</button></div></form></dialog>
 <dialog id="closeDialog" aria-labelledby="closeTitle"><h2 id="closeTitle">Clock someone out</h2><p class="note" id="closeWho"></p><label class="field">Why (optional)<input id="closeReason" maxlength="200" autocomplete="off"></label><p class="note">Recorded against your name in Audit history. If a break is still running it is closed, and those minutes come off the paid hours.</p><div id="closeError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelClose">Cancel</button><button type="button" class="b" id="confirmClose">Clock out</button></div></dialog>
 <dialog id="profileDialog" aria-labelledby="profileTitle"><form id="profileForm" novalidate><h2 id="profileTitle">Edit profile</h2><label class="field">Name<input id="pfName" maxlength="120" autocomplete="off"></label><label class="field">Access<select id="pfAccess"></select></label><div id="pfJobWrap"><label class="field">Job role<select id="pfJob"></select></label><label class="field">Add a new job role<input id="pfNewRole" maxlength="40" autocomplete="off"></label><div class="bar"><button type="button" class="g" id="pfAddRole">Add to list</button><button type="button" class="g" id="pfRemoveRole">Remove selected role</button></div></div><div id="pfDetailsWrap"><h3 class="notify-sub">Optional details</h3><label class="field">Date of birth<input id="pfDob" type="date"></label><label class="field">Mobile number<input id="pfPhone" type="tel" inputmode="tel" maxlength="30" autocomplete="off"></label><label class="field">Emergency contact name<input id="pfEmName" maxlength="100" autocomplete="off"></label><label class="field">Emergency contact number<input id="pfEmPhone" type="tel" inputmode="tel" maxlength="30" autocomplete="off"></label><label class="field">Start date<input id="pfStart" type="date"></label></div><div id="pfError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="pfCancel">Cancel</button><button class="b" id="pfSave">Save profile</button></div></form></dialog>
-<dialog id="weekDialog" aria-labelledby="weekTitle"><form id="weekForm" novalidate><h2 id="weekTitle">Build the week</h2><div id="wkTypes"></div><label class="field">Worksite<select id="wkSite"></select></label><div class="wk-scroll"><div id="wkGrid" class="wk"></div></div><div id="wkSummary" class="warn-line" role="status"></div><div id="wkError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="wkCancel">Cancel</button><button class="b" id="wkSave">Add shifts</button></div></form></dialog>
+<dialog id="weekDialog" aria-labelledby="weekTitle"><form id="weekForm" novalidate><h2 id="weekTitle">Build the week</h2><div id="wkTypes"></div><label class="field">Worksite for new shifts<select id="wkSite"></select></label><div class="wk-scroll"><div id="wkGrid" class="wk"></div></div><div id="wkSummary" class="warn-line" role="status"></div><div id="wkError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="wkUndo">Undo</button><button type="button" class="g" id="wkReset">Reset</button><button type="button" class="g" id="wkCancel">Close</button><button type="button" class="g" id="wkSave">Save as draft</button><button type="button" class="b" id="wkSavePub">Save and publish</button></div></form></dialog>
 <dialog id="noticeDialog" aria-labelledby="noticeTitle"><h2 id="noticeTitle">Notices</h2><p class="note">Everyone in the company sees this on their home screen until they dismiss it.</p><label class="field">New notice<textarea id="noticeBody" maxlength="500" rows="3"></textarea></label><label class="field">Stop showing it<select id="noticeExpiry"><option value="">When I switch it off</option><option value="1">After 1 day</option><option value="3">After 3 days</option><option value="7">After 7 days</option></select></label><div id="noticeError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="b" id="saveNotice">Post notice</button></div><h3 class="notify-sub">Posted notices</h3><div id="noticeList"></div><div class="bar"><button type="button" class="g" id="closeNotice">Close</button></div></dialog>
-<dialog id="notifyDialog" aria-labelledby="notifyTitle"><h2 id="notifyTitle">Notifications</h2><p class="note" id="notifyState"></p><div class="bar notify-actions"><button type="button" class="b" id="notifyOn">Turn on notifications</button><button type="button" class="g hidden" id="notifyOff">Turn off for this device</button></div><h3 class="notify-sub">Tell me when</h3><div id="notifyPrefs"></div><div class="bar"><button type="button" class="g" id="closeNotify">Close</button></div></dialog>
+<dialog id="notifyDialog" aria-labelledby="notifyTitle"><h2 id="notifyTitle">Notifications</h2><p class="note" id="notifyState"></p><div class="bar notify-actions"><button type="button" class="b" id="notifyOn">Turn on notifications</button><button type="button" class="g hidden" id="notifyOff">Turn off for this device</button></div><h3 class="notify-sub">Tell me when</h3><div id="notifyPrefs"></div><h3 class="notify-sub">Check that they work</h3><div class="bar"><button type="button" class="g" id="pushCheck">Send me a test</button></div><p class="note" id="pushCheckResult" role="status"></p><div class="bar"><button type="button" class="g" id="closeNotify">Close</button></div></dialog>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 (function () {
@@ -1622,8 +1633,7 @@
     return text;
   }
 
-  function publishRota() {
-    return withLock(async function () {
+  async function publishWeekNow() {
       var from = ROTA_WEEK, to = addDays(ROTA_WEEK, 7);
       if (DEMO) {
         D.rota = D.rota.filter(function (s) { var t = new Date(s.published_starts_at || s.starts_at); return !(s.removed && t >= from && t < to); });
@@ -1641,8 +1651,9 @@
       if (DEMO) ROTA_REACH = { week: +from, text: reachText([{ full_name: "Sam Whitfield", phones: 1, wants: true }, { full_name: "Marek Kowalski", phones: 0, wants: true }, { full_name: "Danny Obi", phones: 1, wants: true }]) };
       toast("Rota published. Staff can see this week.");
       await loadRotaWeek(); await loadNow();
-    });
   }
+
+  function publishRota() { return withLock(publishWeekNow); }
 
   function copyWeek() {
     return withLock(async function () {
@@ -2160,12 +2171,16 @@
   $("pfRemoveRole").addEventListener("click", removeJobRole);
 
   // ── BUILD THE WEEK ─────────────────────────
-  // A whole week at a glance: people down the side, days across the top. Pick a
-  // shift, then tap the days. A shift somebody already has is shown and cannot be
-  // painted over. Everything is added as a draft: nothing reaches staff until the
-  // week is published. Warns about availability like the single-shift dialog does,
-  // and never blocks.
-  var WK = { cells: {} };
+  // People down the side, days across. Pick a brush (Early, Late, Night or Off), then
+  // tap a day, drag across several with the mouse, tap a day heading to paint
+  // everybody, or a person's Mon–Fri. Shifts that already exist are editable: paint
+  // over one to change it, paint Off to remove it. Nothing is written until Save, and
+  // Undo goes back a step. A published shift that is removed stays visible to staff
+  // until the week is published, exactly as with the single-shift dialog.
+  //
+  // A cell holds "k" (leave as it is), -1 (Off: remove what is there) or 0..2 (a
+  // shift type). Plain values so a snapshot is one JSON.stringify.
+  var WK = { cells: {}, undo: [], drag: null, mouseHandled: false };
   var WK_TYPES = [["Early", "06:00", "14:00"], ["Late", "14:00", "22:00"], ["Night", "22:00", "06:00"]];
 
   function wkTypes() {
@@ -2175,66 +2190,114 @@
     var r = document.querySelector('input[name="wkPaint"]:checked');
     return r ? Number(r.value) : 0;
   }
+  function wkPeople() { return STAFF.filter(function (p) { return p.active; }); }
   function wkHave(uid, i) {
     var key = localDay(addDays(ROTA_WEEK, i));
-    return ROTA_SHIFTS.filter(function (x) { return !x.removed && x.user_id === uid && localDay(x.starts_at) === key; })[0];
+    return ROTA_SHIFTS.filter(function (x) { return !x.removed && x.user_id === uid && localDay(x.starts_at) === key; });
+  }
+  function wkSnapshot() { WK.undo.push(JSON.stringify(WK.cells)); if (WK.undo.length > 40) WK.undo.shift(); }
+
+  function paintCell(uid, i, brush) {
+    if (wkHave(uid, i).length > 1) return;   // split shifts are edited one at a time
+    var row = WK.cells[uid] = WK.cells[uid] || ["k", "k", "k", "k", "k", "k", "k"];
+    row[i] = brush < 0 ? -1 : brush;
+  }
+  function wkPaintCell(cell, brush) {
+    var a = cell.getAttribute("data-wk").split(":");
+    paintCell(a[0], Number(a[1]), brush);
   }
 
-  function wkPlan() {
-    var types = wkTypes(), rows = [], warn = 0, bad = "";
+  function wkCellInfo(uid, i, types) {
+    var have = wkHave(uid, i), v = (WK.cells[uid] || [])[i];
+    if (v === undefined) v = "k";
+    if (have.length > 1) return { locked: true, text: have.length + " shifts" };
+    var h = have[0];
+    if (v === "k") {
+      if (!h) return { blank: true };
+      var kt = -1;
+      types.forEach(function (t, k) { if (t.start === hhmm(h.starts_at) && t.end === hhmm(h.ends_at)) kt = k; });
+      return { cls: "have", working: true, text: kt >= 0 ? types[kt].name : hhmm(h.starts_at) + "–" + hhmm(h.ends_at) };
+    }
+    if (v === -1) return h ? { cls: "gone", working: false, text: "Removed" } : { blank: true };
+    return { cls: "on" + (h ? " chg" : ""), working: true, text: types[v].name };
+  }
+
+  function wkOps() {
+    var types = wkTypes(), ops = { add: [], change: [], drop: [], warn: 0, bad: "" };
     Object.keys(WK.cells).forEach(function (uid) {
-      WK.cells[uid].forEach(function (t, i) {
-        if (t == null) return;
-        var ty = types[t], day = addDays(ROTA_WEEK, i);
-        if (!ty.start || !ty.end || ty.start === ty.end) { bad = "Choose the start and finish times for " + ty.name + "."; return; }
+      WK.cells[uid].forEach(function (v, i) {
+        if (v === "k") return;
+        var have = wkHave(uid, i);
+        if (have.length > 1) return;
+        var h = have[0];
+        if (v === -1) { if (h) ops.drop.push(h); return; }
+        var ty = types[v], day = addDays(ROTA_WEEK, i);
+        if (!ty.start || !ty.end || ty.start === ty.end) { ops.bad = "Choose the start and finish times for " + ty.name + "."; return; }
         var a = new Date(localDay(day) + "T" + ty.start), b = new Date(localDay(day) + "T" + ty.end);
         if (b <= a) b.setDate(b.getDate() + 1);
-        if (b - a > 16 * 36e5) bad = ty.name + " is longer than 16 hours.";
-        if (availFor(uid, day).no) warn++;
-        rows.push({ user_id: uid, starts_at: a.toISOString(), ends_at: b.toISOString() });
+        if (b - a > 16 * 36e5) { ops.bad = ty.name + " is longer than 16 hours."; return; }
+        if (availFor(uid, day).no) ops.warn++;
+        if (h) {
+          if (+new Date(h.starts_at) === +a && +new Date(h.ends_at) === +b) return;   // already exactly this
+          ops.change.push({ shift: h, starts_at: a.toISOString(), ends_at: b.toISOString() });
+        } else ops.add.push({ user_id: uid, starts_at: a.toISOString(), ends_at: b.toISOString() });
       });
     });
-    return { rows: rows, warn: warn, bad: bad };
+    return ops;
   }
 
   function updateWeekSummary() {
-    var plan = wkPlan(), text = "";
-    if (plan.bad) text = plan.bad;
-    else if (!plan.rows.length) text = "Pick a shift above, then tap the days you want it on.";
+    var o = wkOps(), parts = [], text;
+    if (o.add.length) parts.push("adds " + o.add.length);
+    if (o.change.length) parts.push("changes " + o.change.length);
+    if (o.drop.length) parts.push("removes " + o.drop.length);
+    var any = !!parts.length;
+    if (o.bad) text = o.bad;
     else {
-      text = plan.rows.length + (plan.rows.length === 1 ? " shift" : " shifts") + " ready to add.";
-      if (plan.warn) text += " " + plan.warn + (plan.warn === 1 ? " falls" : " fall") + " on a day the person is not available or has off. They are still added.";
+      text = any ? "This " + parts.join(", ") + "." : "Pick Early, Late, Night or Off, then tap or drag across the days. Tap a name for Mon to Fri, or a day heading for everybody.";
+      if (o.warn) text += " " + o.warn + (o.warn === 1 ? " falls" : " fall") + " on a day the person is not available or has off (marked !). They are still saved.";
     }
     $("wkSummary").textContent = text;
-    show("wkSummary", !!text);
+    // Red only when there is something to be careful about; plain instructions are not a warning.
+    $("wkSummary").className = o.bad || o.warn ? "warn-line" : "note";
+    show("wkSummary", true);
+    $("wkSave").disabled = $("wkSavePub").disabled = !any || !!o.bad;
+    $("wkUndo").disabled = !WK.undo.length;
+    $("wkReset").disabled = !any;
   }
 
   function renderWeekGrid() {
-    var people = STAFF.filter(function (p) { return p.active; });
     var days = [0, 1, 2, 3, 4, 5, 6].map(function (i) { return addDays(ROTA_WEEK, i); });
-    var types = wkTypes();
-    var head = '<div class="wk-row wk-head"><div class="wk-name"></div>' + days.map(function (d) {
-      return "<div>" + esc(d.toLocaleDateString("en-GB", { weekday: "short" })) + "<br>" + d.getDate() + "</div>";
+    var types = wkTypes(), counts = [0, 0, 0, 0, 0, 0, 0];
+    var head = '<div class="wk-row wk-head"><div class="wk-name"></div>' + days.map(function (d, i) {
+      return '<button type="button" class="wk-day" data-wkday="' + i + '" title="Paint this day for everybody">' +
+        esc(d.toLocaleDateString("en-GB", { weekday: "short" })) + "<br>" + d.getDate() + "</button>";
     }).join("") + "</div>";
-    $("wkGrid").innerHTML = head + people.map(function (p) {
+    var body = wkPeople().map(function (p) {
       var job = jobRoleName(p.job_role_id);
-      return '<div class="wk-row"><div class="wk-name"><span>' + esc(p.full_name) + "</span>" + (job ? '<span class="tiny">' + esc(job) + "</span>" : "") +
-        '<button type="button" class="g sm" data-wkweek="' + esc(p.id) + '">Mon to Fri</button></div>' +
+      return '<div class="wk-row"><button type="button" class="wk-name" data-wkfill="' + esc(p.id) + '" data-n="5" title="Paint Monday to Friday">' +
+        "<span>" + esc(p.full_name) + "</span>" + (job ? '<span class="tiny">' + esc(job) + "</span>" : "") + "</button>" +
         days.map(function (d, i) {
-          var have = wkHave(p.id, i), t = (WK.cells[p.id] || [])[i];
-          if (have) return '<div class="wk-cell have" title="Already on the rota">' + esc(hhmm(have.starts_at) + "–" + hhmm(have.ends_at)) + "</div>";
-          var label = p.full_name + ", " + d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }) + (t != null ? ": " + types[t].name : "");
-          return '<button type="button" class="wk-cell' + (t != null ? " on" : "") + '" data-wk="' + esc(p.id) + ":" + i + '" aria-label="' + esc(label) + '">' +
-            (t != null ? esc(types[t].name) : availFor(p.id, d).no ? '<span class="tiny">n/a</span>' : "") + "</button>";
+          var c = wkCellInfo(p.id, i, types);
+          if (c.locked) return '<div class="wk-cell have" title="Split shifts are edited one at a time from the day view">' + esc(c.text) + "</div>";
+          if (c.working) counts[i]++;
+          var na = availFor(p.id, d).no;
+          var label = p.full_name + ", " + d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }) + ": " + (c.blank ? "no shift" : c.text);
+          return '<button type="button" class="wk-cell ' + (c.cls || "") + (c.working && na ? " warn" : "") + '" data-wk="' + esc(p.id) + ":" + i + '" aria-label="' + esc(label) + '">' +
+            (c.blank ? (na ? '<span class="tiny">n/a</span>' : "") : (c.working && na ? "! " : "") + esc(c.text)) + "</button>";
         }).join("") + "</div>";
     }).join("");
+    var foot = '<div class="wk-row wk-foot"><div class="wk-name"><span>On shift</span></div>' + counts.map(function (n) {
+      return '<div class="wk-cell wk-count' + (n ? "" : " gap") + '">' + (n || "–") + "</div>";
+    }).join("") + "</div>";
+    $("wkGrid").innerHTML = head + body + foot;
     updateWeekSummary();
   }
 
   function openWeek() {
     if (!ROTA_WEEK) return;
-    WK.cells = {};
-    // Start from the times this week already uses, if there are enough of them; else the usual early, late, night.
+    WK.cells = {}; WK.undo = []; WK.drag = null;
+    // Name the types after the times this week already uses, so what is there reads as Early or Late.
     var seen = {};
     ROTA_SHIFTS.forEach(function (x) { if (!x.removed) { var k = hhmm(x.starts_at) + "-" + hhmm(x.ends_at); seen[k] = (seen[k] || 0) + 1; } });
     var used = Object.keys(seen).filter(function (k) { return seen[k] > 1; }).sort(function (a, b) { return seen[b] - seen[a]; });
@@ -2243,8 +2306,7 @@
       return '<div class="wk-type"><label><input type="radio" name="wkPaint" value="' + i + '"' + (i === 0 ? " checked" : "") + ">" + esc(t[0]) + "</label>" +
         '<input id="wkS' + i + '" type="time" value="' + pair[0] + '" aria-label="' + esc(t[0]) + ' starts"><span>to</span>' +
         '<input id="wkE' + i + '" type="time" value="' + pair[1] + '" aria-label="' + esc(t[0]) + ' finishes"></div>';
-    }).join("") +
-      '<div class="wk-type"><label><input type="radio" name="wkPaint" value="-1">Clear a day</label></div>';
+    }).join("") + '<div class="wk-type"><label><input type="radio" name="wkPaint" value="-1">Off (remove)</label></div>';
     $("wkSite").innerHTML = '<option value="">No worksite</option>' + SITES.map(function (w) { return '<option value="' + esc(w.id) + '">' + esc(w.name) + "</option>"; }).join("");
     $("wkSite").value = SITES.some(function (w) { return w.id === lastRota.site; }) ? lastRota.site : (SITES[0] ? SITES[0].id : "");
     show("wkError", false);
@@ -2252,49 +2314,152 @@
     $("weekDialog").showModal();
   }
 
-  $("weekRota").addEventListener("click", openWeek);
-  $("wkCancel").addEventListener("click", function () { $("weekDialog").close(); });
-  $("wkGrid").addEventListener("click", function (e) {
-    var cell = e.target.closest("[data-wk]"), week = e.target.closest("[data-wkweek]"), paint = wkPaint();
-    if (cell) {
-      var a = cell.getAttribute("data-wk").split(":"), uid = a[0], i = Number(a[1]);
-      var row = WK.cells[uid] = WK.cells[uid] || [null, null, null, null, null, null, null];
-      row[i] = paint < 0 || row[i] === paint ? null : paint;
-      renderWeekGrid();
-    } else if (week) {
-      var id = week.getAttribute("data-wkweek"), r = WK.cells[id] = WK.cells[id] || [null, null, null, null, null, null, null];
-      for (var d = 0; d < 5; d++) if (!wkHave(id, d)) r[d] = paint < 0 ? null : paint;
-      renderWeekGrid();
-    }
-  });
-  // Changing a shift's times must not need the grid redrawn, but the summary can go stale.
-  $("wkTypes").addEventListener("input", updateWeekSummary);
-  $("weekForm").addEventListener("submit", function (e) {
-    e.preventDefault();
-    var plan = wkPlan();
+  async function saveWeek(publish) {
+    var o = wkOps();
     show("wkError", false);
-    if (plan.bad || !plan.rows.length) { $("wkError").textContent = plan.bad || "Tap some days in the grid first."; return show("wkError", true); }
-    var site = $("wkSite").value || null;
+    if (o.bad) { $("wkError").textContent = o.bad; return show("wkError", true); }
+    if (!o.add.length && !o.change.length && !o.drop.length) return;
+    var site = $("wkSite").value || null, now = new Date().toISOString();
     return withLock(async function () {
-      var rows = plan.rows.map(function (r) {
-        return { company_id: ME.company_id, user_id: r.user_id, worksite_id: site, starts_at: r.starts_at, ends_at: r.ends_at, note: "" };
-      });
       try {
-        if (DEMO) rows.forEach(function (r) {
-          D.rota.push(Object.assign({ id: "r" + Math.random(), removed: false, published_starts_at: null, published_ends_at: null, published_worksite_id: null, published_note: null }, r));
-        });
-        else {
-          var r = await sb.from("rota_shifts").insert(rows);
-          if (r.error) throw r.error;
+        if (DEMO) {
+          o.add.forEach(function (a) {
+            D.rota.push({ id: "r" + Math.random(), user_id: a.user_id, worksite_id: site, starts_at: a.starts_at, ends_at: a.ends_at, note: "", removed: false,
+                          published_starts_at: null, published_ends_at: null, published_worksite_id: null, published_note: null });
+          });
+          o.change.forEach(function (c) { D.rota.forEach(function (x) { if (x.id === c.shift.id) { x.starts_at = c.starts_at; x.ends_at = c.ends_at; } }); });
+          o.drop.forEach(function (h) {
+            if (h.published_starts_at) D.rota.forEach(function (x) { if (x.id === h.id) x.removed = true; });
+            else D.rota = D.rota.filter(function (x) { return x.id !== h.id; });
+          });
+        } else {
+          var r;
+          if (o.add.length) {
+            r = await sb.from("rota_shifts").insert(o.add.map(function (a) {
+              return { company_id: ME.company_id, user_id: a.user_id, worksite_id: site, starts_at: a.starts_at, ends_at: a.ends_at, note: "" };
+            }));
+            if (r.error) throw r.error;
+          }
+          if (o.change.length) {
+            var done = await Promise.all(o.change.map(function (c) {
+              return sb.from("rota_shifts").update({ starts_at: c.starts_at, ends_at: c.ends_at, updated_at: now }).eq("id", c.shift.id);
+            }));
+            done.forEach(function (x) { if (x.error) throw x.error; });
+          }
+          // A published shift stays on staff phones until the week is published, so it is
+          // marked removed; a draft nobody has seen is simply deleted.
+          var soft = o.drop.filter(function (h) { return h.published_starts_at; }).map(function (h) { return h.id; });
+          var hard = o.drop.filter(function (h) { return !h.published_starts_at; }).map(function (h) { return h.id; });
+          if (soft.length) { r = await sb.from("rota_shifts").update({ removed: true, updated_at: now }).in("id", soft); if (r.error) throw r.error; }
+          if (hard.length) { r = await sb.from("rota_shifts").delete().in("id", hard); if (r.error) throw r.error; }
         }
-        lastRota = { start: lastRota.start, end: lastRota.end, site: site };
-        WK.cells = {};
+        WK.cells = {}; WK.undo = [];
         $("weekDialog").close();
-        toast(rows.length + (rows.length === 1 ? " shift added. " : " shifts added. ") + "Publish the week when it's ready.");
-        await loadRotaWeek();
+        var bits = [];
+        if (o.add.length) bits.push(o.add.length + " added");
+        if (o.change.length) bits.push(o.change.length + " changed");
+        if (o.drop.length) bits.push(o.drop.length + " removed");
+        toast(bits.join(", ") + (publish ? "" : ". Publish the week when it's ready."));
+        if (publish) await publishWeekNow(); else await loadRotaWeek();
       } catch (error) { $("wkError").textContent = error.message; show("wkError", true); }
     });
+  }
+
+  $("weekRota").addEventListener("click", openWeek);
+  $("wkSave").addEventListener("click", function () { saveWeek(false); });
+  $("wkSavePub").addEventListener("click", function () { saveWeek(true); });
+  $("wkUndo").addEventListener("click", function () {
+    if (!WK.undo.length) return;
+    WK.cells = JSON.parse(WK.undo.pop());
+    renderWeekGrid();
   });
+  $("wkReset").addEventListener("click", function () { wkSnapshot(); WK.cells = {}; renderWeekGrid(); });
+  $("wkCancel").addEventListener("click", function () {
+    var o = wkOps();
+    if ((o.add.length || o.change.length || o.drop.length) && !confirm("Close without saving the changes you have made?")) return;
+    $("weekDialog").close();
+  });
+  $("weekForm").addEventListener("submit", function (e) { e.preventDefault(); });
+  $("wkTypes").addEventListener("input", renderWeekGrid);
+
+  // Mouse: paint on press and keep painting as you drag. Touch and keyboard: paint on
+  // click, which only fires for a real tap, so scrolling the grid sideways on a phone
+  // never paints by accident.
+  $("wkGrid").addEventListener("pointerdown", function (e) {
+    if (e.pointerType !== "mouse" || e.button !== 0) return;
+    var cell = e.target.closest("button[data-wk]");
+    if (!cell) return;
+    e.preventDefault();
+    wkSnapshot();
+    WK.drag = wkPaint(); WK.mouseHandled = true;
+    wkPaintCell(cell, WK.drag);
+    renderWeekGrid();
+  });
+  $("wkGrid").addEventListener("pointerover", function (e) {
+    if (WK.drag === null || e.pointerType !== "mouse" || !(e.buttons & 1)) return;
+    var cell = e.target.closest("button[data-wk]");
+    if (!cell) return;
+    wkPaintCell(cell, WK.drag);
+    renderWeekGrid();
+  });
+  document.addEventListener("pointerup", function () { WK.drag = null; setTimeout(function () { WK.mouseHandled = false; }, 0); });
+  $("wkGrid").addEventListener("click", function (e) {
+    var cell = e.target.closest("button[data-wk]"), day = e.target.closest("[data-wkday]"), fill = e.target.closest("[data-wkfill]"), brush = wkPaint();
+    if (cell) {
+      if (WK.mouseHandled) return;
+      wkSnapshot();
+      wkPaintCell(cell, brush);
+    } else if (day) {
+      wkSnapshot();
+      var i = Number(day.getAttribute("data-wkday"));
+      wkPeople().forEach(function (p) { paintCell(p.id, i, brush); });
+    } else if (fill) {
+      wkSnapshot();
+      var uid = fill.getAttribute("data-wkfill"), n = Number(fill.getAttribute("data-n"));
+      for (var d = 0; d < n; d++) paintCell(uid, d, brush);
+    } else return;
+    renderWeekGrid();
+  });
+
+  // ── CHECK THAT NOTIFICATIONS WORK ──────────
+  // Sends a real test through the SAME path a rota publish or a notice uses (the
+  // database calling the send-push function, with no login), then reads back what the
+  // function answered and says what it means. A test fired from this page would use
+  // the manager's own login and pass even when the real path is broken.
+  function pushVerdict(res) {
+    if (!res) return "No answer from send-push after 10 seconds. Check that the address in push_config is right, and that pg_net is switched on in Supabase.";
+    if (res.timed_out || res.error_msg) return "The database could not reach send-push: " + (res.error_msg || "it timed out") + ".";
+    var c = res.status_code;
+    if (c === 401 || c === 403) return "send-push refused the call (" + c + "). In Supabase, open the send-push function and turn Verify JWT off, then check again.";
+    if (c === 404) return "send-push is not deployed at the address in push_config.";
+    if (c >= 500) return "send-push is deployed but crashed (" + c + "). Open its logs in Supabase. The usual cause is missing VAPID keys under Secrets.";
+    if (c === 200) {
+      var sent = Number(res.sent) || 0;
+      return sent > 0 ? "Working. A test was sent to " + sent + (sent === 1 ? " phone." : " phones.") + " If yours did not buzz, check the phone's own notification settings."
+                      : "send-push is working, but your login has no phone with notifications turned on. Use Turn on notifications on the phone you want, then check again.";
+    }
+    return "send-push answered " + c + ".";
+  }
+
+  async function checkPush() {
+    var out = $("pushCheckResult"), btn = $("pushCheck");
+    btn.disabled = true; out.textContent = "Sending a test...";
+    try {
+      if (DEMO) { out.textContent = "Demo mode: nothing is sent."; return; }
+      var r = await sb.rpc("push_check");
+      if (r.error) { out.textContent = r.error.message; return; }
+      var res = null;
+      for (var n = 0; n < 10 && !res; n++) {
+        await new Promise(function (ok) { setTimeout(ok, 1000); });
+        var q = await sb.rpc("push_check_result", { p_id: r.data });
+        if (q.error) { out.textContent = q.error.message; return; }
+        if (q.data && q.data.length) res = q.data[0];
+      }
+      out.textContent = pushVerdict(res);
+    } catch (error) { out.textContent = error.message; }
+    finally { btn.disabled = false; }
+  }
+  $("pushCheck").addEventListener("click", checkPush);
 
   // ── NOTICES ────────────────────────────────
   // A manager posts a short message; everyone in the company sees it on Home

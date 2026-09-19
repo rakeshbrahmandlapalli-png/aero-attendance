@@ -5,6 +5,15 @@ or redeploy an Edge Function says so.
 
 ## Unreleased
 
+### Changed (rota builder, second version)
+- **Build the week now edits what is already there.** The first version added shifts only and locked existing ones, so a shift added by mistake could not be taken off again. Now every cell is live: paint a shift over an existing one to change it, paint **Off** to remove it. A published shift that is removed stays on staff phones until the week is published, a draft is simply deleted, exactly as with the single-shift dialog.
+- **Faster to paint.** Pick Early, Late, Night or Off once, then tap, or drag across days with the mouse. Tap a **day heading** to paint everybody that day, or a **name** to paint Monday to Friday. **Undo** goes back a step and **Reset** clears the lot. A row at the bottom counts who is on each day, in red where nobody is.
+- **Save as draft, or Save and publish in one go.** Nothing is written until you save, and closing with unsaved changes asks first.
+- **On a phone** each person is now one short row (it was 173px tall, with the buttons stacked under the name) and each shift's start and finish sit on one line, so the grid is on screen straight away. On touch, a cell is painted only by a real tap, never by scrolling the grid sideways.
+
+### Added (notifications)
+- **"Send me a test" under Notifications, and it tests the real path.** Every notification is sent by the database calling the send-push function with no login, and nothing anywhere reported when that failed, for example when a redeploy switched Verify JWT back on and the function started answering 401. The button sends a real test down that same route, reads back what the function answered, and says what it means in a sentence ("turn Verify JWT off", "not deployed at that address", "crashed: check the VAPID keys", "working, but this login has no phone with notifications on"). A test fired from the page itself would pass on the manager's login even when the real route is broken, so it deliberately does not do that. *Needs: setup/update-2026-09-push-check.sql and a redeploy of send-push.*
+
 ### Added (this week's requests)
 - **Edit profile**, replacing the "Make manager" button on the Staff tab. One dialog for a person's name, access (staff or manager), **job role** and optional personal details: date of birth, mobile number, emergency contact and start date. Job roles (Driver, Valet, Supervisor...) are a list each company keeps and can add to from inside the dialog. A job role is only a label; access is what decides what somebody may do, and is guarded by the database exactly as before.
   - The personal details are in their own table, **not on profiles**, because every colleague can read profiles. Only managers, and the person themselves, can read them. Only one database function writes them, and the audit history records *that* a manager changed somebody's details, never *what* they were.

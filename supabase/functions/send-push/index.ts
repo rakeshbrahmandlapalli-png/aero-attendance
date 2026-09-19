@@ -216,6 +216,13 @@ async function onNotice(id: string) {
     { title: "Notice posted", body, url: "/admin.html", tag: `notice-${n.id}` });
 }
 
+// A manager asked "do notifications work?". Goes to that person's own phones only,
+// and answers how many it reached, so the check can say something useful.
+async function onTest(userId: string) {
+  return await sendTo([userId], ["clock_in", "clock_out", "away", "corrections", "late", "long_shift", "correction_decisions", "rota", "reminders", "notices"],
+    { title: "Aero test", body: "Notifications are working on this phone.", url: "/", tag: "aero-test" });
+}
+
 async function onTick() {
   const now = Date.now();
 
@@ -303,6 +310,10 @@ Deno.serve(async (req) => {
     else if (msg.type === "correction" && uuid.test(String(msg.id))) await onCorrection(String(msg.id));
     else if (msg.type === "rota" && uuid.test(String(msg.company_id))) await onRota(String(msg.company_id), String(msg.from), String(msg.to), Array.isArray(msg.user_ids) ? msg.user_ids.map(String).filter((x) => uuid.test(x)) : undefined, msg.at ? String(msg.at) : undefined);
     else if (msg.type === "notice" && uuid.test(String(msg.id))) await onNotice(String(msg.id));
+    else if (msg.type === "test" && uuid.test(String(msg.user_id))) {
+      const sent = await onTest(String(msg.user_id));
+      return new Response(JSON.stringify({ ok: true, sent }), { headers: { "Content-Type": "application/json" } });
+    }
     else if (msg.type === "tick") await onTick();
     else return new Response("Unknown message", { status: 400 });
     return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
