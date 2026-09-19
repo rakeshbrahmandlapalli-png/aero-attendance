@@ -635,6 +635,89 @@ gap("a manager can set another company's person's pay rate in their own company"
   check("HAND  a removed person is handed nothing", !!r.error || r.rows.length === 0, JSON.stringify(r.rows));
 }
 
+// ── 16. OVERTIME: who may see a week, and who may decide it ──────────────
+// 2026-09-07 is a Monday. Three five-hour shifts in that week is 15 hours
+// against a threshold of 10, so the week is five hours over.
+{
+  const WK = "2026-09-07";
+  await db.exec(`
+    update companies set overtime_weekly_hours = 10 where id = '${CO_A}';
+    insert into shifts (company_id, user_id, worksite_id, clock_in_at, clock_out_at) values
+      ('${CO_A}','${P.staffA1}','${W_A}', timestamptz '2026-09-07 08:00+01', timestamptz '2026-09-07 13:00+01'),
+      ('${CO_A}','${P.staffA1}','${W_A}', timestamptz '2026-09-08 08:00+01', timestamptz '2026-09-08 13:00+01'),
+      ('${CO_A}','${P.staffA1}','${W_A}', timestamptz '2026-09-09 08:00+01', timestamptz '2026-09-09 13:00+01'),
+      ('${CO_A}','${P.staffA2}','${W_A}', timestamptz '2026-09-07 08:00+01', timestamptz '2026-09-07 20:00+01');
+  `);
+
+  let r = await as(db, P.mgrA, `select user_id, hours, threshold, overtime, status from overtime_weeks($1,$1)`, [WK]);
+  const rows = r.rows || [];
+  check("OT    a manager sees every week over the threshold", !r.error && rows.length === 2, r.error || JSON.stringify(rows));
+  const a1 = rows.find((x) => x.user_id === P.staffA1) || {};
+  check("OT    ...with the hours worked out from the shifts", Number(a1.hours) === 15 && Number(a1.overtime) === 5, JSON.stringify(a1));
+  check("OT    ...and no decision yet", a1.status === null, JSON.stringify(a1));
+
+  r = await as(db, P.staffA1, `select user_id from overtime_weeks($1,$1)`, [WK]);
+  check("OT    staff see their own week only", !r.error && r.rows.length === 1 && r.rows[0].user_id === P.staffA1, r.error || JSON.stringify(r.rows));
+  r = await as(db, P.staffB1, `select user_id from overtime_weeks($1,$1)`, [WK]);
+  check("OT    another company sees nothing of it", !r.error && r.rows.length === 0, r.error || JSON.stringify(r.rows));
+
+  r = await as(db, P.staffA1, `select decide_overtime($1,$2,'approved','')`, [P.staffA1, WK]);
+  check("OT    staff cannot approve their own overtime", !!r.error, "it ran");
+  r = await as(db, P.ownerB, `select decide_overtime($1,$2,'approved','')`, [P.staffA1, WK]);
+  check("OT    another company's owner cannot decide A's overtime", !!r.error, "it ran");
+  r = await as(db, P.mgrA, `select decide_overtime($1,$2,'approved','')`, [P.staffB1, WK]);
+  check("OT    a manager cannot decide for somebody in another company", !!r.error, "it ran");
+  r = await as(db, P.mgrA, `select decide_overtime($1,$2,'maybe','')`, [P.staffA1, WK]);
+  check("OT    a made-up decision is refused", !!r.error, "it ran");
+  r = await as(db, P.mgrA, `insert into overtime_decisions (company_id, user_id, week_start, status, hours_at_decision)
+                            values ($1,$2,$3,'approved',99)`, [CO_A, P.staffA1, WK]);
+  check("OT    nobody writes a decision by hand", blocked(r), "it wrote");
+
+  // Deciding, then reading it back, needs two statements on one connection:
+  // as() rolls back, and a row written inside a statement is invisible to the
+  // rest of that same statement.
+  let decided = {}, audited = -1;
+  await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [P.mgrA]);
+  await db.exec(`set role authenticated`);
+  try {
+    await db.query(`select decide_overtime($1,$2,'approved','Cover for Danny')`, [P.staffA1, WK]);
+    decided = (await db.query(`select status, hours_at_decision, decided_by, note from overtime_decisions
+                                where user_id = $1 and week_start = $2`, [P.staffA1, WK])).rows[0] || {};
+    audited = (await db.query(`select count(*)::int n from audit_events
+                                where entity = 'overtime' and action = 'approved' and actor_id = $1`, [P.mgrA])).rows[0].n;
+  } finally {
+    await db.exec(`reset role`);
+    await db.query(`select set_config('request.jwt.claim.sub', '', false)`);
+  }
+  check("OT    a manager CAN approve a week (sanity)", decided.status === "approved", JSON.stringify(decided));
+  check("OT    ...and the hours are recomputed, not taken from the browser", Number(decided.hours_at_decision) === 15, JSON.stringify(decided));
+  check("OT    ...against the manager who decided it", decided.decided_by === P.mgrA, JSON.stringify(decided));
+  check("OT    ...and it is written to the audit history", audited === 1, `found ${audited}`);
+
+  // A fresh member of staff, because section 11 promotes staffA2 to admin for
+  // good and a manager is supposed to see everybody. They get a decision of
+  // their own too, so "sees one row" proves the filter rather than an empty table.
+  const A3 = U(16);
+  await db.exec(`
+    insert into auth.users (id, email) values ('${A3}','a3@a.test');
+    insert into profiles (id, company_id, full_name, role, active) values ('${A3}','${CO_A}','Staff A3','staff',true);
+    insert into overtime_decisions (company_id, user_id, week_start, status, hours_at_decision, decided_by)
+      values ('${CO_A}','${A3}','${WK}','rejected', 12, '${P.mgrA}');
+  `);
+  r = await as(db, A3, `select user_id from overtime_decisions`);
+  check("OT    staff see their own decision and not a colleague's",
+        !r.error && r.rows.length === 1 && r.rows[0].user_id === A3, r.error || JSON.stringify(r.rows));
+  r = await as(db, P.ownerB, `select user_id from overtime_decisions`);
+  check("OT    another company sees none of the decisions", !r.error && r.rows.length === 0, r.error || JSON.stringify(r.rows));
+
+  // Switched off means switched off, for everybody.
+  await db.exec(`update companies set overtime_weekly_hours = null where id = '${CO_A}'`);
+  r = await as(db, P.mgrA, `select user_id from overtime_weeks($1,$1)`, [WK]);
+  check("OT    with no threshold set, no week is over it", !r.error && r.rows.length === 0, r.error || JSON.stringify(r.rows));
+  r = await as(db, P.mgrA, `select decide_overtime($1,$2,'approved','')`, [P.staffA1, WK]);
+  check("OT    ...and nothing can be decided", !!r.error, "it ran");
+}
+
 // ── report ───────────────────────────────────────────────────────────────
 const failed = results.filter((r) => !r.ok);
 for (const r of results) if (!r.ok) console.log(`FAIL  ${r.name}${r.detail ? "  →  " + r.detail : ""}`);
