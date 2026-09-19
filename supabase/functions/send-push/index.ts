@@ -57,6 +57,22 @@ async function once(key: string) {
   throw error;
 }
 
+async function sendWithRetry(subscription: { endpoint: string; keys: { p256dh: string; auth: string } }, payload: string) {
+  let last: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await webpush.sendNotification(subscription, payload, { TTL: 4 * 3600, urgency: "high" });
+      return;
+    } catch (error) {
+      last = error;
+      const code = (error as { statusCode?: number }).statusCode;
+      if (code === 404 || code === 410) throw error;
+      if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** attempt));
+    }
+  }
+  throw last;
+}
+
 // Send to these people, if any of the given preferences is on for them.
 async function sendTo(userIds: string[], prefs: Pref[], note: Note) {
   const ids = [...new Set(userIds)];
@@ -72,10 +88,9 @@ async function sendTo(userIds: string[], prefs: Pref[], note: Note) {
   let sent = 0;
   await Promise.all((subs ?? []).map(async (s) => {
     try {
-      await webpush.sendNotification(
+      await sendWithRetry(
         { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
         JSON.stringify(note),
-        { TTL: 4 * 3600, urgency: "high" },
       );
       sent++;
     } catch (e) {
