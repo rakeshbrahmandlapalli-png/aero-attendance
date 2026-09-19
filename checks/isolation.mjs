@@ -335,6 +335,50 @@ gap("a manager can set another company's person's pay rate in their own company"
   check("SETTINGS  a new company starts on Europe/London, GBP and no brand name", d.time_zone === "Europe/London" && d.currency === "GBP" && d.brand_name === "", JSON.stringify(d));
 }
 
+// ── 11. ROLES: who may change whose role ─────────────────────────────────
+// A manager can write to any profile in their own company, so the database itself
+// (profiles_guard) has to stop an admin crowning themselves, demoting the owner or
+// switching the owner off. Every attack below must be refused; the legitimate
+// changes must still work. The people are rolled back after each try.
+{
+  const refuse = async (label, who, sql, params) => {
+    const r = await as(db, who, sql, params);
+    check("ROLES  " + label, !!r.error && /cannot|Nobody/.test(r.error), r.error || `it went through (${r.count})`);
+  };
+  await refuse("an admin cannot make themselves the owner", P.mgrA, `update profiles set role = 'owner' where id = $1`, [P.mgrA]);
+  await refuse("an admin cannot demote the owner", P.mgrA, `update profiles set role = 'staff' where id = $1`, [P.ownerA]);
+  await refuse("an admin cannot demote the owner to admin either", P.mgrA, `update profiles set role = 'admin' where id = $1`, [P.ownerA]);
+  await refuse("an admin cannot make a colleague the owner", P.mgrA, `update profiles set role = 'owner' where id = $1`, [P.staffA1]);
+  await refuse("the owner cannot hand the owner role to someone from the app", P.ownerA, `update profiles set role = 'owner' where id = $1`, [P.staffA1]);
+  await refuse("the owner cannot demote themselves", P.ownerA, `update profiles set role = 'staff' where id = $1`, [P.ownerA]);
+  await refuse("an admin cannot demote themselves", P.mgrA, `update profiles set role = 'staff' where id = $1`, [P.mgrA]);
+  await refuse("an admin cannot switch the owner off", P.mgrA, `update profiles set active = false where id = $1`, [P.ownerA]);
+  await refuse("an admin cannot switch themselves off", P.mgrA, `update profiles set active = false where id = $1`, [P.mgrA]);
+  {
+    // staff still cannot touch any profile at all (existing rule), and another company's manager cannot change A's roles
+    const r = await as(db, P.staffA1, `update profiles set role = 'admin' where id = $1`, [P.staffA1]);
+    check("ROLES  staff still cannot promote themselves", blocked(r), "it went through");
+    const x = await as(db, P.ownerB, `update profiles set role = 'admin' where id = $1`, [P.staffA1]);
+    check("ROLES  another company's owner cannot change A's roles", blocked(x), "it went through");
+  }
+  for (const [label, who, sql, params] of [
+    ["the owner can make a member of staff a manager", P.ownerA, `update profiles set role = 'admin' where id = $1`, [P.staffA1]],
+    ["the owner can make a manager staff again", P.ownerA, `update profiles set role = 'staff' where id = $1`, [P.mgrA]],
+    ["a manager can make a member of staff a manager", P.mgrA, `update profiles set role = 'admin' where id = $1`, [P.staffA2]],
+    ["a manager can still rename a colleague", P.mgrA, `update profiles set full_name = 'Renamed' where id = $1`, [P.staffA1]],
+    ["a manager can still remove and restore a member of staff", P.mgrA, `update profiles set active = false where id = $1`, [P.staffA1]],
+  ]) {
+    const r = await as(db, who, sql, params);
+    check("ROLES  OK: " + label, !r.error && r.count === 1, r.error || `rows ${r.count}`);
+  }
+  {
+    // the service key (no signed-in user) is not held to it: manage-staff has its own checks
+    let err = "";
+    try { await db.exec(`update profiles set role = 'admin' where id = '${P.staffA2}'`); } catch (e) { err = e.message; }
+    check("ROLES  OK: the service key / database owner is not blocked", !err, err);
+  }
+}
+
 // ── report ───────────────────────────────────────────────────────────────
 const failed = results.filter((r) => !r.ok);
 for (const r of results) if (!r.ok) console.log(`FAIL  ${r.name}${r.detail ? "  →  " + r.detail : ""}`);

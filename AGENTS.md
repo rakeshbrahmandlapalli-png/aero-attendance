@@ -37,6 +37,7 @@ supabase/functions/manage-staff/index.ts  Edge Function: add staff logins, remov
 supabase/functions/send-push/index.ts  Edge Function: phone notifications (web push)
 supabase/functions/platform/index.ts  Edge Function: the owner's "Add a client" (platform admins only)
 platform.html         the owner's own page at /platform: client list and one form to add a client
+setup/update-2026-09-roles.sql  profiles_guard: who may change whose role (already inside schema.sql)
 setup/update-2026-09-clients-and-settings.sql  platform_admins, per-company time zone / currency / brand name, and the manager column grants (already inside schema.sql)
 setup/update-2026-09-notifications.sql  the notifications update on its own (already inside schema.sql)
 sw.js                 service worker: offline page, and showing push notifications
@@ -268,6 +269,13 @@ Staff app structure — keep it:
   at the address `swift-responder`, see STAFF_FUNCTION in admin.html), which checks the caller is an active owner/admin of the same
   company and uses the service key Supabase gives it. Never create users or
   put the service key in the browser.
+- **Roles.** Managers change a person between Staff and Manager on the Staff tab
+  ("Make manager" / "Make staff"), straight from the page. The rules are in the
+  database (`profiles_guard`, a trigger on profiles), not the page: nobody's role
+  can be changed to or from `owner` from the app, nobody can change their own
+  role, and nobody can remove or restore themselves or the owner. Before this
+  trigger an admin could crown themselves owner from the browser console. The
+  service key is exempt (it has no signed-in user); manage-staff has its own checks.
 - "Remove" never deletes: it bans the login and sets `profiles.active = false`.
   Their shifts stay for payroll and UK record-keeping. `current_company_id()`
   returns null for inactive people, so an open session shows nothing.

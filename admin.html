@@ -924,7 +924,7 @@
     $("staffBody").innerHTML = rows.map(function (p) {
       return "<tr>" +
         nameCell(p.full_name) +
-        '<td><span class="role">' + esc(p.role) + "</span></td>" +
+        '<td><span class="role">' + esc(ROLE_LABEL[p.role] || p.role) + "</span></td>" +
         "<td>" + (p.active ? '<span class="st ok"><i></i>Active</span>'
                            : '<span class="st none"><i></i>Removed</span>') + noticeLine(p) + "</td>" +
         '<td class="tiny num">' + dmy(p.created_at) + "</td>" +
@@ -933,10 +933,36 @@
           (PAY_READY ? '<button class="g sm" data-rate="' + p.id + '">Set rate</button> ' : "") +
           (p.active && p.id !== ME.id && (p.role !== "owner" || ME.role === "owner")
             ? '<button class="g sm" data-pw="' + p.id + '">New password</button> ' : "") +
+          (p.active && p.id !== ME.id && p.role !== "owner"
+            ? '<button class="g sm" data-role="' + p.id + '">' + (p.role === "admin" ? "Make staff" : "Make manager") + "</button> " : "") +
           (p.id === ME.id || p.role === "owner" ? "" : '<button class="g sm" data-toggle="' + p.id + '">' +
             (p.active ? "Remove" : "Restore") + "</button>") + "</td>" +
       "</tr>";
     }).join("");
+  }
+
+  var ROLE_LABEL = { owner: "Owner", admin: "Manager", staff: "Staff" };
+
+  // Staff <-> manager. The database refuses anything else (the owner's role,
+  // your own role): see profiles_guard in schema.sql. Its message is shown as it is.
+  function changeRole(id) {
+    var p = STAFF.find(function (x) { return x.id === id; });
+    if (!p || p.id === ME.id || p.role === "owner") return;
+    var to = p.role === "admin" ? "staff" : "admin";
+    var ask = to === "admin"
+      ? "Make " + p.full_name + " a manager? Managers see everyone's hours and pay rates, and can add staff, remove staff and reset passwords."
+      : "Make " + p.full_name + " a member of staff? They will lose the manager board.";
+    if (!confirm(ask)) return;
+    return withLock(async function () {
+      if (DEMO) p.role = to;
+      else {
+        var r = await sb.from("profiles").update({ role: to }).eq("id", id).select("id");
+        if (r.error) throw r.error;
+        if (!r.data || !r.data.length) throw new Error("The role was not changed. Refresh and try again.");
+      }
+      toast(p.full_name + " is now " + (to === "admin" ? "a manager" : "staff"));
+      await loadStaff();
+    });
   }
 
   // Removing someone blocks their sign-in but keeps every shift they worked:
@@ -1839,6 +1865,7 @@
     if (t.dataset.close)   closeShift(t.dataset.close);
     if (t.dataset.toggle)  toggleStaff(t.dataset.toggle);
     if (t.dataset.pw)      newPassword(t.dataset.pw);
+    if (t.dataset.role)    changeRole(t.dataset.role);
     if (t.dataset.delsite) removeSite(t.dataset.delsite);
     if (t.dataset.editsite) editSite(t.dataset.editsite);
     if (t.dataset.review) reviewRequest(t.dataset.review,t.dataset.approve==='true');
