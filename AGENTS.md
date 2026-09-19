@@ -33,6 +33,7 @@ setup/update-2026-09-privacy-notice.sql  privacy notice fields and the read-reco
 setup/update-2026-09-tenant-integrity.sql  a shift may only point at its own company's people and sites (already inside schema.sql)
 checks/isolation.mjs  tenant isolation test: runs the REAL schema.sql in PostgreSQL (PGlite) and attacks it as two companies
 checks/harness.mjs    the Supabase stand-in the test runs on (roles, auth.uid(), no-op cron/net)
+checks/payroll.mjs     the pay maths, to the penny (real code extracted from admin.html, checked against sums worked out by hand)
 checks/resilience.mjs  what the pages do when the network drops or a request never answers (real code, extracted from the pages)
 checks/embeds.mjs     can PostgREST still work out every embedded table? (a new table's primary key can silently break sign-in)
 checks/restore.mjs    turns a backup from /platform back into SQL to paste into Supabase (no keys, connects to nothing)

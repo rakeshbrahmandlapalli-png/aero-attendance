@@ -94,7 +94,8 @@ Run from the checks folder:
     npm run smoke
     npm run embeds
     npm run resilience
+    npm run payroll
     npm run isolation
     npm run roundtrip
 
-The app should not be promoted until all four pass and the phone checklist is complete.
+The app should not be promoted until every one of them passes and the phone checklist is complete.
