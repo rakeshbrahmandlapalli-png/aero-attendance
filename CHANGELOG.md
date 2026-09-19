@@ -5,6 +5,18 @@ or redeploy an Edge Function says so.
 
 ## Unreleased
 
+### Added
+- **Add-ons: the owner chooses which features each client gets.** A new "Add-ons" button on each
+  client in `/platform`. Untick something and it goes from that client's app — the database refuses
+  it, not just the button, so it cannot be reached by reopening the browser console. This is kept
+  separate from Company settings on purpose: **the owner decides whether a client has a feature at
+  all; the client's own manager decides how a feature they do have behaves.** A client can never
+  switch on something they were not given.
+  Only what is switched OFF is stored, so running the SQL changes nothing for clients already live
+  until something is unticked. Unticking hides records, it never deletes them: tick it back and
+  everything is there. Currently coverable: rota, pay, breaks, notices, handover, overtime.
+  *Needs: `setup/update-2026-09-add-ons.sql`, and a redeploy of the `platform` Edge Function.*
+
 ### Fixed
 - **A manager clocking somebody out did not close a break they had left running**, so those minutes
   were never taken off the paid hours and the shift was paid for time on break. The board used a
@@ -31,6 +43,31 @@ or redeploy an Edge Function says so.
   history — a shift somebody else ended is pay data, so it has to be attributable.
 
 ### Added
+- **Overtime approval.** Off by default: nothing changes until a manager sets a weekly threshold
+  under Company settings. Any week somebody works more than that is listed on the Review tab to
+  approve or reject with a note, and the tab's badge counts those alongside correction requests.
+  Staff see their own weeks and where they have got to at the top of their Timesheet. Every
+  decision goes into Audit history against the manager who made it.
+  The hours are worked out from the shifts each time rather than stored, so a corrected shift can
+  never leave a stale figure behind, and `decide_overtime()` recomputes them again at the moment of
+  the decision rather than trusting the browser. The decisions table has no insert grant: that
+  function is the only way in, so every decision has an author. Weeks start Monday in the company's
+  own time zone, so a Sunday night shift falls in the week the people working it would say it does.
+  *Needs: `setup/update-2026-09-overtime.sql` (run the audit SQL first).*
+  - Overtime has **its own CSV export**, on the Review tab, rather than a column on the timesheet
+    export. Overtime is a figure for a whole week; repeating it on every shift row of that week is
+    how a payroll run ends up paying it several times over.
+- **Handover.** Staff have always written a note when they clock out, and until now only a manager
+  ever read it. Home now shows the note the last person left on the worksite you are working, under
+  "Left for you". It comes from a new `my_handover()` in the database, which takes no worksite to
+  ask about — it uses your own open or most recent shift — and hands back the note, the worksite and
+  the time only. Never who wrote it, their hours or where they were. Nothing older than a day, never
+  your own note, never another company's. *Needs: `setup/update-2026-09-handover.sql`.*
+  - **Privacy notice updated and `NOTICE_VERSION` bumped to 2.** Nothing new is collected, but a
+    note written by one person is now shown to another, so "who can see it" changed and everybody is
+    asked to read the notice again.
+  - The manager's side — handover notes grouped by worksite and day, with a way to mark one
+    reviewed — is not built yet.
 - **Notices.** A manager posts a short message from the Now tab; everyone in that company sees it
   on Home until they tap "Got it". Dismissing records that the person read it, so the manager sees
   a "seen by" count and can switch a notice off or let it expire after 1, 3 or 7 days. A notice

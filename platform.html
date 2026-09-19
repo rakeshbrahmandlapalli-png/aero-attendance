@@ -87,6 +87,9 @@
   dialog h3{margin:var(--s6) 0 var(--s2);}
   dialog h3:first-of-type{margin-top:var(--s4);}
   .row-actions{display:flex;gap:var(--s2);flex-wrap:wrap;margin-top:var(--s3);}
+  .check{display:flex;align-items:center;gap:var(--s3);min-height:48px;cursor:pointer;}
+  .check input{width:24px;height:24px;min-height:24px;flex:none;margin:0;accent-color:var(--accent);}
+  .check span{font-size:var(--t2);}
   .btn.danger{background:var(--warn);border-color:var(--warn);color:#fff;}
   .btn.danger:disabled{background:var(--surface);border-color:var(--line);color:var(--ink-2);}
   dialog{width:min(480px,calc(100% - 32px));max-height:calc(100dvh - 32px);overflow:auto;border:1px solid var(--line);border-radius:var(--r);padding:var(--s6);color:var(--ink);background:var(--card);}
@@ -194,6 +197,19 @@
     </section>
   </main>
 </div>
+<dialog id="addonDialog" aria-labelledby="addonTitle">
+  <form id="addonForm" autocomplete="off">
+    <h2 id="addonTitle">Add-ons</h2>
+    <p class="note" id="addonWho"></p>
+    <p class="note">Untick anything this client has not been given. It disappears from their app, and the database refuses it — not just the button. Existing records are hidden, never deleted, so ticking it back brings them straight back.</p>
+    <div id="addonList"></div>
+    <div id="addonErr" class="err hidden" role="alert"></div>
+    <div class="row-actions">
+      <button class="btn g" type="button" id="addonCancel">Cancel</button>
+      <button class="btn" type="submit" id="addonSave">Save add-ons</button>
+    </div>
+  </form>
+</dialog>
 <dialog id="editDialog" aria-labelledby="editTitle">
   <form id="editForm" autocomplete="off">
     <h2 id="editTitle">Edit client</h2>
@@ -327,6 +343,14 @@
         DEMO_LIST = DEMO_LIST.filter(function (c) { return c !== gone; });
         return { ok: true, people: gone.staff, logins_not_removed: 0 };
       }
+      if (body.action === "features") {
+        DEMO_OFF[body.company_id] = DEMO_OFF[body.company_id] || [];
+        return { features: DEMO_FEATURES.slice(), off: DEMO_OFF[body.company_id].slice() };
+      }
+      if (body.action === "set_features") {
+        DEMO_OFF[body.company_id] = (body.off || []).slice();
+        return { ok: true, off: DEMO_OFF[body.company_id].slice() };
+      }
       if (/^(suspend|reset_owner_password|add_manager)$/.test(body.action)) {
         var co = DEMO_LIST.filter(function (c) { return c.id === body.company_id; })[0];
         if (!co) throw new Error("That company no longer exists.");
@@ -388,6 +412,7 @@
         "</div>" + '<div class="meta">' + esc(c.time_zone) + " · " + esc(c.currency) + " · added " + esc(niceDate(c.created_at)) +
         (c.suspended ? ' · <span class="paused">Paused</span>' : "") + "</div>" +
         '<div class="row-actions"><button class="btn g" type="button" data-edit="' + esc(c.id) + '">Edit</button>' +
+        '<button class="btn g" type="button" data-addons="' + esc(c.id) + '">Add-ons</button>' +
         '<button class="btn g" type="button" data-mgr="' + esc(c.id) + '">Managers</button>' +
         '<button class="btn g" type="button" data-backup="' + esc(c.id) + '">Back up</button>' +
         '<button class="btn g" type="button" data-pause="' + esc(c.id) + '">' + (c.suspended ? "Resume" : "Pause") + "</button>" +
@@ -541,9 +566,65 @@
       $("deleteGo").disabled = !target || $("deleteConfirm").value.trim() !== target.name;
     } finally { busy = false; }
   }
+  // ── ADD-ONS ────────────────────────────────
+  // What this client has been given, as opposed to what their own manager has
+  // switched on. Only what is OFF is stored, so an untouched client has no rows
+  // and keeps everything.
+  var DEMO_FEATURES = ["rota", "pay", "breaks", "notices", "handover", "overtime"];
+  var DEMO_OFF = {};
+  var ADDON_LABEL = {
+    rota: "Rota and availability", pay: "Estimated pay", breaks: "Breaks",
+    notices: "Notices", handover: "Shift handover", overtime: "Overtime approval",
+    incidents: "Incident reports"
+  };
+  var addonId = null;
+
+  async function openAddons(id) {
+    var c = COMPANIES.filter(function (x) { return x.id === id; })[0];
+    addonId = id;
+    $("addonWho").textContent = c ? c.name : "";
+    $("addonList").innerHTML = '<p class="note">Loading…</p>';
+    show("addonErr", false);
+    $("addonDialog").showModal();
+    try {
+      var r = await call({ action: "features", company_id: id });
+      var off = r.off || [];
+      $("addonList").innerHTML = (r.features || []).map(function (f) {
+        return '<label class="check"><input type="checkbox" data-feature="' + esc(f) + '"' +
+          (off.indexOf(f) === -1 ? " checked" : "") + "><span>" + esc(ADDON_LABEL[f] || f) + "</span></label>";
+      }).join("");
+    } catch (err) {
+      if (err.status === 401) { $("addonDialog").close(); return signedOutView("You've been signed out. Please sign in again."); }
+      $("addonList").innerHTML = "";
+      $("addonErr").textContent = err.message; show("addonErr", true);
+    }
+  }
+
+  async function saveAddons(e) {
+    e.preventDefault();
+    if (busy) return;
+    var off = [];
+    Array.prototype.forEach.call($("addonList").querySelectorAll("[data-feature]"), function (cb) {
+      if (!cb.checked) off.push(cb.getAttribute("data-feature"));
+    });
+    busy = true; $("addonSave").disabled = true; show("addonErr", false);
+    try {
+      await call({ action: "set_features", company_id: addonId, off: off });
+      $("addonDialog").close();
+      toast(off.length ? off.length + " add-on" + (off.length === 1 ? "" : "s") + " switched off" : "All add-ons on");
+    } catch (err) {
+      if (err.status === 401) { $("addonDialog").close(); return signedOutView("You've been signed out. Please sign in again."); }
+      $("addonErr").textContent = err.message; show("addonErr", true);
+    } finally { busy = false; $("addonSave").disabled = false; }
+  }
+
+  $("addonForm").addEventListener("submit", saveAddons);
+  $("addonCancel").addEventListener("click", function () { $("addonDialog").close(); });
+
   $("clients").addEventListener("click", function (e) {
     var b = e.target.closest("button"); if (!b) return;
     if (b.dataset.edit) openEdit(b.dataset.edit);
+    if (b.dataset.addons) openAddons(b.dataset.addons);
     if (b.dataset.delete) openDelete(b.dataset.delete);
     if (b.dataset.pause) togglePause(b.dataset.pause);
     if (b.dataset.mgr) openManagers(b.dataset.mgr);

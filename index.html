@@ -108,6 +108,9 @@
   .notice-card+.notice-card{margin-top:var(--s3);}
   .notice-card p{margin:0 0 var(--s3);overflow-wrap:anywhere;}
   .notice-card .tiny{display:block;margin-bottom:var(--s3);}
+  /* A handover is a colleague's note, not the company speaking: no brand colour. */
+  .notice-card.plain{border-left-color:var(--line);}
+  .notice-card.plain .tiny{margin-bottom:0;}
   .section-head h2{margin:0;font-size:var(--t2);}
   .section-head strong{font-size:var(--t2);font-weight:600;}
   .section-head select{width:auto;min-height:44px;padding:0 var(--s2);border:0;background:none;color:var(--accent);font-weight:500;}
@@ -347,6 +350,11 @@
           <div id="noticesBody"></div>
         </section>
 
+        <section id="handover" class="hidden" aria-labelledby="handoverTitle">
+          <div class="section-head"><h2 id="handoverTitle">Left for you</h2></div>
+          <div id="handoverBody"></div>
+        </section>
+
         <section id="nextShift" class="hidden" aria-labelledby="nextTitle">
           <div class="section-head"><h2 id="nextTitle">Next shift</h2></div>
           <div id="nextShiftBody"></div>
@@ -364,6 +372,10 @@
         <section aria-labelledby="offTitleHead"><div class="section-head"><h2 id="offTitleHead">Days off</h2><button type="button" class="link" id="addOff">Add days off</button></div><div id="offList"></div></section>
       </div>
       <div id="staff-sheet" class="hidden" role="tabpanel" aria-labelledby="nav-sheet">
+        <section id="myOvertime" class="hidden" aria-labelledby="myOvertimeTitle">
+          <div class="section-head"><h2 id="myOvertimeTitle">Overtime</h2></div>
+          <div id="myOvertimeBody"></div>
+        </section>
         <section>
           <div class="month-nav"><button type="button" class="icon-btn" id="prevMonth" aria-label="Previous month"></button><h2 id="monthLabel">This month</h2><button type="button" class="icon-btn" id="nextMonth" aria-label="Next month"></button></div>
           <div class="sheet-stats">
@@ -485,6 +497,9 @@
     open: null,
     notices: [{ id: "a1", body: "Gate code changes to 4417 from Monday. Ask Jo if it doesn't work.",
                 created_at: new Date(Date.now() - 26 * 3600000).toISOString() }],
+    overtime: [{ week_start: "2026-09-07", hours: 47.5, threshold: 40, overtime: 7.5, status: "approved", note: "Agreed with Jo." }],
+    handover: { note: "Barrier 3 is sticking — lift it by hand until the engineer's been. Two vans left in bay 14 overnight.",
+                ended_at: new Date(Date.now() - 5 * 3600000).toISOString(), worksite: "Main yard" },
     history: [
       demoShift(1, 6, 2, 14, 11),
       demoShift(2, 5, 58, 14, 3),
@@ -1044,6 +1059,55 @@
     renderNotices();
   }
 
+  // ── MY OVERTIME ────────────────────────────
+  // Only your own weeks: row-level security on the function's tables sees to
+  // that, so there is nothing to filter here.
+  async function loadMyOvertime() {
+    if (DEMO) return renderMyOvertime(D.overtime || []);
+    if (!ME) return;
+    var to = localDay(new Date()), from = localDay(new Date(Date.now() - 56 * 864e5));
+    var r = await sb.rpc("overtime_weeks", { p_from: from, p_to: to });
+    // Overtime off, or the SQL not run yet. Either way there is nothing to say.
+    if (r.error) return renderMyOvertime([]);
+    renderMyOvertime(r.data || []);
+  }
+
+  function renderMyOvertime(rows) {
+    show("myOvertime", rows.length > 0);
+    if (!rows.length) { $("myOvertimeBody").innerHTML = ""; return; }
+    $("myOvertimeBody").innerHTML = rows.map(function (o) {
+      var state = o.status === "approved" ? "Approved"
+                : o.status === "rejected" ? "Not approved"
+                : "Waiting for your manager";
+      return '<div class="notice-card plain"><p>Week from ' +
+        esc(new Date(o.week_start + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "long" })) +
+        ": you worked " + hoursText(Number(o.hours)) + ", which is " + hoursText(Number(o.overtime)) +
+        " over the " + esc(String(o.threshold)) + "h this company counts as a normal week.</p>" +
+        '<span class="tiny">' + esc(state) + (o.note ? " &middot; " + esc(o.note) : "") + "</span></div>";
+    }).join("");
+  }
+
+  // ── HANDOVER ───────────────────────────────
+  // What the last person on this worksite wrote when they clocked out. The
+  // database picks the worksite from your own shift and hands back the note
+  // only — never who wrote it, their hours or where they were.
+  async function loadHandover() {
+    if (DEMO) return renderHandover(D.handover);
+    if (!ME) return;
+    var r = await sb.rpc("my_handover");
+    // The handover SQL may not have been run yet. Show nothing, break nothing.
+    if (r.error) return renderHandover(null);
+    renderHandover((r.data || [])[0] || null);
+  }
+
+  function renderHandover(h) {
+    show("handover", !!(h && h.note));
+    if (!h || !h.note) { $("handoverBody").innerHTML = ""; return; }
+    $("handoverBody").innerHTML = '<div class="notice-card plain"><p>' + esc(h.note) + "</p>" +
+      '<span class="tiny">' + esc(h.worksite || "this worksite") + " &middot; left at " +
+      esc(new Date(h.ended_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })) + "</span></div>";
+  }
+
   async function loadRota() {
     if (DEMO) { renderRota(); return; }
     if (!ME) return;
@@ -1179,7 +1243,7 @@
     USE_BREAKS = true;
     PRIVACY = { contact: "Jo Hargreaves, office manager", retention: "Six years after you leave, then deleted.", tracked: false, ackVersion: 0 };
     ROTA.on = true; ROTA.shifts = D.rota; ROTA.avail = D.avail; ROTA.off = D.off;
-    renderRota(); loadPrefs(); loadNotices();
+    renderRota(); loadPrefs(); loadNotices(); loadHandover(); loadMyOvertime();
     OPEN = D.open;
     renderHistory((D.open ? [D.open] : []).concat(D.history));
     renderStatus();
@@ -1265,6 +1329,8 @@
     renderStatus();
     await loadRota();
     await loadNotices();
+    await loadHandover();
+    await loadMyOvertime();
     loadPrefs();
     await loadPrivacy();
 
@@ -1534,7 +1600,9 @@
   // new, change the text in the same commit, and bump NOTICE_VERSION if the
   // meaning changed so everybody is shown it again. There is no analytics or
   // tracking in these pages, and the notice says so by not mentioning any.
-  var NOTICE_VERSION = 1;
+  // 2 (Sep 2026): a note left at clock-out is now passed to the next person on
+  // that worksite, so "who can see it" changed and everybody is asked again.
+  var NOTICE_VERSION = 2;
   // Who runs the app for the client: the registered company, and the name it
   // trades under. Owner's decision, 19 Sep 2026: AeroOne is a trading name of
   // AeroPark Direct Ltd (Companies House 17211973) until the mark is filed.
@@ -1561,7 +1629,7 @@
     return "<p>" + co + " uses " + esc(PRODUCT) + " to record when you work. This explains what is kept about you, why, and who can see it.</p>" +
       "<h3>What is kept</h3><ul>" + kept.map(function (x) { return "<li>" + x + "</li>"; }).join("") + "</ul>" +
       "<h3>Why</h3><p>So " + co + " can pay you correctly, keep the working-time records it needs, and run its rotas. It is never sold or used for advertising.</p>" +
-      "<h3>Who can see it</h3><p>Your managers at " + co + " can see your hours, your clock-in and clock-out locations, your notes" + (ROTA.on ? " and your rota" : "") + ". Your colleagues can see your name and role.</p>" +
+      "<h3>Who can see it</h3><p>Your managers at " + co + " can see your hours, your clock-in and clock-out locations, your notes" + (ROTA.on ? " and your rota" : "") + ". Your colleagues can see your name and role. If you leave a note when you clock out, the next person working that worksite is shown the note itself so they know what was left for them — not your name, and nothing else about your shift.</p>" +
       "<p>" + esc(PROCESSOR) + " built the app and runs it for " + co + ", and looks after the data on " + co + "'s instructions. It uses Supabase (the database, hosted in the EU), Vercel (hosting) and MapTiler and OpenStreetMap (map pictures: they can see your device's IP address and the area of the map on screen). If you turn on notifications, your phone's own notification service delivers them.</p>" +
       "<h3>How long it is kept</h3><p>" + howLong + "</p>" +
       "<h3>Your rights</h3><p>To see what is kept about you, to correct it, or to raise a concern, ask: " + who + ". You can also ask for a shift to be corrected under Timesheet. If you are unhappy with the answer, you can complain to the Information Commissioner's Office at ico.org.uk.</p>";

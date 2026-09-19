@@ -75,9 +75,9 @@ await db.exec(`
   insert into platform_admins (user_id) values ('${P.platform}');
 `);
 
-const TABLES = ["announcement_reads", "announcements", "audit_events", "availability", "notification_prefs", "pay_rates",
-                "privacy_ack", "profiles", "push_subscriptions", "rota_shifts", "shift_corrections", "shifts", "time_off",
-                "worksites", "on_shift_now"];
+const TABLES = ["announcement_reads", "announcements", "audit_events", "availability", "company_features", "notification_prefs",
+                "overtime_decisions", "pay_rates", "privacy_ack", "profiles", "push_subscriptions", "rota_shifts",
+                "shift_corrections", "shifts", "time_off", "worksites", "on_shift_now"];
 
 // ── 1. READ ISOLATION: nobody sees the other company's rows ──────────────
 const others = { A: CO_B, B: CO_A };
@@ -119,7 +119,7 @@ for (const t of [...TABLES, "companies"]) {
   check(`ANON  signed-out visitors cannot read ${t}`, !!r.error || r.rows[0].n === 0, `saw ${r.rows[0]?.n}`);
 }
 for (const fn of ["clock_in($1,1,1,1)", "clock_out(1,1,'x')", "start_break()", "end_break()", "publish_rota(now(), now())",
-                  "review_shift_correction($1,true,'x')", "acknowledge_privacy(1)", "clock_out_for($1,'x')"]) {
+                  "review_shift_correction($1,true,'x')", "acknowledge_privacy(1)", "clock_out_for($1,'x')", "my_handover()"]) {
   const r = await as(db, "anon", `select ${fn.includes("$1") ? fn.replace("$1", `'${W_A}'::uuid`) : fn}`);
   check(`ANON  signed-out visitors cannot run ${fn.split("(")[0]}()`, !!r.error, "it ran");
 }
@@ -369,6 +369,9 @@ gap("a manager can set another company's person's pay rate in their own company"
     insert into privacy_ack (user_id, company_id, version) values ('${S}','${CO_C}',1);
     insert into announcements (id, company_id, author_id, body) values ('${ANN_C}','${CO_C}','${O}','C notice');
     insert into announcement_reads (announcement_id, user_id, company_id) values ('${ANN_C}','${S}','${CO_C}');
+    insert into company_features (company_id, feature, enabled) values ('${CO_C}','overtime',false);
+    insert into overtime_decisions (company_id, user_id, week_start, status, hours_at_decision, decided_by)
+      values ('${CO_C}','${S}','2026-09-07','approved', 44, '${O}');
   `);
   const before = (await asOwner(db, `select count(*)::int n from profiles where company_id = $1`, [CO_C])).rows[0].n;
   let err = "";
@@ -376,7 +379,8 @@ gap("a manager can set another company's person's pay rate in their own company"
   check("DELETE  removing a company succeeds", before === 2 && !err, err || `seeded ${before} people`);
   const left = [];
   for (const t of ["profiles", "worksites", "shifts", "pay_rates", "availability", "time_off", "rota_shifts", "shift_corrections",
-                   "push_subscriptions", "notification_prefs", "privacy_ack", "announcements", "announcement_reads", "audit_events"]) {
+                   "push_subscriptions", "notification_prefs", "privacy_ack", "announcements", "announcement_reads", "audit_events",
+                   "company_features", "overtime_decisions"]) {
     const n = (await asOwner(db, `select count(*)::int n from ${t} where company_id = $1`, [CO_C])).rows[0].n;
     if (n) left.push(`${t}:${n}`);
   }
@@ -589,6 +593,200 @@ gap("a manager can set another company's person's pay rate in their own company"
   check("AUDIT nobody can call write_audit_event from the browser", !!r.error, "it ran");
   r = await as(db, P.mgrA, `delete from audit_events where company_id = $1`, [CO_A]);
   check("AUDIT a manager cannot delete their own audit history", blocked(r), "it deleted");
+}
+
+// ── 15. HANDOVER: the next person sees the note, and nothing else ────────
+// my_handover() is security definer, so it steps around shifts_read on purpose.
+// That makes it the one place a member of staff can read anything off somebody
+// else's shift, and these are the walls around it.
+{
+  // staffA2's latest shift is SHIFT_A2, open, at W_A. SHIFT_A1 is a closed shift
+  // at the same worksite by someone else, 22 hours ago, with a note.
+  let r = await as(db, P.staffA2, `select note, worksite, ended_at from my_handover()`);
+  const got = (r.rows || [])[0] || {};
+  check("HAND  the next person on the worksite sees the note left there", !r.error && got.note === "A1 secret note", r.error || JSON.stringify(r.rows));
+  check("HAND  ...with the worksite, and nothing else in the row", got.worksite === "A Yard" && Object.keys(got).length === 3, JSON.stringify(got));
+
+  // staffA1 wrote that note. The only other shift at W_A is still open.
+  r = await as(db, P.staffA1, `select note from my_handover()`);
+  check("HAND  you are never handed your own note back", !r.error && r.rows.length === 0, r.error || JSON.stringify(r.rows));
+
+  // The wall that matters: B must never see A's note, whatever they do.
+  r = await as(db, P.staffB1, `select note from my_handover()`);
+  check("HAND  another company sees none of it", !r.error && !JSON.stringify(r.rows).includes("A1 secret"), r.error || JSON.stringify(r.rows));
+  // Give B's owner a worksite of their own first, or the question is vacuous:
+  // with no shift there is nothing for the function to answer about, and the
+  // check would pass even with the tenant wall taken out.
+  await db.exec(`insert into shifts (company_id, user_id, worksite_id, clock_in_at, clock_out_at, note)
+                 values ('${CO_B}','${P.ownerB}','${W_B}', now() - interval '30 hours', now() - interval '23 hours', 'B owner note');`);
+  r = await as(db, P.ownerB, `select note from my_handover()`);
+  check("HAND  ...and neither does their owner", !r.error && !JSON.stringify(r.rows).includes("A1 secret"), r.error || JSON.stringify(r.rows));
+
+  // A note goes stale. Push the closed shift back a day and it stops being handed on.
+  await db.exec(`update shifts set clock_out_at = now() - interval '26 hours' where id = '${SHIFT_A1}'`);
+  r = await as(db, P.staffA2, `select note from my_handover()`);
+  check("HAND  a note older than a day is not handed on", !r.error && r.rows.length === 0, r.error || JSON.stringify(r.rows));
+  await db.exec(`update shifts set clock_out_at = now() - interval '22 hours' where id = '${SHIFT_A1}'`);
+
+  // An empty note is not a handover.
+  await db.exec(`update shifts set note = '   ' where id = '${SHIFT_A1}'`);
+  r = await as(db, P.staffA2, `select note from my_handover()`);
+  check("HAND  a blank note is not handed on", !r.error && r.rows.length === 0, r.error || JSON.stringify(r.rows));
+  await db.exec(`update shifts set note = 'A1 secret note' where id = '${SHIFT_A1}'`);
+
+  // Somebody who has never worked a site is asking about nothing.
+  r = await as(db, P.goneA, `select note from my_handover()`);
+  check("HAND  a removed person is handed nothing", !!r.error || r.rows.length === 0, JSON.stringify(r.rows));
+}
+
+// ── 16. OVERTIME: who may see a week, and who may decide it ──────────────
+// 2026-09-07 is a Monday. Three five-hour shifts in that week is 15 hours
+// against a threshold of 10, so the week is five hours over.
+{
+  const WK = "2026-09-07";
+  await db.exec(`
+    update companies set overtime_weekly_hours = 10 where id = '${CO_A}';
+    insert into shifts (company_id, user_id, worksite_id, clock_in_at, clock_out_at) values
+      ('${CO_A}','${P.staffA1}','${W_A}', timestamptz '2026-09-07 08:00+01', timestamptz '2026-09-07 13:00+01'),
+      ('${CO_A}','${P.staffA1}','${W_A}', timestamptz '2026-09-08 08:00+01', timestamptz '2026-09-08 13:00+01'),
+      ('${CO_A}','${P.staffA1}','${W_A}', timestamptz '2026-09-09 08:00+01', timestamptz '2026-09-09 13:00+01'),
+      ('${CO_A}','${P.staffA2}','${W_A}', timestamptz '2026-09-07 08:00+01', timestamptz '2026-09-07 20:00+01');
+  `);
+
+  let r = await as(db, P.mgrA, `select user_id, hours, threshold, overtime, status from overtime_weeks($1,$1)`, [WK]);
+  const rows = r.rows || [];
+  check("OT    a manager sees every week over the threshold", !r.error && rows.length === 2, r.error || JSON.stringify(rows));
+  const a1 = rows.find((x) => x.user_id === P.staffA1) || {};
+  check("OT    ...with the hours worked out from the shifts", Number(a1.hours) === 15 && Number(a1.overtime) === 5, JSON.stringify(a1));
+  check("OT    ...and no decision yet", a1.status === null, JSON.stringify(a1));
+
+  r = await as(db, P.staffA1, `select user_id from overtime_weeks($1,$1)`, [WK]);
+  check("OT    staff see their own week only", !r.error && r.rows.length === 1 && r.rows[0].user_id === P.staffA1, r.error || JSON.stringify(r.rows));
+  r = await as(db, P.staffB1, `select user_id from overtime_weeks($1,$1)`, [WK]);
+  check("OT    another company sees nothing of it", !r.error && r.rows.length === 0, r.error || JSON.stringify(r.rows));
+
+  r = await as(db, P.staffA1, `select decide_overtime($1,$2,'approved','')`, [P.staffA1, WK]);
+  check("OT    staff cannot approve their own overtime", !!r.error, "it ran");
+  r = await as(db, P.ownerB, `select decide_overtime($1,$2,'approved','')`, [P.staffA1, WK]);
+  check("OT    another company's owner cannot decide A's overtime", !!r.error, "it ran");
+  r = await as(db, P.mgrA, `select decide_overtime($1,$2,'approved','')`, [P.staffB1, WK]);
+  check("OT    a manager cannot decide for somebody in another company", !!r.error, "it ran");
+  r = await as(db, P.mgrA, `select decide_overtime($1,$2,'maybe','')`, [P.staffA1, WK]);
+  check("OT    a made-up decision is refused", !!r.error, "it ran");
+  r = await as(db, P.mgrA, `insert into overtime_decisions (company_id, user_id, week_start, status, hours_at_decision)
+                            values ($1,$2,$3,'approved',99)`, [CO_A, P.staffA1, WK]);
+  check("OT    nobody writes a decision by hand", blocked(r), "it wrote");
+
+  // Deciding, then reading it back, needs two statements on one connection:
+  // as() rolls back, and a row written inside a statement is invisible to the
+  // rest of that same statement.
+  let decided = {}, audited = -1;
+  await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [P.mgrA]);
+  await db.exec(`set role authenticated`);
+  try {
+    await db.query(`select decide_overtime($1,$2,'approved','Cover for Danny')`, [P.staffA1, WK]);
+    decided = (await db.query(`select status, hours_at_decision, decided_by, note from overtime_decisions
+                                where user_id = $1 and week_start = $2`, [P.staffA1, WK])).rows[0] || {};
+    audited = (await db.query(`select count(*)::int n from audit_events
+                                where entity = 'overtime' and action = 'approved' and actor_id = $1`, [P.mgrA])).rows[0].n;
+  } finally {
+    await db.exec(`reset role`);
+    await db.query(`select set_config('request.jwt.claim.sub', '', false)`);
+  }
+  check("OT    a manager CAN approve a week (sanity)", decided.status === "approved", JSON.stringify(decided));
+  check("OT    ...and the hours are recomputed, not taken from the browser", Number(decided.hours_at_decision) === 15, JSON.stringify(decided));
+  check("OT    ...against the manager who decided it", decided.decided_by === P.mgrA, JSON.stringify(decided));
+  check("OT    ...and it is written to the audit history", audited === 1, `found ${audited}`);
+
+  // A fresh member of staff, because section 11 promotes staffA2 to admin for
+  // good and a manager is supposed to see everybody. They get a decision of
+  // their own too, so "sees one row" proves the filter rather than an empty table.
+  const A3 = U(16);
+  await db.exec(`
+    insert into auth.users (id, email) values ('${A3}','a3@a.test');
+    insert into profiles (id, company_id, full_name, role, active) values ('${A3}','${CO_A}','Staff A3','staff',true);
+    insert into overtime_decisions (company_id, user_id, week_start, status, hours_at_decision, decided_by)
+      values ('${CO_A}','${A3}','${WK}','rejected', 12, '${P.mgrA}');
+  `);
+  r = await as(db, A3, `select user_id from overtime_decisions`);
+  check("OT    staff see their own decision and not a colleague's",
+        !r.error && r.rows.length === 1 && r.rows[0].user_id === A3, r.error || JSON.stringify(r.rows));
+  r = await as(db, P.ownerB, `select user_id from overtime_decisions`);
+  check("OT    another company sees none of the decisions", !r.error && r.rows.length === 0, r.error || JSON.stringify(r.rows));
+
+  // Switched off means switched off, for everybody.
+  await db.exec(`update companies set overtime_weekly_hours = null where id = '${CO_A}'`);
+  r = await as(db, P.mgrA, `select user_id from overtime_weeks($1,$1)`, [WK]);
+  check("OT    with no threshold set, no week is over it", !r.error && r.rows.length === 0, r.error || JSON.stringify(r.rows));
+  r = await as(db, P.mgrA, `select decide_overtime($1,$2,'approved','')`, [P.staffA1, WK]);
+  check("OT    ...and nothing can be decided", !!r.error, "it ran");
+}
+
+// ── 17. ADD-ONS: unticking one on /platform really takes it away ─────────
+// Everything above this point ran with no company_features rows at all, which
+// is the default-on case, so that is already proved. These prove OFF bites --
+// in the database, not just in the page, because hiding a button is not taking
+// a feature away.
+{
+  const off = (co, f) => db.exec(`insert into company_features (company_id, feature, enabled) values ('${co}','${f}',false)
+                                  on conflict (company_id, feature) do update set enabled = false;`);
+  const on  = (co, f) => db.exec(`delete from company_features where company_id = '${co}' and feature = '${f}';`);
+
+  // Nobody may hand themselves a feature from the browser.
+  let r = await as(db, P.mgrA, `insert into company_features (company_id, feature, enabled) values ($1,'overtime',true)`, [CO_A]);
+  check("ADDON a manager cannot give their own company a feature", blocked(r), "it wrote");
+  await off(CO_A, "notices");
+  r = await as(db, P.mgrA, `update company_features set enabled = true where company_id = $1`, [CO_A]);
+  check("ADDON ...nor switch one back on", blocked(r), "it changed");
+  r = await as(db, P.mgrA, `delete from company_features where company_id = $1`, [CO_A]);
+  check("ADDON ...nor delete the row that takes it away", blocked(r), "it deleted");
+  r = await as(db, P.mgrA, `select feature, enabled from company_features`);
+  check("ADDON a manager CAN read what they have (the app needs it)", !r.error && r.rows.length === 1, r.error || JSON.stringify(r.rows));
+  r = await as(db, P.staffB1, `select feature from company_features where company_id = $1`, [CO_A]);
+  check("ADDON another company cannot read A's add-ons", !r.error && r.rows.length === 0, r.error || JSON.stringify(r.rows));
+
+  // Notices off: nothing to read, nothing to post.
+  r = await as(db, P.staffA1, `select id from announcements`);
+  check("ADDON notices off: staff see none", !r.error && r.rows.length === 0, r.error || `saw ${r.rows.length}`);
+  r = await as(db, P.mgrA, `select id from announcements`);
+  check("ADDON notices off: the manager sees none either", !r.error && r.rows.length === 0, r.error || `saw ${r.rows.length}`);
+  r = await as(db, P.mgrA, `insert into announcements (company_id, body) values ($1,'while switched off')`, [CO_A]);
+  check("ADDON notices off: nothing can be posted", blocked(r), "it posted");
+  await on(CO_A, "notices");
+  r = await as(db, P.mgrA, `select id from announcements`);
+  check("ADDON notices back on: the old ones are still there, not deleted", !r.error && r.rows.length === 4, r.error || `saw ${r.rows.length}`);
+
+  // Handover off.
+  await off(CO_A, "handover");
+  r = await as(db, P.staffA2, `select note from my_handover()`);
+  check("ADDON handover off: nothing is handed on", !r.error && r.rows.length === 0, r.error || JSON.stringify(r.rows));
+  await on(CO_A, "handover");
+  r = await as(db, P.staffA2, `select note from my_handover()`);
+  check("ADDON handover back on: it returns again", !r.error && r.rows.length === 1, r.error || JSON.stringify(r.rows));
+
+  // Overtime off, with a threshold still set and weeks still over it.
+  const WK2 = "2026-09-07";
+  await db.exec(`update companies set overtime_weekly_hours = 10 where id = '${CO_A}'`);
+  r = await as(db, P.mgrA, `select user_id from overtime_weeks($1,$1)`, [WK2]);
+  check("ADDON overtime on: the week is listed (sanity)", !r.error && r.rows.length > 0, r.error || JSON.stringify(r.rows));
+  await off(CO_A, "overtime");
+  r = await as(db, P.mgrA, `select user_id from overtime_weeks($1,$1)`, [WK2]);
+  check("ADDON overtime off: no week is listed", !r.error && r.rows.length === 0, r.error || JSON.stringify(r.rows));
+  r = await as(db, P.staffA1, `select user_id from overtime_weeks($1,$1)`, [WK2]);
+  check("ADDON overtime off: staff see nothing either", !r.error && r.rows.length === 0, r.error || JSON.stringify(r.rows));
+  r = await as(db, P.mgrA, `select decide_overtime($1,$2,'approved','')`, [P.staffA1, WK2]);
+  check("ADDON overtime off: nothing can be decided", !!r.error, "it ran");
+
+  // One company's add-ons say nothing about another's.
+  r = await as(db, P.ownerB, `select has_feature('overtime') f`);
+  check("ADDON switching A's add-on off leaves B alone", !r.error && r.rows[0].f === true, r.error || JSON.stringify(r.rows));
+  await on(CO_A, "overtime");
+  await db.exec(`update companies set overtime_weekly_hours = null where id = '${CO_A}'`);
+
+  r = await as(db, "anon", `select has_feature('overtime')`);
+  check("ADDON signed-out visitors cannot ask what a company has", !!r.error, "it ran");
+  r = await as(db, "anon", `select count(*)::int n from company_features`);
+  check("ADDON signed-out visitors cannot read company_features", !!r.error || r.rows[0].n === 0, `saw ${r.rows[0]?.n}`);
 }
 
 // ── report ───────────────────────────────────────────────────────────────
