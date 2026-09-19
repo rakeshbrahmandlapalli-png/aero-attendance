@@ -82,6 +82,10 @@
   dialog h2{margin-bottom:var(--s2);}
   .dialog-actions{display:flex;justify-content:flex-end;gap:var(--s2);margin-top:var(--s6);}
   .dialog-actions .btn{width:auto;margin:0;}
+  .privacy h3{margin:var(--s4) 0 var(--s1);font-size:16px;}
+  .privacy p,.privacy li{color:#4A5363;line-height:1.5;margin:0 0 var(--s2);}
+  .privacy ul{margin:var(--s1) 0 0;padding-left:20px;}
+  .privacy .dialog-actions{position:sticky;bottom:calc(-1 * var(--s6));margin:var(--s4) calc(-1 * var(--s6)) calc(-1 * var(--s6));padding:var(--s3) var(--s6) var(--s6);background:var(--card);border-top:1px solid var(--line);}
   @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important;}}
 
   /* ── staff app shell ───────────────────── */
@@ -361,7 +365,7 @@
         <section><div id="monthList" class="list"></div></section>
       </div>
       <div id="staff-inbox" class="hidden" role="tabpanel" aria-labelledby="nav-inbox"><div class="section-head"><h2>Activity</h2><button class="link" id="refreshActivity">Refresh</button></div><div id="activity" aria-live="polite"></div></div>
-      <div id="staff-account" class="hidden" role="tabpanel" aria-labelledby="nav-account"><div class="section-head"><h2>Your account</h2></div><div class="account-row"><span>Name</span><strong id="accountName"></strong></div><div class="account-row"><span>Company</span><strong id="accountCompany"></strong></div><div id="notifyBox" class="notify hidden"><h3>Notifications</h3><p class="note" id="notifyState"></p><button type="button" class="btn" id="notifyOn">Turn on notifications</button><button type="button" class="btn g hidden" id="notifyOff">Turn off for this phone</button><div id="notifyPrefs"></div></div><label class="check"><input type="checkbox" id="shiftReminder" checked>Show long-shift reminders while the app is open</label><div class="account-row"><span>Location</span><strong>Clock-in and clock-out only</strong></div><button class="btn hidden" id="installApp">Install Aero</button><p class="note" id="installStatus"></p><button class="btn g signout" id="signout">Sign out</button></div>
+      <div id="staff-account" class="hidden" role="tabpanel" aria-labelledby="nav-account"><div class="section-head"><h2>Your account</h2></div><div class="account-row"><span>Name</span><strong id="accountName"></strong></div><div class="account-row"><span>Company</span><strong id="accountCompany"></strong></div><div id="notifyBox" class="notify hidden"><h3>Notifications</h3><p class="note" id="notifyState"></p><button type="button" class="btn" id="notifyOn">Turn on notifications</button><button type="button" class="btn g hidden" id="notifyOff">Turn off for this phone</button><div id="notifyPrefs"></div></div><label class="check"><input type="checkbox" id="shiftReminder" checked>Show long-shift reminders while the app is open</label><div class="account-row"><span>Location</span><strong>Clock-in and clock-out only</strong></div><button class="btn hidden" id="installApp">Install Aero</button><p class="note" id="installStatus"></p><button type="button" class="btn g" id="openPrivacy">Privacy notice</button><button class="btn g signout" id="signout">Sign out</button></div>
     </main>
 
     <nav class="staff-nav" aria-label="Staff views"><button id="nav-work" aria-controls="staff-work" aria-selected="true" data-view="work"><span>Home</span></button><button id="nav-rota" class="hidden" aria-controls="staff-rota" aria-selected="false" data-view="rota"><span>Rota</span></button><button id="nav-sheet" aria-controls="staff-sheet" aria-selected="false" data-view="sheet"><span>Timesheet</span></button><button id="nav-inbox" aria-controls="staff-inbox" aria-selected="false" data-view="inbox"><span>Activity <span class="num" id="inboxCount"></span></span></button><button id="nav-account" aria-controls="staff-account" aria-selected="false" data-view="account"><span>Account</span></button></nav>
@@ -391,6 +395,7 @@
 <dialog id="offDialog" aria-labelledby="offTitle"><form id="offForm"><h2 id="offTitle">Add days off</h2><p class="note">Your manager sees these when making the rota.</p><label for="offFrom">First day</label><input id="offFrom" type="date" required><label for="offTo">Last day</label><input id="offTo" type="date" required><label for="offReason">Reason (optional)</label><input id="offReason" maxlength="200"><div class="err hidden" id="offError" role="alert"></div><div class="dialog-actions"><button type="button" class="link" id="cancelOff">Cancel</button><button class="btn" id="saveOff">Add days off</button></div></form></dialog>
 
 <dialog id="pwDialog" aria-labelledby="pwTitle"><form id="pwForm" novalidate><h2 id="pwTitle">Choose your password</h2><p class="note">You signed in with a starting password. Choose your own to keep your account private.</p><label for="newPw">New password</label><input id="newPw" type="password" autocomplete="new-password"><label for="newPw2">Type it again</label><input id="newPw2" type="password" autocomplete="new-password"><div class="err hidden" id="pwError" role="alert"></div><div class="dialog-actions"><button class="btn" id="savePw">Save password</button></div></form></dialog>
+<dialog id="privacyDialog" aria-labelledby="privacyTitle"><div class="privacy"><h2 id="privacyTitle"></h2><div id="privacyBody"></div><div class="dialog-actions"><button type="button" class="btn g" id="closePrivacy">Close</button><button type="button" class="btn hidden" id="ackPrivacy">I've read this</button></div></div></dialog>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 (function () {
@@ -1111,6 +1116,7 @@
     PAY = { on: true, rate: 12.5 };
     ON_SITE_ONLY = true;
     USE_BREAKS = true;
+    PRIVACY = { contact: "Jo Hargreaves, office manager", retention: "Six years after you leave, then deleted.", tracked: false, ackVersion: 0 };
     ROTA.on = true; ROTA.shifts = D.rota; ROTA.avail = D.avail; ROTA.off = D.off;
     renderRota(); loadPrefs();
     OPEN = D.open;
@@ -1187,12 +1193,14 @@
     renderStatus();
     await loadRota();
     loadPrefs();
+    await loadPrivacy();
 
     show("login", false);
     show("app", true);
     refreshMap();
     updateAccount(); loadActivity();
     if (user.user_metadata && user.user_metadata.must_change_password) askNewPassword();
+    else maybeShowNotice();
   }
 
   async function onAction() {
@@ -1442,6 +1450,93 @@
   $("action").addEventListener("pointerup", endDrag);
   $("action").addEventListener("pointercancel", endDrag);
   $("action").addEventListener("click", function (e) { if (e.detail === 0) onAction(); });
+  // ── privacy notice ─────────────────────────
+  //
+  // Plain English, built from what this app really does and from the company's
+  // own settings. It is the EMPLOYER's notice to its staff (the company decides
+  // why and how long; this app only holds the data for it), so the page fills in
+  // the facts and the company supplies a contact and a retention period.
+  //
+  // KEEP THIS TRUE. If the app starts collecting, showing or sharing something
+  // new, change the text in the same commit, and bump NOTICE_VERSION if the
+  // meaning changed so everybody is shown it again. There is no analytics or
+  // tracking in these pages, and the notice says so by not mentioning any.
+  var NOTICE_VERSION = 1;
+  var PROCESSOR = "AeroOne";
+  var PRIVACY = { contact: "", retention: "", tracked: false, ackVersion: 0 }, noticeBusy = false;
+
+  function noticeHtml() {
+    var co = esc($("company").textContent || "Your employer");
+    var who = esc(PRIVACY.contact || "your manager");
+    var kept = [
+      "Your name and role.",
+      "When you clock in and out" + (USE_BREAKS ? ", and your breaks" : "") + ".",
+      "Where you are at the moment you clock in and the moment you clock out, to check you are at the worksite. You are not tracked in between. The map shows your position on your own phone only while the clock screen is open, and that is not sent anywhere.",
+      "Notes you add, and any change you ask for to a shift."
+    ];
+    if (ROTA.on) kept.push("Your usual availability and days off.");
+    kept.push("Your hourly rate, if your manager has entered one.");
+
+    var howLong = PRIVACY.retention
+      ? esc(PRIVACY.retention)
+      : "For as long as " + co + " needs them for pay and legal records. For the exact period, ask: " + who + ".";
+
+    return "<p>" + co + " uses Aero Attendance to record when you work. This explains what is kept about you, why, and who can see it.</p>" +
+      "<h3>What is kept</h3><ul>" + kept.map(function (x) { return "<li>" + x + "</li>"; }).join("") + "</ul>" +
+      "<h3>Why</h3><p>So " + co + " can pay you correctly, keep the working-time records it needs, and run its rotas. It is never sold or used for advertising.</p>" +
+      "<h3>Who can see it</h3><p>Your managers at " + co + " can see your hours, your clock-in and clock-out locations, your notes" + (ROTA.on ? " and your rota" : "") + ". Your colleagues can see your name and role.</p>" +
+      "<p>" + esc(PROCESSOR) + " built the app and runs it for " + co + ", and looks after the data on " + co + "'s instructions. It uses Supabase (database), Vercel (hosting) and MapTiler and OpenStreetMap (map pictures: they can see your device's IP address and the area of the map on screen). If you turn on notifications, your phone's own notification service delivers them.</p>" +
+      "<h3>How long it is kept</h3><p>" + howLong + "</p>" +
+      "<h3>Your rights</h3><p>To see what is kept about you, to correct it, or to raise a concern, ask: " + who + ". You can also ask for a shift to be corrected under Timesheet. If you are unhappy with the answer, you can complain to the Information Commissioner's Office at ico.org.uk.</p>";
+  }
+
+  // The company's contact and retention wording, and whether this person has
+  // read the current version. A failed read of the read-record means the
+  // privacy update has not been run: with nowhere to record it, nobody is
+  // asked, and the notice is still there under Account.
+  async function loadPrivacy() {
+    if (DEMO) return;
+    var c = await sb.from("companies").select("privacy_contact, retention_text").eq("id", ME.company_id).maybeSingle();
+    if (!c.error && c.data) { PRIVACY.contact = c.data.privacy_contact || ""; PRIVACY.retention = c.data.retention_text || ""; }
+    var a = await sb.from("privacy_ack").select("version").eq("user_id", ME.id).maybeSingle();
+    PRIVACY.tracked = !a.error;
+    PRIVACY.ackVersion = (!a.error && a.data && a.data.version) || 0;
+  }
+
+  function openPrivacy(first) {
+    $("privacyTitle").textContent = "How " + ($("company").textContent || "your employer") + " uses your information";
+    $("privacyBody").innerHTML = noticeHtml() + '<p class="note">Notice version ' + NOTICE_VERSION + "</p>";
+    show("ackPrivacy", !!first);
+    $("closePrivacy").textContent = first ? "Not now" : "Close";
+    $("privacyDialog").showModal();
+  }
+
+  // Once per person and version. Never while the choose-a-password box is up
+  // (it is shown right after), and never in the sales demo.
+  function maybeShowNotice() {
+    if (DEMO || !PRIVACY.tracked || PRIVACY.ackVersion >= NOTICE_VERSION || $("pwDialog").open) return;
+    openPrivacy(true);
+  }
+
+  $("openPrivacy").addEventListener("click", function () { openPrivacy(false); });
+  $("closePrivacy").addEventListener("click", function () { $("privacyDialog").close(); });
+  $("ackPrivacy").addEventListener("click", async function () {
+    if (noticeBusy) return;
+    noticeBusy = true; $("ackPrivacy").disabled = true;
+    try {
+      var r = await sb.rpc("acknowledge_privacy", { p_version: NOTICE_VERSION });
+      if (r.error) throw r.error;
+      PRIVACY.ackVersion = NOTICE_VERSION;
+    } catch (error) {
+      // Nobody is kept from clocking in over a notice: say what went wrong and
+      // let them through. They are simply asked again next time.
+      fail(error);
+    } finally {
+      noticeBusy = false; $("ackPrivacy").disabled = false;
+      $("privacyDialog").close();
+    }
+  });
+
   $("openClock").addEventListener("click", openClock);
 
   // Breaks. No map, no location: a break is about time, not place — the
@@ -1517,6 +1612,7 @@
       var r = await sb.auth.updateUser({ password: a, data: { must_change_password: false } });
       if (r.error) throw r.error;
       $("pwDialog").close(); toast("Password saved");
+      maybeShowNotice();
     } catch (error) { $("pwError").textContent = error.message; show("pwError", true); }
     finally { $("savePw").disabled = false; }
   });

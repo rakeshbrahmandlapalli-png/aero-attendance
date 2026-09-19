@@ -379,7 +379,7 @@
     <section id="tab-reviews"><h2>Correction requests</h2><div class="bar"><select id="reviewFilter" aria-label="Request status"><option value="pending">Awaiting review</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="all">All requests</option></select><label class="filter-check"><input type="checkbox" id="boardAlerts" checked>In-app alerts</label><span class="notify-state" id="reviewUpdated"></span></div><div id="reviews" aria-live="polite"></div></section>
   </main>
 </div>
-<dialog id="settingsDialog" aria-labelledby="settingsTitle"><form id="settingsForm"><h2 id="settingsTitle">Company settings</h2><label class="field">Company name<input id="companyName" required maxlength="120"></label><label class="filter-check" id="payToggleWrap"><input type="checkbox" id="showPay">Show estimated pay</label><p class="note" id="payToggleNote">Staff see an estimate from their own hourly rate; managers see everyone's on Timesheets. Switch this on only once the data processing agreement is signed.</p><label class="filter-check" id="onSiteToggleWrap"><input type="checkbox" id="requireOnSite">Only allow clock-in on site</label><p class="note" id="onSiteToggleNote">Staff can only clock in inside a worksite zone, with location switched on. Clocking out is always allowed and flagged if they're away. Switch off for teams that work off-site.</p><label class="filter-check" id="breakToggleWrap"><input type="checkbox" id="useBreaks">Staff record breaks</label><p class="note" id="breakToggleNote">Staff tap Start break and End break themselves, and those minutes come off their paid hours. Switch off for teams that never stop.</p><label class="filter-check" id="rotaToggleWrap"><input type="checkbox" id="useRota">Use rota &amp; availability</label><p class="note" id="rotaToggleNote">Staff give their usual week and days off. You build and publish the rota on the Rota tab, and Now flags late starts and no-shows.</p><div id="settingsError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelSettings">Cancel</button><button class="b" id="saveSettings">Save changes</button></div></form></dialog>
+<dialog id="settingsDialog" aria-labelledby="settingsTitle"><form id="settingsForm"><h2 id="settingsTitle">Company settings</h2><label class="field">Company name<input id="companyName" required maxlength="120"></label><label class="filter-check" id="payToggleWrap"><input type="checkbox" id="showPay">Show estimated pay</label><p class="note" id="payToggleNote">Staff see an estimate from their own hourly rate; managers see everyone's on Timesheets. Switch this on only once the data processing agreement is signed.</p><label class="filter-check" id="onSiteToggleWrap"><input type="checkbox" id="requireOnSite">Only allow clock-in on site</label><p class="note" id="onSiteToggleNote">Staff can only clock in inside a worksite zone, with location switched on. Clocking out is always allowed and flagged if they're away. Switch off for teams that work off-site.</p><label class="filter-check" id="breakToggleWrap"><input type="checkbox" id="useBreaks">Staff record breaks</label><p class="note" id="breakToggleNote">Staff tap Start break and End break themselves, and those minutes come off their paid hours. Switch off for teams that never stop.</p><label class="field" id="privacyContactWrap">Who staff ask about their data<input id="privacyContact" maxlength="200" autocomplete="off" placeholder="Name, role or email"></label><label class="field" id="retentionWrap">How long records are kept<input id="retentionText" maxlength="200" autocomplete="off" placeholder="e.g. Six years after you leave"></label><p class="note" id="privacyNote">Both appear in the privacy notice every member of staff is shown the first time they sign in.</p><label class="filter-check" id="rotaToggleWrap"><input type="checkbox" id="useRota">Use rota &amp; availability</label><p class="note" id="rotaToggleNote">Staff give their usual week and days off. You build and publish the rota on the Rota tab, and Now flags late starts and no-shows.</p><div id="settingsError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelSettings">Cancel</button><button class="b" id="saveSettings">Save changes</button></div></form></dialog>
 <dialog id="rateDialog" aria-labelledby="rateTitle"><form id="rateForm"><h2 id="rateTitle">Hourly rate</h2><p class="note" id="rateWho"></p><label class="field">Pounds per hour<input id="rateValue" type="number" inputmode="decimal" min="0" max="1000" step="0.01"></label><p class="note">Used only to estimate pay from completed hours. Clear it and save to remove the rate.</p><div id="rateError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelRate">Cancel</button><button class="b" id="saveRate">Save rate</button></div></form></dialog>
 
 <dialog id="rotaDialog" aria-labelledby="rotaTitle"><form id="rotaForm"><h2 id="rotaTitle">Add shift</h2><label class="field">Staff member<select id="rotaWho" required></select></label><label class="field">Date<input id="rotaDate" type="date" required></label><div class="time-pair"><label class="field">Start<input id="rotaStart" type="time" required></label><label class="field">Finish<input id="rotaEnd" type="time" required></label></div><p class="note" id="rotaHint"></p><label class="field">Worksite<select id="rotaSite"></select></label><label class="field">Note for staff (optional)<input id="rotaNote" maxlength="300"></label><div id="rotaWarn" class="warn-line hidden" role="status"></div><div id="rotaError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g hidden" id="deleteRota">Remove shift</button><button type="button" class="g" id="cancelRota">Cancel</button><button class="b" id="saveRota">Save shift</button></div></form></dialog>
@@ -401,6 +401,8 @@
   var PAY_ON = false, PAY_READY = false, RATES = {}, rateUser = null;
   var ON_SITE = true, ON_SITE_READY = false;
   var USE_BREAKS = false, BREAKS_READY = false;
+  // The privacy notice: what only the company can supply, and who has read it.
+  var PRIVACY_READY = false, PRIVACY_CONTACT = "", RETENTION_TEXT = "", ACK = {}, ACK_READY = false;
   var USE_ROTA = false, ROTA_READY = false, ROTA_SHIFTS = [], AVAIL = {}, OFF = [], ROTA_WEEK = null, ROTA_DAY = null, rotaToken = 0;
   var TODAY_ROTA = [], RECENT = [], editingRota = null, lastRota = { start: "06:00", end: "14:00", site: "" };
   // Icon shapes from Lucide (ISC licence, LUCIDE-LICENSE.txt), inlined so no icon library has to load.
@@ -451,6 +453,7 @@
     company: "Example Logistics Ltd",
     showPay: true,
     useRota: true, rota: [], avail: {}, off: [], requireOnSite: true,
+    privacyContact: "Jo Hargreaves, office manager", retentionText: "Six years after you leave, then deleted.",
     rates: { p1: 12.5, p2: 12.5, p3: 12.21, p4: 15 },
     now: [
       { shift_id: "n1", user_id: "p1", full_name: "Sam Whitfield", worksite: "Main yard",
@@ -846,11 +849,15 @@
         return '<option value="' + p.id + '">' + esc(p.full_name) + "</option>";
       }).join("");
       if (STAFF.some(function(p) { return p.id === selected; })) $("who").value = selected;
+      ACK_READY = true; ACK = { p1: agoISO(1200), p2: agoISO(1100), p4: agoISO(2400) };
       renderStaff(); renderStats(); renderFlags(true); if (USE_ROTA && ROTA_WEEK) renderRota(); return;
     }
     var r = await sb.from("profiles").select("*").order("full_name");
     if (r.error) { fail(r.error); return; }
     STAFF = r.data || [];
+    var ak = await sb.from("privacy_ack").select("user_id, seen_at");
+    ACK_READY = !ak.error;
+    ACK = {}; ((ak.data) || []).forEach(function (a) { ACK[a.user_id] = a.seen_at; });
     $("who").innerHTML = '<option value="">Everyone</option>' + STAFF.map(function (p) {
       return '<option value="' + p.id + '">' + esc(p.full_name) + "</option>";
     }).join("");
@@ -859,6 +866,13 @@
     renderStats();
     renderFlags(true);
     if (USE_ROTA && ROTA_WEEK) renderRota();
+  }
+
+  // Whether this person has been shown the privacy notice. Hidden until the
+  // privacy update has been run, so nobody reads "not read" as a fault.
+  function noticeLine(p) {
+    if (!ACK_READY || !p.active) return "";
+    return '<div class="tiny">' + (ACK[p.id] ? "Notice read " + dmy(ACK[p.id]) : "Notice not read yet") + "</div>";
   }
 
   function renderStaff() {
@@ -873,7 +887,7 @@
         nameCell(p.full_name) +
         '<td><span class="role">' + esc(p.role) + "</span></td>" +
         "<td>" + (p.active ? '<span class="st ok"><i></i>Active</span>'
-                           : '<span class="st none"><i></i>Removed</span>') + "</td>" +
+                           : '<span class="st none"><i></i>Removed</span>') + noticeLine(p) + "</td>" +
         '<td class="tiny num">' + dmy(p.created_at) + "</td>" +
         '<td class="num">' + (!PAY_READY ? '<span class="tiny">—</span>' : RATES[p.id] != null ? money(RATES[p.id]) : '<span class="tiny">Not set</span>') + "</td>" +
         '<td style="text-align:right">' +
@@ -1153,14 +1167,14 @@
     });
   }
   $('reviewFilter').addEventListener('change',renderReviews);
-  $('settings').addEventListener('click',function(){$('companyName').value=$('company').textContent;$('showPay').checked=PAY_ON;show('payToggleWrap',PAY_READY);show('payToggleNote',PAY_READY);$('useRota').checked=USE_ROTA;$('requireOnSite').checked=ON_SITE;$('useBreaks').checked=USE_BREAKS;show('breakToggleWrap',BREAKS_READY);show('breakToggleNote',BREAKS_READY);show('onSiteToggleWrap',ON_SITE_READY);show('onSiteToggleNote',ON_SITE_READY);show('rotaToggleWrap',ROTA_READY);show('rotaToggleNote',ROTA_READY);show('settingsError',false);$('settingsDialog').showModal();});
+  $('settings').addEventListener('click',function(){$('companyName').value=$('company').textContent;$('showPay').checked=PAY_ON;show('payToggleWrap',PAY_READY);show('payToggleNote',PAY_READY);$('useRota').checked=USE_ROTA;$('requireOnSite').checked=ON_SITE;$('useBreaks').checked=USE_BREAKS;show('breakToggleWrap',BREAKS_READY);show('breakToggleNote',BREAKS_READY);$('privacyContact').value=PRIVACY_CONTACT;$('retentionText').value=RETENTION_TEXT;show('privacyContactWrap',PRIVACY_READY);show('retentionWrap',PRIVACY_READY);show('privacyNote',PRIVACY_READY);show('onSiteToggleWrap',ON_SITE_READY);show('onSiteToggleNote',ON_SITE_READY);show('rotaToggleWrap',ROTA_READY);show('rotaToggleNote',ROTA_READY);show('settingsError',false);$('settingsDialog').showModal();});
   $('cancelSettings').addEventListener('click',function(){$('settingsDialog').close();});
   $('settingsForm').addEventListener('submit',async function(e){
     e.preventDefault();var name=$('companyName').value.trim();if(!name)return;$('saveSettings').disabled=true;show('settingsError',false);
     try{
-      if(DEMO){D.company=name;D.showPay=$('showPay').checked;D.useRota=$('useRota').checked;D.requireOnSite=$('requireOnSite').checked;D.useBreaks=$('useBreaks').checked;}
-      else{var values={name:name};if(PAY_READY)values.show_pay=$('showPay').checked;if(ROTA_READY)values.use_rota=$('useRota').checked;if(ON_SITE_READY)values.require_on_site=$('requireOnSite').checked;if(BREAKS_READY)values.use_breaks=$('useBreaks').checked;var r=await sb.from('companies').update(values).eq('id',ME.company_id);if(r.error)throw r.error;}
-      PAY_ON=PAY_READY&&$('showPay').checked;ON_SITE=ON_SITE_READY?$('requireOnSite').checked:ON_SITE;USE_BREAKS=BREAKS_READY?$('useBreaks').checked:USE_BREAKS;
+      if(DEMO){D.company=name;D.showPay=$('showPay').checked;D.useRota=$('useRota').checked;D.requireOnSite=$('requireOnSite').checked;D.useBreaks=$('useBreaks').checked;D.privacyContact=$('privacyContact').value.trim();D.retentionText=$('retentionText').value.trim();}
+      else{var values={name:name};if(PAY_READY)values.show_pay=$('showPay').checked;if(ROTA_READY)values.use_rota=$('useRota').checked;if(ON_SITE_READY)values.require_on_site=$('requireOnSite').checked;if(BREAKS_READY)values.use_breaks=$('useBreaks').checked;if(PRIVACY_READY){values.privacy_contact=$('privacyContact').value.trim();values.retention_text=$('retentionText').value.trim();}var r=await sb.from('companies').update(values).eq('id',ME.company_id);if(r.error)throw r.error;}
+      PAY_ON=PAY_READY&&$('showPay').checked;ON_SITE=ON_SITE_READY?$('requireOnSite').checked:ON_SITE;USE_BREAKS=BREAKS_READY?$('useBreaks').checked:USE_BREAKS;if(PRIVACY_READY){PRIVACY_CONTACT=$('privacyContact').value.trim();RETENTION_TEXT=$('retentionText').value.trim();}
       var rotaWas=USE_ROTA;USE_ROTA=ROTA_READY&&$('useRota').checked;applyRota();if(USE_ROTA!==rotaWas){loadNow();if(USE_ROTA)loadRotaWeek();}
       $('company').textContent=name;$('settingsDialog').close();toast('Settings saved');renderSheet();renderStaff();
     }catch(error){$('settingsError').textContent=error.message;show('settingsError',true);}
@@ -1201,13 +1215,17 @@
   // Optional for each company (companies.use_rota). ROTA_READY stays false
   // until the rota SQL has been run, so the board keeps working without it.
   async function loadRotaFlag() {
-    if (DEMO) { ON_SITE_READY = true; ON_SITE = D.requireOnSite; ROTA_READY = true; USE_ROTA = D.useRota; BREAKS_READY = true; USE_BREAKS = true; applyRota(); return; }
+    if (DEMO) { ON_SITE_READY = true; ON_SITE = D.requireOnSite; ROTA_READY = true; USE_ROTA = D.useRota; BREAKS_READY = true; USE_BREAKS = true; PRIVACY_READY = true; PRIVACY_CONTACT = D.privacyContact; RETENTION_TEXT = D.retentionText; applyRota(); return; }
     var strict = await sb.from("companies").select("require_on_site").eq("id", ME.company_id).maybeSingle();
     ON_SITE_READY = !strict.error;
     ON_SITE = !!(ON_SITE_READY && strict.data && strict.data.require_on_site);
     var brk = await sb.from("companies").select("use_breaks").eq("id", ME.company_id).maybeSingle();
     BREAKS_READY = !brk.error;
     USE_BREAKS = !!(BREAKS_READY && brk.data && brk.data.use_breaks);
+    var pv = await sb.from("companies").select("privacy_contact, retention_text").eq("id", ME.company_id).maybeSingle();
+    PRIVACY_READY = !pv.error;
+    PRIVACY_CONTACT = (PRIVACY_READY && pv.data && pv.data.privacy_contact) || "";
+    RETENTION_TEXT = (PRIVACY_READY && pv.data && pv.data.retention_text) || "";
     var co = await sb.from("companies").select("use_rota").eq("id", ME.company_id).maybeSingle();
     ROTA_READY = !co.error;
     USE_ROTA = !!(ROTA_READY && co.data && co.data.use_rota);

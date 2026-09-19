@@ -28,6 +28,8 @@ index.html            staff app: sign in, clock in/out, site map, shift history
 admin.html            manager board: on shift now, stats, flags, timesheets, CSV, staff, sites
 setup/schema.sql      the whole database: tables, row-level security, clock_in/clock_out
 setup/update-2026-09-rota-and-staff.sql  the September update on its own (already inside schema.sql)
+setup/update-2026-09-breaks.sql  breaks: start/end break, minutes off paid hours (already inside schema.sql)
+setup/update-2026-09-privacy-notice.sql  privacy notice fields and the read-record (already inside schema.sql)
 supabase/functions/manage-staff/index.ts  Edge Function: add staff logins, remove/restore leavers
 supabase/functions/send-push/index.ts  Edge Function: phone notifications (web push)
 setup/update-2026-09-notifications.sql  the notifications update on its own (already inside schema.sql)
@@ -77,9 +79,26 @@ its own CSS and JavaScript. The only external script is supabase-js from a CDN.
    both pages run on sample data in memory with no network calls. Every new
    feature needs a demo-mode path too. Clients are sent the demo link.
 10. **No map library.** The map is plain Web Mercator maths over image tiles.
-    Do not add Leaflet, Google Maps or Mapbox. (OpenStreetMap's free tiles must
-    be swapped for MapTiler or Stadia before real clients use it.) No icon
-    library either: icons are small inline SVGs in the page (`icon()` helper).
+    Do not add Leaflet, Google Maps or Mapbox. No icon library either: icons
+    are small inline SVGs in the page (`icon()` helper).
+    Tiles: the clock screen uses **MapTiler satellite** (`MAP_KEY` in
+    index.html, done 18 Sep 2026). That key is public by design: it is
+    restricted to `aero-attendance.vercel.app`, `*.vercel.app` and `localhost`
+    in the MapTiler dashboard, so it belongs in the page. Every tile falls back
+    to OpenStreetMap if MapTiler fails, so a quota problem never leaves a blank
+    map. Keep both attributions. **Test on `localhost`, not `127.0.0.1`**: the
+    key's origin list does not include 127.0.0.1 and the tiles read
+    "Invalid key". CARTO's basemaps now need a key too; do not switch to them.
+11. **The privacy notice must stay true.** `noticeHtml()` in index.html is what
+    every member of staff is shown at first sign-in and under Account. It is the
+    employer's notice to its staff (the company is the controller; this app and
+    AeroOne are the processor), built from what the app really does and from
+    `companies.privacy_contact` / `retention_text`. If a change collects, shows
+    or shares any new personal data, or adds any third-party service or script,
+    update that text in the same commit and bump `NOTICE_VERSION` if the meaning
+    changed, so everybody is asked to read it again. There is no analytics or
+    tracking in these pages: do not add any without changing the notice and
+    telling the owner first. Never make the notice block clocking in.
 
 ## Secrets
 
