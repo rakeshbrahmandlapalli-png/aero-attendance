@@ -5,6 +5,24 @@ or redeploy an Edge Function says so.
 
 ## Unreleased
 
+### Fixed
+- **A manager clocking somebody out did not close a break they had left running**, so those minutes
+  were never taken off the paid hours and the shift was paid for time on break. The board used a
+  plain update on `shifts`, which skips `clock_out()`. It now goes through a new `clock_out_for()`
+  in the database, which closes the break, counts the minutes, and refuses a shift that is not the
+  manager's own company's or is already closed. *Needs:
+  `setup/update-2026-09-manager-clock-out.sql` (run the audit SQL first).*
+- **The audit SQL had never been folded into `setup/schema.sql`.** A client set up from that file
+  alone got no `audit_events` table, so their Audit tab only ever showed an error — and because the
+  isolation test runs `schema.sql`, none of its attacks had ever touched the audit history. Both are
+  now covered.
+
+### Changed
+- **Clocking someone out now asks properly.** Instead of a browser pop-up saying only "Clock out
+  <name> now?", a dialog names the person, their worksite, when they clocked in and the time they
+  will be clocked out at, and takes an optional reason. Who did it, and why, is recorded in Audit
+  history — a shift somebody else ended is pay data, so it has to be attributable.
+
 ### Added
 - **Notices.** A manager posts a short message from the Now tab; everyone in that company sees it
   on Home until they tap "Got it". Dismissing records that the person read it, so the manager sees

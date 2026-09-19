@@ -397,6 +397,7 @@
 <dialog id="rotaDialog" aria-labelledby="rotaTitle"><form id="rotaForm"><h2 id="rotaTitle">Add shift</h2><label class="field">Staff member<select id="rotaWho" required></select></label><label class="field">Date<input id="rotaDate" type="date" required></label><div class="time-pair"><label class="field">Start<input id="rotaStart" type="time" required></label><label class="field">Finish<input id="rotaEnd" type="time" required></label></div><p class="note" id="rotaHint"></p><label class="field">Worksite<select id="rotaSite"></select></label><label class="field">Note for staff (optional)<input id="rotaNote" maxlength="300"></label><div id="rotaWarn" class="warn-line hidden" role="status"></div><div id="rotaError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g hidden" id="deleteRota">Remove shift</button><button type="button" class="g" id="cancelRota">Cancel</button><button class="b" id="saveRota">Save shift</button></div></form></dialog>
 <dialog id="staffDialog" aria-labelledby="staffTitle"><form id="staffForm" novalidate><h2 id="staffTitle">Add staff</h2><div id="staffFields"><label class="field">Full name<input id="newName" maxlength="120" autocomplete="off"></label><label class="field">Email<input id="newEmail" type="email" inputmode="email" autocomplete="off"></label><label class="field">Role<select id="newRole"><option value="staff">Staff</option><option value="admin">Manager</option></select></label><label class="field">Starting password<input id="newPassword" maxlength="72" autocomplete="new-password" spellcheck="false"></label><button type="button" class="g sm" id="suggestPassword">Suggest a password</button><p class="note">Give it to them in person or by text. They choose their own password the first time they sign in.</p></div><p id="staffDone" class="hidden"></p><div id="staffError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelStaff">Cancel</button><button class="b" id="saveStaff">Add staff</button></div></form></dialog>
 <dialog id="pwDialog" aria-labelledby="pwTitle"><form id="pwForm" novalidate><h2 id="pwTitle">Choose your password</h2><p class="note">You signed in with a starting password. Choose your own to keep your account private.</p><label class="field">New password<input id="newPw" type="password" autocomplete="new-password"></label><label class="field">Type it again<input id="newPw2" type="password" autocomplete="new-password"></label><div class="err hidden" id="pwError" role="alert"></div><div class="bar"><button class="b" id="savePw">Save password</button></div></form></dialog>
+<dialog id="closeDialog" aria-labelledby="closeTitle"><h2 id="closeTitle">Clock someone out</h2><p class="note" id="closeWho"></p><label class="field">Why (optional)<input id="closeReason" maxlength="200" autocomplete="off" placeholder="e.g. Drove off without clocking out"></label><p class="note">Recorded against your name in Audit history. If a break is still running it is closed, and those minutes come off the paid hours.</p><div id="closeError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelClose">Cancel</button><button type="button" class="b" id="confirmClose">Clock out</button></div></dialog>
 <dialog id="noticeDialog" aria-labelledby="noticeTitle"><h2 id="noticeTitle">Notices</h2><p class="note">Everyone in the company sees this on their home screen until they dismiss it.</p><label class="field">New notice<textarea id="noticeBody" maxlength="500" rows="3" placeholder="Something everyone needs to know today"></textarea></label><label class="field">Stop showing it<select id="noticeExpiry"><option value="">When I switch it off</option><option value="1">After 1 day</option><option value="3">After 3 days</option><option value="7">After 7 days</option></select></label><div id="noticeError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="b" id="saveNotice">Post notice</button></div><h3 class="notify-sub">Posted notices</h3><div id="noticeList"></div><div class="bar"><button type="button" class="g" id="closeNotice">Close</button></div></dialog>
 <dialog id="notifyDialog" aria-labelledby="notifyTitle"><h2 id="notifyTitle">Notifications</h2><p class="note" id="notifyState"></p><div class="bar notify-actions"><button type="button" class="b" id="notifyOn">Turn on notifications</button><button type="button" class="g hidden" id="notifyOff">Turn off for this device</button></div><h3 class="notify-sub">Tell me when</h3><div id="notifyPrefs"></div><div class="bar"><button type="button" class="g" id="closeNotify">Close</button></div></dialog>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -766,21 +767,46 @@
     try { await fn(); } catch(error) { fail(error); } finally { writing = false; }
   }
 
+  // Closing somebody else's shift goes through clock_out_for() in the database,
+  // never a plain update on shifts: that function is what closes a break still
+  // running, and it records who did it. A shift ended by someone else is pay
+  // data, so it has to be attributable.
+  var closingId = null;
+
   function closeShift(id) {
     var shift = NOW.find(function(s) { return s.shift_id === id; });
-    if (!shift || !confirm("Clock out " + shift.full_name + " now?")) return;
+    if (!shift) return;
+    closingId = id;
+    $("closeWho").textContent = shift.full_name + " at " + (shift.worksite || "no worksite") +
+      ", clocked in " + hhmm(new Date(shift.clock_in_at)) + ". They will be clocked out at " + hhmm(new Date()) + ".";
+    $("closeReason").value = "";
+    show("closeError", false);
+    $("closeDialog").showModal();
+  }
+
+  $("cancelClose").addEventListener("click", function () { $("closeDialog").close(); });
+  $("confirmClose").addEventListener("click", function () {
+    var id = closingId, reason = $("closeReason").value.trim();
+    var shift = NOW.find(function (s) { return s.shift_id === id; });
+    if (!shift) return $("closeDialog").close();
     return withLock(async function () {
       if (DEMO) {
-        D.sheet.unshift({id:shift.shift_id,user_id:DEMO_IDS[shift.full_name],profiles:{full_name:shift.full_name},worksites:{name:shift.worksite},clock_in_at:shift.clock_in_at,clock_out_at:new Date().toISOString(),clock_in_ok:shift.clock_in_ok,clock_out_ok:null,note:'Clocked out by manager'});
+        D.sheet.unshift({id:shift.shift_id,user_id:DEMO_IDS[shift.full_name],profiles:{full_name:shift.full_name},worksites:{name:shift.worksite},clock_in_at:shift.clock_in_at,clock_out_at:new Date().toISOString(),clock_in_ok:shift.clock_in_ok,clock_out_ok:null,note:shift.note||''});
         D.now = D.now.filter(function (x) { return x.shift_id !== id; });
+        D.audit = D.audit || [];
+        D.audit.unshift({ id: 'a' + Date.now(), action: 'clocked_out', entity: 'shift',
+                          summary: 'Manager clocked out ' + shift.full_name + '.', created_at: new Date().toISOString() });
+        $("closeDialog").close();
         toast("Clocked out"); await loadNow(); await runSheet(); return;
       }
-      var r = await sb.from("shifts").update({ clock_out_at: new Date().toISOString() }).eq("id", id);
-      if (r.error) { fail(r.error); return; }
+      var r = await sb.rpc("clock_out_for", { p_shift_id: id, p_reason: reason });
+      if (r.error) { $("closeError").textContent = r.error.message; show("closeError", true); return; }
+      $("closeDialog").close();
       toast("Clocked out");
       await loadNow();
+      if (auditLoaded) await loadAudit();
     });
-  }
+  });
 
   // ── TIMESHEETS ───────────────────────────
   async function runSheet() {
@@ -1247,7 +1273,8 @@
     if (!ME) return;
     try {
       if (DEMO) {
-        AUDIT = [{ id: 'demo-audit-1', action: 'approved', entity: 'shift_correction', summary: 'Manager approved a shift correction.', created_at: new Date(Date.now() - 86400000).toISOString() }, { id: 'demo-audit-2', action: 'published', entity: 'rota_shift', summary: 'Manager published the weekly rota.', created_at: new Date(Date.now() - 172800000).toISOString() }];
+        if (!D.audit) D.audit = [{ id: 'demo-audit-1', action: 'approved', entity: 'shift_correction', summary: 'Manager approved a shift correction.', created_at: new Date(Date.now() - 86400000).toISOString() }, { id: 'demo-audit-2', action: 'published', entity: 'rota_shift', summary: 'Manager published the weekly rota.', created_at: new Date(Date.now() - 172800000).toISOString() }];
+        AUDIT = D.audit.slice();
       } else {
         var r = await sb.from('audit_events').select('id,action,entity,summary,created_at').order('created_at', { ascending: false }).limit(100);
         if (r.error) throw r.error;
