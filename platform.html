@@ -66,7 +66,7 @@
   header>div{min-width:0;}
   .brand{font-size:var(--t4);font-weight:600;}.brand span{color:var(--brand);}
   header .sub{color:#D5DBE3;font-size:var(--t1);}
-  main{max-width:640px;margin:auto;padding:var(--s6) var(--s4) var(--s12);}
+  main{max-width:960px;margin:auto;padding:var(--s6) var(--s4) var(--s12);}
   section+section{margin-top:var(--s12);}
 
   .clients{list-style:none;margin:0;padding:0;border-top:1px solid var(--line);}
@@ -95,6 +95,15 @@
   .dialog-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:var(--s2);margin-top:var(--s6);}
   .toast{position:fixed;z-index:60;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);width:max-content;max-width:calc(100% - 32px);padding:var(--s4);border-radius:var(--r);background:var(--ink);color:#fff;}
   @media(prefers-reduced-motion:reduce){*{transition:none!important;}}
+  @media(min-width:900px){
+    main{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr);align-items:start;gap:var(--s8);}
+    main>section{margin-top:0;}
+    main>section:last-child{grid-column:1 / -1;}
+  }
+  @media(max-width:559px){
+    .row-actions .btn{flex:1 1 calc(50% - 8px);}
+    .row-actions .btn.danger{flex-basis:100%;}
+  }
 </style>
 </head>
 <body>

@@ -1551,8 +1551,12 @@
     breakBusy = true; $("breakBtn").disabled = true;
     try {
       if (DEMO) {
+        var breakStarted = OPEN.break_started_at;
         OPEN.break_started_at = ending ? null : new Date().toISOString();
-        if (ending) OPEN.break_minutes = (OPEN.break_minutes || 0) + 30;
+        if (ending && breakStarted) {
+          OPEN.break_minutes = (OPEN.break_minutes || 0) + Math.max(0,
+            Math.round((Date.now() - new Date(breakStarted).getTime()) / 60000));
+        }
       } else {
         var r = await sb.rpc(ending ? "end_break" : "start_break");
         if (r.error) throw r.error;

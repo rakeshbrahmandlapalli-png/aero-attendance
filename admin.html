@@ -277,6 +277,7 @@
       <button data-tab="staff">Staff</button>
       <button data-tab="sites">Sites</button>
       <button data-tab="reviews"><span>Review <span id="reviewCount" class="review-count"></span></span></button>
+      <button data-tab="audit">Audit</button>
     </nav>
     <button class="link" id="signout">Sign out</button>
   </header>
@@ -379,6 +380,7 @@
       </table></div>
     </section>
     <section id="tab-reviews"><h2>Correction requests</h2><div class="bar"><select id="reviewFilter" aria-label="Request status"><option value="pending">Awaiting review</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="all">All requests</option></select><label class="filter-check"><input type="checkbox" id="boardAlerts" checked>In-app alerts</label><span class="notify-state" id="reviewUpdated"></span></div><div id="reviews" aria-live="polite"></div></section>
+    <section id="tab-audit"><h2>Audit history</h2><p class="note">A record of attendance corrections and rota changes for this company.</p><div class="bar"><label class="field">Action<select id="auditFilter"><option value="">All activity</option><option value="requested">Requests</option><option value="approved">Approvals</option><option value="rejected">Rejections</option><option value="created">Created</option><option value="updated">Updated</option><option value="removed">Removed</option></select></label><button class="g" id="refreshAudit">Refresh</button><button class="g" id="exportAudit">Export CSV</button><span class="notify-state" id="auditUpdated"></span></div><div id="auditEvents" aria-live="polite"></div></section>
   </main>
 </div>
 <dialog id="settingsDialog" aria-labelledby="settingsTitle"><form id="settingsForm"><h2 id="settingsTitle">Company settings</h2><label class="field">Company name<input id="companyName" required maxlength="120"></label><label class="field" id="brandWrap">Name shown in the app<input id="brandName" maxlength="60" autocomplete="off" placeholder="Aero Attendance"></label><p class="note" id="brandNote">Replaces &ldquo;Aero Attendance&rdquo; in the privacy notice and the heading of this board. Leave blank to keep it. The home-screen icon and its name cannot change.</p><label class="field" id="tzWrap">Time zone<select id="timeZone"></select></label><label class="field" id="curWrap">Currency<select id="currency"></select></label><p class="note" id="localeNote">Phone notifications show times in this time zone. Changing the currency does not convert any hourly rate: the numbers stay as they are.</p><label class="filter-check" id="payToggleWrap"><input type="checkbox" id="showPay">Show estimated pay</label><p class="note" id="payToggleNote">Staff see an estimate from their own hourly rate; managers see everyone's on Timesheets. Switch this on only once the data processing agreement is signed.</p><label class="filter-check" id="onSiteToggleWrap"><input type="checkbox" id="requireOnSite">Only allow clock-in on site</label><p class="note" id="onSiteToggleNote">Staff can only clock in inside a worksite zone, with location switched on. Clocking out is always allowed and flagged if they're away. Switch off for teams that work off-site.</p><label class="filter-check" id="breakToggleWrap"><input type="checkbox" id="useBreaks">Staff record breaks</label><p class="note" id="breakToggleNote">Staff tap Start break and End break themselves, and those minutes come off their paid hours. Switch off for teams that never stop.</p><label class="field" id="privacyContactWrap">Who staff ask about their data<input id="privacyContact" maxlength="200" autocomplete="off" placeholder="Name, role or email"></label><label class="field" id="retentionWrap">How long records are kept<input id="retentionText" maxlength="200" autocomplete="off" placeholder="e.g. Six years after you leave"></label><p class="note" id="privacyNote">Both appear in the privacy notice every member of staff is shown the first time they sign in.</p><label class="filter-check" id="rotaToggleWrap"><input type="checkbox" id="useRota">Use rota &amp; availability</label><p class="note" id="rotaToggleNote">Staff give their usual week and days off. You build and publish the rota on the Rota tab, and Now flags late starts and no-shows.</p><div id="settingsError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelSettings">Cancel</button><button class="b" id="saveSettings">Save changes</button></div></form></dialog>
@@ -398,7 +400,7 @@
   var NOW = [], SHEET = [], STAFF = [], SITES = [], TODAY = [];
   var sortKey = "clock_in_at", sortDir = 1;
   var poll = null;
-  var REQUESTS = [], editingSite = null, requestsLoaded = false;
+  var REQUESTS = [], AUDIT = [], editingSite = null, requestsLoaded = false, auditLoaded = false;
   var attentionIds = null;
   var PAY_ON = false, PAY_READY = false, RATES = {}, rateUser = null;
   // Per company (time_zone, currency, brand_name). LOCALE_READY stays false until the settings SQL has been run.
@@ -419,6 +421,7 @@
     staff: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/>',
     sites: '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
     reviews: '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',
+    audit: '<path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/>',
     csv: '<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>',
     printSheet: '<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/>',
     rota: '<path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h5"/><path d="M17.5 17.5 16 16.3V14"/><circle cx="16" cy="16" r="6"/>',
@@ -1219,6 +1222,44 @@
     }).join(''):'<div class="empty">No '+(filter==='all'?'':esc(filter)+' ')+'correction requests.</div>';
     Object.keys(drafts).forEach(function(id){var el=document.getElementById(id);if(el)el.value=drafts[id];});
   }
+  function renderAudit() {
+    var box = $('auditEvents');
+    var filter = $('auditFilter').value;
+    var rows = AUDIT.filter(function (e) { return !filter || e.action === filter; });
+    if (!rows.length) { box.innerHTML = '<div class="empty">No audit events match this filter.</div>'; return; }
+    box.innerHTML = rows.map(function (e) {
+      return '<article class="review-item"><h3>' + esc(e.summary || 'Activity recorded') + '</h3><p class="note">' + esc(e.action || '') + ' · ' + esc(e.entity || '') + '</p><p class="tiny">' + dmy(e.created_at) + ' ' + hhmm(e.created_at) + '</p></article>';
+    }).join('');
+  }
+  async function loadAudit() {
+    if (!ME) return;
+    try {
+      if (DEMO) {
+        AUDIT = [{ id: 'demo-audit-1', action: 'approved', entity: 'shift_correction', summary: 'Manager approved a shift correction.', created_at: new Date(Date.now() - 86400000).toISOString() }, { id: 'demo-audit-2', action: 'published', entity: 'rota_shift', summary: 'Manager published the weekly rota.', created_at: new Date(Date.now() - 172800000).toISOString() }];
+      } else {
+        var r = await sb.from('audit_events').select('id,action,entity,summary,created_at').order('created_at', { ascending: false }).limit(100);
+        if (r.error) throw r.error;
+        AUDIT = r.data || [];
+      }
+      auditLoaded = true; renderAudit(); $('auditUpdated').textContent = 'Updated ' + hhmm(new Date());
+    } catch (error) {
+      $('auditUpdated').textContent = 'Could not refresh';
+      $('auditEvents').innerHTML = '<div class="err" role="alert">' + esc(error.message || 'Audit history is not available yet. Run the audit SQL migration, then refresh.') + '</div>';
+    }
+  }
+  $('refreshAudit').addEventListener('click', loadAudit);
+  $('auditFilter').addEventListener('change', renderAudit);
+  $('exportAudit').addEventListener('click', function () {
+    var filter = $('auditFilter').value;
+    var rows = AUDIT.filter(function (e) { return !filter || e.action === filter; });
+    if (!rows.length) { toast('Nothing to export'); return; }
+    var csv = [['Date', 'Action', 'Entity', 'Summary']].concat(rows.map(function (e) {
+      return [e.created_at || '', e.action || '', e.entity || '', e.summary || ''];
+    })).map(function (row) { return row.map(function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(','); }).join('\n');
+    var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+    var link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'aero-audit-' + new Date().toISOString().slice(0,10) + '.csv'; link.click();
+    setTimeout(function () { URL.revokeObjectURL(link.href); }, 1000);
+  });
   function reviewRequest(id,approve) {
     return withLock(async function(){
       var request=REQUESTS.find(function(r){return r.id===id;});if(!request||request.status!=='pending')return;
@@ -1853,8 +1894,9 @@
       document.querySelectorAll("section").forEach(function (x) { x.classList.remove("on"); });
       b.classList.add("on");
       $("tab-" + b.dataset.tab).classList.add("on");
-      $("pageTitle").textContent = {now:"Attendance overview",rota:"Rota",sheets:"Timesheets",staff:"Your team",sites:"Worksites",reviews:"Review & activity"}[b.dataset.tab];
+      $("pageTitle").textContent = {now:"Attendance overview",rota:"Rota",sheets:"Timesheets",staff:"Your team",sites:"Worksites",reviews:"Review & activity",audit:"Audit history"}[b.dataset.tab];
       if(b.dataset.tab==='reviews') loadReviews();
+      if(b.dataset.tab==='audit') loadAudit();
       if(b.dataset.tab==='rota') loadRotaWeek();
       if(b.dataset.tab==='sites') previewSite();
       document.querySelectorAll("nav button").forEach(function(x) { x.setAttribute("aria-current", x === b ? "page" : "false"); });
