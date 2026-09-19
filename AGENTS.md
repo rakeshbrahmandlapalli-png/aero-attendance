@@ -33,6 +33,7 @@ setup/update-2026-09-privacy-notice.sql  privacy notice fields and the read-reco
 setup/update-2026-09-tenant-integrity.sql  a shift may only point at its own company's people and sites (already inside schema.sql)
 checks/isolation.mjs  tenant isolation test: runs the REAL schema.sql in PostgreSQL (PGlite) and attacks it as two companies
 checks/harness.mjs    the Supabase stand-in the test runs on (roles, auth.uid(), no-op cron/net)
+checks/embeds.mjs     can PostgREST still work out every embedded table? (a new table's primary key can silently break sign-in)
 checks/restore.mjs    turns a backup from /platform back into SQL to paste into Supabase (no keys, connects to nothing)
 checks/roundtrip.mjs  proves it: builds a company on the real schema, backs it up, restores it into an empty one, compares row by row
 supabase/functions/manage-staff/index.ts  Edge Function: add staff logins, remove/restore leavers
@@ -73,6 +74,19 @@ developer-only folder with its own package.json, kept out of the site by
 2. **One app for every client (multi-tenant).** Every row belongs to a
    `company_id`. A new client is a new row in `companies`, never a copied app
    or a second deployment. Never hardcode a company name outside demo data.
+   **⚠️ Careful with a composite primary key that contains two foreign keys.**
+   PostgREST reads a table whose primary key holds FKs to two other tables as a
+   *junction*, and infers a many-to-many between them. On 19 Sep 2026
+   `overtime_decisions` was added with `primary key (company_id, user_id,
+   week_start)`. PostgREST then saw two ways to get from `profiles` to
+   `companies` — the direct `company_id`, and that inferred many-to-many — and
+   refused to guess, so `companies(name)` stopped resolving and **nobody could
+   sign in to either app**. Neither the isolation test nor smoke caught it,
+   because the harness is PGlite and nothing in it is PostgREST.
+   Both pages now name the constraint: `companies!profiles_company_id_fkey(name)`.
+   **Run `cd checks && npm run embeds` after adding any table.** It reads the
+   real schema, works out every route between the tables the pages embed, and
+   fails when one is ambiguous.
 3. **Security lives in the database, not the browser.** Row-level security
    decides who sees what. The distance-from-site check runs inside the
    `clock_in()` / `clock_out()` Postgres functions, so editing the page's

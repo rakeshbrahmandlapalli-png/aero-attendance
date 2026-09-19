@@ -5,6 +5,19 @@ or redeploy an Edge Function says so.
 
 ## Unreleased
 
+### Fixed (sign-in was broken)
+- **Nobody could sign in to either app.** Both pages load the signed-in person with
+  `companies(name)` embedded, and PostgREST works that out from the foreign keys. Adding
+  `overtime_decisions` with `primary key (company_id, user_id, week_start)` gave it a primary key
+  holding foreign keys to both `profiles` and `companies` — the shape PostgREST reads as a junction
+  table. It then saw two routes from a person to their company, refused to guess, and every load
+  failed with *"more than one relationship was found"*. Both queries now name the constraint
+  (`companies!profiles_company_id_fkey`).
+  - **`npm run embeds` is new, and would have caught it.** It reads the real `schema.sql`, works
+    out every route between the tables the pages embed, and fails when one is ambiguous — naming
+    the table that caused it. Added to the release checks. Neither smoke nor isolation could ever
+    have caught this: the test harness is PGlite, and nothing in it is PostgREST.
+
 ### Fixed (backups)
 - **Five tables were missing from every backup.** `announcements`, `announcement_reads`,
   `overtime_decisions`, `company_features` and `audit_events` all hold a company's data and none of

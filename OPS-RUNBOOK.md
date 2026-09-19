@@ -45,7 +45,8 @@ The send-push function retries transient push errors twice with short backoff. E
 Run from the checks folder:
 
     npm run smoke
+    npm run embeds
     npm run isolation
     npm run roundtrip
 
-The app should not be promoted until all three pass and the phone checklist is complete.
+The app should not be promoted until all four pass and the phone checklist is complete.
