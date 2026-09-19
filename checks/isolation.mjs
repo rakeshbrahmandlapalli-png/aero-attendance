@@ -119,7 +119,7 @@ for (const t of [...TABLES, "companies"]) {
   check(`ANON  signed-out visitors cannot read ${t}`, !!r.error || r.rows[0].n === 0, `saw ${r.rows[0]?.n}`);
 }
 for (const fn of ["clock_in($1,1,1,1)", "clock_out(1,1,'x')", "start_break()", "end_break()", "publish_rota(now(), now())",
-                  "review_shift_correction($1,true,'x')", "acknowledge_privacy(1)", "clock_out_for($1,'x')"]) {
+                  "review_shift_correction($1,true,'x')", "acknowledge_privacy(1)", "clock_out_for($1,'x')", "my_handover()"]) {
   const r = await as(db, "anon", `select ${fn.includes("$1") ? fn.replace("$1", `'${W_A}'::uuid`) : fn}`);
   check(`ANON  signed-out visitors cannot run ${fn.split("(")[0]}()`, !!r.error, "it ran");
 }
@@ -589,6 +589,50 @@ gap("a manager can set another company's person's pay rate in their own company"
   check("AUDIT nobody can call write_audit_event from the browser", !!r.error, "it ran");
   r = await as(db, P.mgrA, `delete from audit_events where company_id = $1`, [CO_A]);
   check("AUDIT a manager cannot delete their own audit history", blocked(r), "it deleted");
+}
+
+// ── 15. HANDOVER: the next person sees the note, and nothing else ────────
+// my_handover() is security definer, so it steps around shifts_read on purpose.
+// That makes it the one place a member of staff can read anything off somebody
+// else's shift, and these are the walls around it.
+{
+  // staffA2's latest shift is SHIFT_A2, open, at W_A. SHIFT_A1 is a closed shift
+  // at the same worksite by someone else, 22 hours ago, with a note.
+  let r = await as(db, P.staffA2, `select note, worksite, ended_at from my_handover()`);
+  const got = (r.rows || [])[0] || {};
+  check("HAND  the next person on the worksite sees the note left there", !r.error && got.note === "A1 secret note", r.error || JSON.stringify(r.rows));
+  check("HAND  ...with the worksite, and nothing else in the row", got.worksite === "A Yard" && Object.keys(got).length === 3, JSON.stringify(got));
+
+  // staffA1 wrote that note. The only other shift at W_A is still open.
+  r = await as(db, P.staffA1, `select note from my_handover()`);
+  check("HAND  you are never handed your own note back", !r.error && r.rows.length === 0, r.error || JSON.stringify(r.rows));
+
+  // The wall that matters: B must never see A's note, whatever they do.
+  r = await as(db, P.staffB1, `select note from my_handover()`);
+  check("HAND  another company sees none of it", !r.error && !JSON.stringify(r.rows).includes("A1 secret"), r.error || JSON.stringify(r.rows));
+  // Give B's owner a worksite of their own first, or the question is vacuous:
+  // with no shift there is nothing for the function to answer about, and the
+  // check would pass even with the tenant wall taken out.
+  await db.exec(`insert into shifts (company_id, user_id, worksite_id, clock_in_at, clock_out_at, note)
+                 values ('${CO_B}','${P.ownerB}','${W_B}', now() - interval '30 hours', now() - interval '23 hours', 'B owner note');`);
+  r = await as(db, P.ownerB, `select note from my_handover()`);
+  check("HAND  ...and neither does their owner", !r.error && !JSON.stringify(r.rows).includes("A1 secret"), r.error || JSON.stringify(r.rows));
+
+  // A note goes stale. Push the closed shift back a day and it stops being handed on.
+  await db.exec(`update shifts set clock_out_at = now() - interval '26 hours' where id = '${SHIFT_A1}'`);
+  r = await as(db, P.staffA2, `select note from my_handover()`);
+  check("HAND  a note older than a day is not handed on", !r.error && r.rows.length === 0, r.error || JSON.stringify(r.rows));
+  await db.exec(`update shifts set clock_out_at = now() - interval '22 hours' where id = '${SHIFT_A1}'`);
+
+  // An empty note is not a handover.
+  await db.exec(`update shifts set note = '   ' where id = '${SHIFT_A1}'`);
+  r = await as(db, P.staffA2, `select note from my_handover()`);
+  check("HAND  a blank note is not handed on", !r.error && r.rows.length === 0, r.error || JSON.stringify(r.rows));
+  await db.exec(`update shifts set note = 'A1 secret note' where id = '${SHIFT_A1}'`);
+
+  // Somebody who has never worked a site is asking about nothing.
+  r = await as(db, P.goneA, `select note from my_handover()`);
+  check("HAND  a removed person is handed nothing", !!r.error || r.rows.length === 0, JSON.stringify(r.rows));
 }
 
 // ── report ───────────────────────────────────────────────────────────────

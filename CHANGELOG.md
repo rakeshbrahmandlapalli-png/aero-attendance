@@ -31,6 +31,17 @@ or redeploy an Edge Function says so.
   history — a shift somebody else ended is pay data, so it has to be attributable.
 
 ### Added
+- **Handover.** Staff have always written a note when they clock out, and until now only a manager
+  ever read it. Home now shows the note the last person left on the worksite you are working, under
+  "Left for you". It comes from a new `my_handover()` in the database, which takes no worksite to
+  ask about — it uses your own open or most recent shift — and hands back the note, the worksite and
+  the time only. Never who wrote it, their hours or where they were. Nothing older than a day, never
+  your own note, never another company's. *Needs: `setup/update-2026-09-handover.sql`.*
+  - **Privacy notice updated and `NOTICE_VERSION` bumped to 2.** Nothing new is collected, but a
+    note written by one person is now shown to another, so "who can see it" changed and everybody is
+    asked to read the notice again.
+  - The manager's side — handover notes grouped by worksite and day, with a way to mark one
+    reviewed — is not built yet.
 - **Notices.** A manager posts a short message from the Now tab; everyone in that company sees it
   on Home until they tap "Got it". Dismissing records that the person read it, so the manager sees
   a "seen by" count and can switch a notice off or let it expire after 1, 3 or 7 days. A notice
