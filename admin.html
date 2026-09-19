@@ -137,6 +137,32 @@
   .wk-cell.gone{background:var(--warn-soft);color:var(--warn);text-decoration:line-through;}
   .wk-cell.warn{color:var(--warn);}
   .wk-foot{background:var(--surface);}
+  #payDialog{width:min(680px,calc(100% - 32px));}
+  #payslipPrint{display:none;}
+  .pp-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;column-gap:var(--s3);align-items:baseline;padding:var(--s3) 0;border-bottom:1px solid var(--line-soft);}
+  .pp-row strong{overflow-wrap:anywhere;}
+  .pp-num{font-variant-numeric:tabular-nums;text-align:right;}
+  .pp-sub{grid-column:1/-1;margin-top:var(--s1);color:var(--ink-2);font-size:var(--t1);}
+  .pp-bad{color:var(--warn);}
+  .pp-total{font-weight:600;border-bottom:0;}
+  @media print{
+    body.printing-payslips>*:not(#payslipPrint){display:none!important;}
+    body.printing-payslips #payslipPrint{display:block!important;}
+    .payslip{color:#000;font-size:11pt;line-height:1.4;break-after:page;page-break-after:always;}
+    .payslip:last-child{break-after:auto;page-break-after:auto;}
+    .payslip h2{margin:0 0 4pt;font-size:16pt;}
+    .payslip .ps-head{display:flex;justify-content:space-between;gap:16pt;margin-bottom:14pt;padding-bottom:8pt;border-bottom:1.5pt solid #000;}
+    .payslip .ps-co{font-size:14pt;font-weight:600;}
+    .payslip table{display:table!important;width:100%;border-collapse:collapse;margin:10pt 0;}
+    .payslip thead{display:table-header-group!important;position:static!important;width:auto!important;height:auto!important;clip-path:none!important;}
+    .payslip tbody{display:table-row-group!important;}
+    .payslip tr{display:table-row!important;break-inside:avoid;padding:0!important;border:0!important;}
+    .payslip th,.payslip td{display:table-cell!important;padding:3pt 4pt!important;border-bottom:.5pt solid #999;text-align:left;font-size:10.5pt!important;}
+    .payslip td::before{display:none!important;}
+    .payslip .r{text-align:right!important;}
+    .payslip tr.big td{font-weight:700;border-top:1pt solid #000;}
+    .payslip .ps-foot{margin-top:14pt;font-size:9pt;color:#333;}
+  }
   .wk-count{color:var(--ink-2);font-weight:600;background:transparent;}
   .wk-count.gap{color:var(--warn);background:var(--warn-soft);}
   .coverage{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s6);padding-bottom:var(--s6);border-bottom:1px solid var(--line);}
@@ -368,6 +394,7 @@
         <button class="b" id="run">Show</button>
         <button class="g" id="csv">Export CSV</button>
         <button class="g" id="printSheet">Print / PDF</button>
+        <button class="g" id="payslips">Generate payslips</button>
         <label class="filter-check"><input type="checkbox" id="completedOnly" checked>Completed shifts only</label>
         <div class="tot" id="grandTotal"></div>
       </div>
@@ -427,6 +454,7 @@
 <dialog id="staffDialog" aria-labelledby="staffTitle"><form id="staffForm" novalidate><h2 id="staffTitle">Add staff</h2><div id="staffFields"><label class="field">Full name<input id="newName" maxlength="120" autocomplete="off"></label><label class="field">Email<input id="newEmail" type="email" inputmode="email" autocomplete="off"></label><label class="field">Role<select id="newRole"><option value="staff">Staff</option><option value="admin">Manager</option></select></label><label class="field">Starting password<input id="newPassword" maxlength="72" autocomplete="new-password" spellcheck="false"></label><button type="button" class="g sm" id="suggestPassword">Suggest a password</button><p class="note">Give it to them in person or by text. They choose their own password the first time they sign in.</p></div><p id="staffDone" class="hidden"></p><div id="staffError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelStaff">Cancel</button><button class="b" id="saveStaff">Add staff</button></div></form></dialog>
 <dialog id="pwDialog" aria-labelledby="pwTitle"><form id="pwForm" novalidate><h2 id="pwTitle">Choose your password</h2><p class="note">You signed in with a starting password. Choose your own to keep your account private.</p><label class="field">New password<input id="newPw" type="password" autocomplete="new-password"></label><label class="field">Type it again<input id="newPw2" type="password" autocomplete="new-password"></label><div class="err hidden" id="pwError" role="alert"></div><div class="bar"><button class="b" id="savePw">Save password</button></div></form></dialog>
 <dialog id="closeDialog" aria-labelledby="closeTitle"><h2 id="closeTitle">Clock someone out</h2><p class="note" id="closeWho"></p><label class="field">Why (optional)<input id="closeReason" maxlength="200" autocomplete="off"></label><p class="note">Recorded against your name in Audit history. If a break is still running it is closed, and those minutes come off the paid hours.</p><div id="closeError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelClose">Cancel</button><button type="button" class="b" id="confirmClose">Clock out</button></div></dialog>
+<dialog id="payDialog" aria-labelledby="payTitle"><form id="payForm" novalidate><h2 id="payTitle">Generate payslips</h2><label class="field">Pay period<select id="ppPeriod"><option value="lastWeek">Last week</option><option value="week">This week</option><option value="last2">Last 2 weeks</option><option value="lastMonth">Last month</option><option value="month">This month</option><option value="custom">Custom dates</option></select></label><div class="time-pair"><label class="field">From<input id="ppFrom" type="date"></label><label class="field">To<input id="ppTo" type="date"></label></div><fieldset class="pick"><legend>People</legend><div id="ppPeople"></div><div class="bar"><button type="button" class="g sm" id="ppAll">Everyone</button><button type="button" class="g sm" id="ppNone">Nobody</button></div></fieldset><label class="field">Round each shift to<select id="ppRound"><option value="0">The exact minute</option><option value="5">The nearest 5 minutes</option><option value="10">The nearest 10 minutes</option><option value="15">The nearest 15 minutes</option></select></label><div id="ppOtWrap"><label class="field">Approved overtime is paid at<select id="ppOt"><option value="none">The normal rate</option><option value="1.25">1.25 times the rate</option><option value="1.5">1.5 times the rate</option><option value="2">Double the rate</option><option value="custom">Another multiple</option></select></label><label class="field hidden" id="ppOtCustomWrap">Multiple<input id="ppOtCustom" type="number" step="0.05" min="1" max="5" inputmode="decimal"></label></div><label class="field">Deduction<select id="ppDeduct"><option value="none">None: gross pay only</option><option value="percent">A percentage of gross pay</option><option value="fixed">A fixed amount for each person</option></select></label><div id="ppDeductWrap" class="hidden"><label class="field">What to call it<input id="ppDeductName" maxlength="40" autocomplete="off"></label><label class="field">Amount<input id="ppDeductValue" type="number" step="0.01" min="0" inputmode="decimal"></label></div><label class="filter-check"><input type="checkbox" id="ppDetail" checked>List every shift on the statement</label><div id="ppSummary" class="note" role="status"></div><div id="ppTable"></div><div id="ppError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="ppClose">Close</button><button type="button" class="g" id="ppCsv">Download CSV</button><button type="button" class="b" id="ppPrint">Print or save as PDF</button></div></form></dialog>
 <dialog id="profileDialog" aria-labelledby="profileTitle"><form id="profileForm" novalidate><h2 id="profileTitle">Edit profile</h2><label class="field">Name<input id="pfName" maxlength="120" autocomplete="off"></label><label class="field">Access<select id="pfAccess"></select></label><div id="pfJobWrap"><label class="field">Job role<select id="pfJob"></select></label><label class="field">Add a new job role<input id="pfNewRole" maxlength="40" autocomplete="off"></label><div class="bar"><button type="button" class="g" id="pfAddRole">Add to list</button><button type="button" class="g" id="pfRemoveRole">Remove selected role</button></div></div><div id="pfDetailsWrap"><h3 class="notify-sub">Optional details</h3><label class="field">Date of birth<input id="pfDob" type="date"></label><label class="field">Mobile number<input id="pfPhone" type="tel" inputmode="tel" maxlength="30" autocomplete="off"></label><label class="field">Emergency contact name<input id="pfEmName" maxlength="100" autocomplete="off"></label><label class="field">Emergency contact number<input id="pfEmPhone" type="tel" inputmode="tel" maxlength="30" autocomplete="off"></label><label class="field">Start date<input id="pfStart" type="date"></label></div><div id="pfError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="pfCancel">Cancel</button><button class="b" id="pfSave">Save profile</button></div></form></dialog>
 <dialog id="weekDialog" aria-labelledby="weekTitle"><form id="weekForm" novalidate><h2 id="weekTitle">Build the week</h2><div id="wkTypes"></div><label class="field">Worksite for new shifts<select id="wkSite"></select></label><div class="wk-scroll"><div id="wkGrid" class="wk"></div></div><div id="wkSummary" class="warn-line" role="status"></div><div id="wkError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="wkUndo">Undo</button><button type="button" class="g" id="wkReset">Reset</button><button type="button" class="g" id="wkCancel">Close</button><button type="button" class="g" id="wkSave">Save as draft</button><button type="button" class="b" id="wkSavePub">Save and publish</button></div></form></dialog>
 <dialog id="noticeDialog" aria-labelledby="noticeTitle"><h2 id="noticeTitle">Notices</h2><p class="note">Everyone in the company sees this on their home screen until they dismiss it.</p><label class="field">New notice<textarea id="noticeBody" maxlength="500" rows="3"></textarea></label><label class="field">Stop showing it<select id="noticeExpiry"><option value="">When I switch it off</option><option value="1">After 1 day</option><option value="3">After 3 days</option><option value="7">After 7 days</option></select></label><div id="noticeError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="b" id="saveNotice">Post notice</button></div><h3 class="notify-sub">Posted notices</h3><div id="noticeList"></div><div class="bar"><button type="button" class="g" id="closeNotice">Close</button></div></dialog>
@@ -971,6 +999,7 @@
     show("sheetEmpty", !rows.length);
     var total = 0, payTotal = 0;
     $("sheetBody").closest("table").classList.toggle("no-pay", !PAY_ON);
+    show("payslips", PAY_ON);
     $("sheetBody").innerHTML = rows.map(function (s) {
       var h = shiftHours(s); total += h;
       var open = !s.clock_out_at;
@@ -2041,6 +2070,272 @@
   }
 
   $("otCsv").addEventListener("click", exportOvertimeCsv);
+
+  // ── PAYSLIPS ───────────────────────────────
+  // Earnings statements worked out from the recorded hours: gross pay is hours times the
+  // person's rate, with an optional multiple for overtime a manager has approved, and an
+  // optional deduction the manager types in. This does NOT work out tax or National
+  // Insurance, and every statement says so. Nothing here is stored: it is all worked out
+  // from the shifts each time.
+
+  // Minutes worked on one shift, net of its break, rounded if asked to.
+  function payShiftMinutes(s, round) {
+    var mins = (new Date(s.clock_out_at) - new Date(s.clock_in_at)) / 60000 - (s.break_minutes || 0);
+    if (!(mins > 0)) mins = 0;
+    return round > 0 ? Math.round(mins / round) * round : mins;
+  }
+
+  // The maths, kept free of the page so it can be tested on its own. Money is rounded to
+  // the penny on each line, so the lines on a statement always add up to the total.
+  function payrollCalc(input) {
+    var opts = input.opts, rates = input.rates || {}, byUser = {};
+    var out = { people: [], partialWeeks: 0, pendingWeeks: 0, totals: { hours: 0, gross: 0, deduction: 0, net: 0 } };
+    var pence = function (n) { return Math.round(n * 100 + 1e-7) / 100; };
+    (input.shifts || []).forEach(function (s) {
+      if (!s.clock_out_at) return;
+      var p = byUser[s.user_id] = byUser[s.user_id] || { user_id: s.user_id, shifts: 0, minutes: 0, overtime: 0 };
+      p.shifts++; p.minutes += payShiftMinutes(s, opts.round);
+    });
+    // Overtime is worked out for a whole Monday to Sunday week, so a week cut off by the
+    // ends of the period cannot be split fairly: it is left out, and said so.
+    var lastDay = function (monday) { var d = new Date(monday + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + 6); return d.toISOString().slice(0, 10); };
+    (input.overtimeWeeks || []).forEach(function (w) {
+      if (w.status !== "approved") { out.pendingWeeks++; return; }
+      if (w.week_start < input.from || lastDay(w.week_start) > input.to) { out.partialWeeks++; return; }
+      if (byUser[w.user_id]) byUser[w.user_id].overtime += Number(w.overtime) || 0;
+    });
+    var mult = opts.otMode === "multiplier" && Number(opts.otMultiplier) > 1 ? Number(opts.otMultiplier) : 1;
+    Object.keys(byUser).forEach(function (uid) {
+      var p = byUser[uid], hours = p.minutes / 60, ot = Math.min(p.overtime, hours), regular = hours - ot;
+      var rate = rates[uid], has = rate !== undefined && rate !== null && !isNaN(Number(rate));
+      var regularPay = has ? pence(regular * Number(rate)) : 0, overtimePay = has ? pence(ot * Number(rate) * mult) : 0;
+      var gross = pence(regularPay + overtimePay), deduction = 0, d = opts.deduct || { kind: "none" }, v = Number(d.value);
+      if (has && v > 0 && d.kind === "percent") deduction = pence(gross * v / 100);
+      if (has && v > 0 && d.kind === "fixed") deduction = pence(v);
+      deduction = Math.min(deduction, gross);
+      var person = { user_id: uid, shifts: p.shifts, hours: hours, regularHours: regular, overtimeHours: ot, rate: has ? Number(rate) : null,
+                     missingRate: !has, regularPay: regularPay, overtimePay: overtimePay, gross: gross, deduction: deduction, net: pence(gross - deduction) };
+      out.people.push(person);
+      out.totals.hours += hours; out.totals.gross = pence(out.totals.gross + gross);
+      out.totals.deduction = pence(out.totals.deduction + deduction); out.totals.net = pence(out.totals.net + person.net);
+    });
+    return out;
+  }
+
+  var PAY = { data: null, result: null, opts: null, from: "", to: "", token: 0 };
+  var PAY_KEY = "aero-payroll-options";
+
+  function payRange(kind) {
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var ws = weekStart(today), a, b;
+    if (kind === "week") { a = ws; b = addDays(ws, 6); }
+    else if (kind === "last2") { a = addDays(ws, -14); b = addDays(ws, -1); }
+    else if (kind === "month") { a = new Date(today.getFullYear(), today.getMonth(), 1); b = new Date(today.getFullYear(), today.getMonth() + 1, 0); }
+    else if (kind === "lastMonth") { a = new Date(today.getFullYear(), today.getMonth() - 1, 1); b = new Date(today.getFullYear(), today.getMonth(), 0); }
+    else { a = addDays(ws, -7); b = addDays(ws, -1); }
+    return { from: localDay(a), to: localDay(b) };
+  }
+
+  function payOptions() {
+    var ot = $("ppOt").value, mult = ot === "custom" ? Number($("ppOtCustom").value) : ot === "none" ? 1 : Number(ot);
+    return {
+      round: Number($("ppRound").value) || 0,
+      otMode: mult > 1 ? "multiplier" : "none", otMultiplier: mult > 1 ? mult : 1,
+      deduct: { kind: $("ppDeduct").value, value: Number($("ppDeductValue").value) || 0, name: $("ppDeductName").value.trim() || "Deduction" }
+    };
+  }
+  function paySave() {
+    try {
+      localStorage.setItem(PAY_KEY, JSON.stringify({ period: $("ppPeriod").value, round: $("ppRound").value, ot: $("ppOt").value, otCustom: $("ppOtCustom").value,
+        deduct: $("ppDeduct").value, name: $("ppDeductName").value, value: $("ppDeductValue").value, detail: $("ppDetail").checked }));
+    } catch (e) { /* storage blocked: the choices just are not remembered */ }
+  }
+  function payRestore() {
+    var o = {};
+    try { o = JSON.parse(localStorage.getItem(PAY_KEY) || "{}") || {}; } catch (e) { o = {}; }
+    $("ppPeriod").value = o.period || "lastWeek"; $("ppRound").value = o.round || "0"; $("ppOt").value = o.ot || "none";
+    $("ppOtCustom").value = o.otCustom || ""; $("ppDeduct").value = o.deduct || "none"; $("ppDeductName").value = o.name || "";
+    $("ppDeductValue").value = o.value || ""; $("ppDetail").checked = o.detail !== false;
+    // an option that no longer exists (a select left on nothing) falls back to the first one
+    ["ppPeriod", "ppRound", "ppOt", "ppDeduct"].forEach(function (id) { if ($(id).selectedIndex < 0) $(id).selectedIndex = 0; });
+  }
+  function payToggles() {
+    show("ppOtCustomWrap", $("ppOt").value === "custom");
+    show("ppDeductWrap", $("ppDeduct").value !== "none");
+  }
+
+  async function payFetch(from, to) {
+    if (DEMO) {
+      var inRange = function (iso) { var d = localDay(iso); return d >= from && d <= to; };
+      return { shifts: D.sheet.filter(function (x) { return x.clock_out_at && inRange(x.clock_in_at); }),
+               overtime: (D.overtime || []).filter(function (w) { return w.week_start >= from && w.week_start <= to; }) };
+    }
+    var start = new Date(from + "T00:00:00"), end = addDays(new Date(to + "T00:00:00"), 1), rows = [], page = 0;
+    // 1,000 rows is all a single request returns, so go on until a page comes back short.
+    for (;;) {
+      var r = await sb.from("shifts").select("id, user_id, clock_in_at, clock_out_at, break_minutes").not("clock_out_at", "is", null)
+        .gte("clock_in_at", start.toISOString()).lt("clock_in_at", end.toISOString()).order("clock_in_at").order("id").range(page * 1000, page * 1000 + 999);
+      if (r.error) throw r.error;
+      rows = rows.concat(r.data || []);
+      if (!r.data || r.data.length < 1000) break;
+      page++;
+    }
+    var ot = [];
+    if (OT_READY && OT_HOURS != null && hasFeature("overtime")) {
+      var o = await sb.rpc("overtime_weeks", { p_from: from, p_to: to });
+      if (!o.error) ot = o.data || [];
+    }
+    return { shifts: rows, overtime: ot };
+  }
+
+  async function payReload() {
+    var from = $("ppFrom").value, to = $("ppTo").value, token = ++PAY.token;
+    show("ppError", false);
+    if (!from || !to || from > to) { PAY.result = null; $("ppTable").innerHTML = ""; $("ppSummary").textContent = "Choose a start date that is on or before the end date."; payButtons(); return; }
+    $("ppSummary").textContent = "Loading...";
+    try {
+      var data = await payFetch(from, to);
+      if (token !== PAY.token) return;   // a newer choice has taken over
+      PAY.data = data; PAY.from = from; PAY.to = to;
+      var seen = {};
+      data.shifts.forEach(function (x) { seen[x.user_id] = 1; });
+      $("ppPeople").innerHTML = STAFF.filter(function (p) { return seen[p.id]; }).map(function (p) {
+        return '<label class="filter-check"><input type="checkbox" data-person="' + esc(p.id) + '" checked>' + esc(p.full_name) + "</label>";
+      }).join("");
+      payRender();
+    } catch (error) {
+      if (token !== PAY.token) return;
+      $("ppError").textContent = problemText(error); show("ppError", true);
+      $("ppSummary").textContent = ""; PAY.result = null; payButtons();
+    }
+  }
+
+  function payButtons() {
+    var ok = !!(PAY.result && PAY.result.people.some(function (p) { return !p.missingRate; }));
+    $("ppPrint").disabled = $("ppCsv").disabled = !ok;
+  }
+
+  function payRender() {
+    if (!PAY.data) return;
+    var picked = {}, opts = payOptions();
+    Array.prototype.forEach.call($("ppPeople").querySelectorAll("input:checked"), function (c) { picked[c.getAttribute("data-person")] = 1; });
+    var res = payrollCalc({ shifts: PAY.data.shifts.filter(function (x) { return picked[x.user_id]; }), rates: RATES, overtimeWeeks: PAY.data.overtime,
+                            from: PAY.from, to: PAY.to, opts: opts });
+    res.people.sort(function (a, b) { return staffName(a.user_id).localeCompare(staffName(b.user_id)); });
+    PAY.result = res; PAY.opts = opts;
+
+    $("ppTable").innerHTML = res.people.map(function (p) {
+      var sub = [];
+      sub.push(p.missingRate ? '<span class="pp-bad">No hourly rate set, so no statement can be made</span>' : "rate " + money(p.rate) + " an hour");
+      if (p.overtimeHours > 0) sub.push("overtime " + hrs(p.overtimeHours) + (opts.otMode === "multiplier" ? " at " + opts.otMultiplier + " times" : ""));
+      if (p.deduction > 0) sub.push(esc(opts.deduct.name) + " " + money(p.deduction) + ", net pay " + money(p.net));
+      return '<div class="pp-row"><strong>' + esc(staffName(p.user_id)) + '</strong><span class="pp-num">' + hrs(p.hours) + '</span><span class="pp-num">' +
+        (p.missingRate ? "–" : money(p.gross)) + '</span><div class="pp-sub">' + sub.join(" · ") + "</div></div>";
+    }).join("") + (res.people.length ? '<div class="pp-row pp-total"><span>Total</span><span class="pp-num">' + hrs(res.totals.hours) + '</span><span class="pp-num">' + money(res.totals.gross) + "</span></div>" : "");
+
+    var notes = [];
+    if (!res.people.length) notes.push("Nobody has a completed shift in these dates" + (Object.keys(picked).length ? "" : ", or nobody is ticked") + ".");
+    if (res.partialWeeks) notes.push(res.partialWeeks + (res.partialWeeks === 1 ? " approved overtime week is" : " approved overtime weeks are") + " only partly inside these dates, so " + (res.partialWeeks === 1 ? "its" : "their") + " overtime is not included. Choose whole weeks to include it.");
+    if (res.pendingWeeks) notes.push(res.pendingWeeks + (res.pendingWeeks === 1 ? " overtime week is" : " overtime weeks are") + " not approved yet, so is paid at the normal rate.");
+    var noRate = res.people.filter(function (p) { return p.missingRate; }).length;
+    if (noRate) notes.push(noRate + (noRate === 1 ? " person has" : " people have") + " no hourly rate. Set one on the Staff tab.");
+    if (res.people.length && !noRate) notes.push(res.people.length + (res.people.length === 1 ? " person" : " people") + ", " + hrs(res.totals.hours) + ", gross pay " + money(res.totals.gross) + (res.totals.deduction ? ", net " + money(res.totals.net) : "") + ".");
+    $("ppSummary").textContent = notes.join(" ");
+    payButtons();
+  }
+
+  function payslipHtml(p) {
+    var o = PAY.opts, person = STAFF.filter(function (x) { return x.id === p.user_id; })[0] || {}, job = jobRoleName(person.job_role_id);
+    var mult = o.otMode === "multiplier" ? o.otMultiplier : 1;
+    var rows = '<tr><td>Normal hours</td><td class="r">' + hrs(p.regularHours) + '</td><td class="r">' + money(p.rate) + '</td><td class="r">' + money(p.regularPay) + "</td></tr>";
+    if (p.overtimeHours > 0) rows += "<tr><td>Approved overtime</td><td class=\"r\">" + hrs(p.overtimeHours) + '</td><td class="r">' + money(p.rate * mult) + '</td><td class="r">' + money(p.overtimePay) + "</td></tr>";
+    rows += '<tr class="big"><td colspan="3">Gross pay</td><td class="r">' + money(p.gross) + "</td></tr>";
+    if (p.deduction > 0) rows += '<tr><td colspan="3">' + esc(o.deduct.name) + '</td><td class="r">-' + money(p.deduction) + '</td></tr><tr class="big"><td colspan="3">Net pay</td><td class="r">' + money(p.net) + "</td></tr>";
+    var detail = "";
+    if ($("ppDetail").checked) {
+      var mine = PAY.data.shifts.filter(function (x) { return x.user_id === p.user_id && x.clock_out_at; })
+        .sort(function (a, b) { return new Date(a.clock_in_at) - new Date(b.clock_in_at); });
+      detail = "<table><thead><tr><th>Date</th><th>In</th><th>Out</th><th class=\"r\">Break</th><th class=\"r\">Hours</th></tr></thead><tbody>" + mine.map(function (x) {
+        return "<tr><td>" + dmy(x.clock_in_at) + "</td><td>" + hhmm(x.clock_in_at) + "</td><td>" + hhmm(x.clock_out_at) + '</td><td class="r">' + (x.break_minutes || 0) + ' min</td><td class="r">' + hrs(payShiftMinutes(x, o.round) / 60) + "</td></tr>";
+      }).join("") + "</tbody></table>";
+    }
+    return '<section class="payslip"><div class="ps-head"><div><div class="ps-co">' + esc($("company").textContent) + "</div><div>Earnings statement</div></div><div>" +
+      dmy(PAY.from + "T12:00:00") + " to " + dmy(PAY.to + "T12:00:00") + "</div></div><h2>" + esc(staffName(p.user_id)) + "</h2>" + (job ? "<div>" + esc(job) + "</div>" : "") +
+      "<table><thead><tr><th></th><th class=\"r\">Hours</th><th class=\"r\">Rate</th><th class=\"r\">Amount</th></tr></thead><tbody>" + rows + "</tbody></table>" + detail +
+      '<p class="ps-foot">An estimate of earnings worked out from recorded clock-in and clock-out times. It is not an official payslip and does not include tax, National Insurance or any other statutory deduction' +
+      (p.deduction > 0 ? ", apart from the deduction shown above, which was entered by your employer" : "") + ".</p></section>";
+  }
+
+  function printPayslips() {
+    if (!PAY.result) return;
+    var list = PAY.result.people.filter(function (p) { return !p.missingRate; });
+    if (!list.length) return;
+    var box = $("payslipPrint");
+    box.innerHTML = list.map(payslipHtml).join("");
+    $("payDialog").close();
+    document.body.classList.add("printing-payslips");
+    var done = function () { document.body.classList.remove("printing-payslips"); box.innerHTML = ""; window.removeEventListener("afterprint", done); };
+    window.addEventListener("afterprint", done);
+    setTimeout(function () { window.print(); }, 60);
+  }
+
+  function payCsv() {
+    if (!PAY.result) return;
+    var cell = function (v) {
+      var t = String(v == null ? "" : v);
+      if (/^\s*[=+\-@]/.test(t) || /^[\t\r\n]/.test(t)) t = "'" + t;   // a name typed by staff must never run as a spreadsheet formula
+      return '"' + t.replace(/"/g, '""') + '"';
+    };
+    var o = PAY.opts, mult = o.otMode === "multiplier" ? o.otMultiplier : 1;
+    var lines = [["Name", "Job role", "From", "To", "Shifts", "Hours", "Normal hours", "Overtime hours", "Hourly rate", "Overtime multiple",
+                  "Normal pay", "Overtime pay", "Gross pay", o.deduct.kind === "none" ? "Deduction" : o.deduct.name, "Net pay"].join(",")];
+    PAY.result.people.forEach(function (p) {
+      if (p.missingRate) return;
+      var person = STAFF.filter(function (x) { return x.id === p.user_id; })[0] || {};
+      lines.push([cell(staffName(p.user_id)), cell(jobRoleName(person.job_role_id)), cell(PAY.from), cell(PAY.to), cell(p.shifts), cell(p.hours.toFixed(2)),
+                  cell(p.regularHours.toFixed(2)), cell(p.overtimeHours.toFixed(2)), cell(p.rate.toFixed(2)), cell(mult), cell(p.regularPay.toFixed(2)),
+                  cell(p.overtimePay.toFixed(2)), cell(p.gross.toFixed(2)), cell(p.deduction.toFixed(2)), cell(p.net.toFixed(2))].join(","));
+    });
+    var blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "payroll-" + PAY.from + "-to-" + PAY.to + ".csv";
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  }
+
+  function openPay() {
+    if (!PAY_ON) { toast("Switch on estimated pay in Company settings first."); return; }
+    payRestore();
+    show("ppOtWrap", OT_READY && OT_HOURS != null && hasFeature("overtime"));
+    payToggles();
+    if ($("ppPeriod").value !== "custom") { var r = payRange($("ppPeriod").value); $("ppFrom").value = r.from; $("ppTo").value = r.to; }
+    else { var last = payRange("lastWeek"); $("ppFrom").value = last.from; $("ppTo").value = last.to; }
+    PAY.data = null; PAY.result = null; $("ppTable").innerHTML = ""; $("ppPeople").innerHTML = ""; payButtons();
+    $("payDialog").showModal();
+    payReload();
+  }
+
+  (function () { var box = document.createElement("div"); box.id = "payslipPrint"; document.body.appendChild(box); })();
+  $("payslips").addEventListener("click", openPay);
+  $("ppClose").addEventListener("click", function () { $("payDialog").close(); });
+  $("ppPrint").addEventListener("click", printPayslips);
+  $("ppCsv").addEventListener("click", payCsv);
+  $("ppPeriod").addEventListener("change", function () {
+    if ($("ppPeriod").value !== "custom") { var r = payRange($("ppPeriod").value); $("ppFrom").value = r.from; $("ppTo").value = r.to; }
+    paySave(); payReload();
+  });
+  $("ppFrom").addEventListener("change", function () { $("ppPeriod").value = "custom"; paySave(); payReload(); });
+  $("ppTo").addEventListener("change", function () { $("ppPeriod").value = "custom"; paySave(); payReload(); });
+  ["ppRound", "ppOt", "ppOtCustom", "ppDeduct", "ppDeductName", "ppDeductValue", "ppDetail"].forEach(function (id) {
+    var fire = function () { payToggles(); paySave(); payRender(); };
+    $(id).addEventListener("change", fire);
+    $(id).addEventListener("input", fire);
+  });
+  $("ppPeople").addEventListener("change", payRender);
+  $("ppAll").addEventListener("click", function () { Array.prototype.forEach.call($("ppPeople").querySelectorAll("input"), function (c) { c.checked = true; }); payRender(); });
+  $("ppNone").addEventListener("click", function () { Array.prototype.forEach.call($("ppPeople").querySelectorAll("input"), function (c) { c.checked = false; }); payRender(); });
+  $("payForm").addEventListener("submit", function (e) { e.preventDefault(); });
 
   // ── EDIT PROFILE ───────────────────────────
   // Name, access, job role and the optional personal details, in one place.
