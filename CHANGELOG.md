@@ -5,6 +5,18 @@ or redeploy an Edge Function says so.
 
 ## Unreleased
 
+### Added
+- **Add-ons: the owner chooses which features each client gets.** A new "Add-ons" button on each
+  client in `/platform`. Untick something and it goes from that client's app — the database refuses
+  it, not just the button, so it cannot be reached by reopening the browser console. This is kept
+  separate from Company settings on purpose: **the owner decides whether a client has a feature at
+  all; the client's own manager decides how a feature they do have behaves.** A client can never
+  switch on something they were not given.
+  Only what is switched OFF is stored, so running the SQL changes nothing for clients already live
+  until something is unticked. Unticking hides records, it never deletes them: tick it back and
+  everything is there. Currently coverable: rota, pay, breaks, notices, handover, overtime.
+  *Needs: `setup/update-2026-09-add-ons.sql`, and a redeploy of the `platform` Edge Function.*
+
 ### Fixed
 - **A manager clocking somebody out did not close a break they had left running**, so those minutes
   were never taken off the paid hours and the shift was paid for time on break. The board used a

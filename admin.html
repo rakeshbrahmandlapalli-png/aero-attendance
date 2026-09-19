@@ -474,6 +474,9 @@
     notices: [{ id: "a1", body: "Gate code changes to 4417 from Monday. Ask Jo if it doesn't work.",
                 active: true, expires_at: null, created_at: agoISO(26) }],
     noticeReads: { a1: ["p1", "p2"] },
+    // Add-ons the owner has taken away from this client, for demo mode. Empty
+    // means they have everything, which is the default for a real client too.
+    featuresOff: {},
     overtimeHours: 40,
     overtime: [
       { user_id: "p1", full_name: "Sam Whitfield", week_start: "2026-09-07", hours: 47.5, threshold: 40, overtime: 7.5, status: null, note: "" },
@@ -1339,7 +1342,7 @@
     });
   }
   $('reviewFilter').addEventListener('change',renderReviews);
-  $('settings').addEventListener('click',function(){$('companyName').value=$('company').textContent;$('brandName').value=BRAND;fillLocale(TZ,CUR);['brandWrap','brandNote','tzWrap','curWrap','localeNote'].forEach(function(id){show(id,LOCALE_READY);});$('showPay').checked=PAY_ON;show('payToggleWrap',PAY_READY);show('payToggleNote',PAY_READY);$('useRota').checked=USE_ROTA;$('requireOnSite').checked=ON_SITE;$('useBreaks').checked=USE_BREAKS;show('breakToggleWrap',BREAKS_READY);show('breakToggleNote',BREAKS_READY);$('privacyContact').value=PRIVACY_CONTACT;$('retentionText').value=RETENTION_TEXT;show('privacyContactWrap',PRIVACY_READY);show('retentionWrap',PRIVACY_READY);show('privacyNote',PRIVACY_READY);show('onSiteToggleWrap',ON_SITE_READY);show('onSiteToggleNote',ON_SITE_READY);show('rotaToggleWrap',ROTA_READY);show('rotaToggleNote',ROTA_READY);$('overtimeHours').value=OT_HOURS==null?'':OT_HOURS;show('otWrap',OT_READY);show('otNote',OT_READY);show('settingsError',false);$('settingsDialog').showModal();});
+  $('settings').addEventListener('click',function(){$('companyName').value=$('company').textContent;$('brandName').value=BRAND;fillLocale(TZ,CUR);['brandWrap','brandNote','tzWrap','curWrap','localeNote'].forEach(function(id){show(id,LOCALE_READY);});$('showPay').checked=PAY_ON;show('payToggleWrap',PAY_READY);show('payToggleNote',PAY_READY);$('useRota').checked=USE_ROTA;$('requireOnSite').checked=ON_SITE;$('useBreaks').checked=USE_BREAKS;show('breakToggleWrap',BREAKS_READY);show('breakToggleNote',BREAKS_READY);$('privacyContact').value=PRIVACY_CONTACT;$('retentionText').value=RETENTION_TEXT;show('privacyContactWrap',PRIVACY_READY);show('retentionWrap',PRIVACY_READY);show('privacyNote',PRIVACY_READY);show('onSiteToggleWrap',ON_SITE_READY);show('onSiteToggleNote',ON_SITE_READY);show('rotaToggleWrap',ROTA_READY);show('rotaToggleNote',ROTA_READY);$('overtimeHours').value=OT_HOURS==null?'':OT_HOURS;show('otWrap',OT_READY&&hasFeature('overtime'));show('otNote',OT_READY&&hasFeature('overtime'));show('settingsError',false);$('settingsDialog').showModal();});
   $('cancelSettings').addEventListener('click',function(){$('settingsDialog').close();});
   $('settingsForm').addEventListener('submit',async function(e){
     e.preventDefault();var name=$('companyName').value.trim();if(!name)return;$('saveSettings').disabled=true;show('settingsError',false);
@@ -1820,6 +1823,23 @@
   if('serviceWorker' in navigator && location.protocol==='https:' && !DEMO)navigator.serviceWorker.register('/sw.js').catch(function(error){fail(error);});
 
   // ── boot ─────────────────────────────────
+  // ── ADD-ONS ────────────────────────────────
+  // What the owner has given this client, set on /platform. The database
+  // enforces it either way; this is only so we do not offer a button that is
+  // going to be refused. Absence means they have it.
+  var FEATURES = {};
+
+  async function loadFeatures() {
+    if (DEMO) { FEATURES = D.featuresOff || {}; return; }
+    var r = await sb.from("company_features").select("feature, enabled");
+    FEATURES = {};
+    // Before the add-ons SQL is run there is no table: everybody has everything.
+    if (r.error) return;
+    (r.data || []).forEach(function (x) { FEATURES[x.feature] = x.enabled; });
+  }
+
+  function hasFeature(f) { return FEATURES[f] !== false; }
+
   // ── OVERTIME ───────────────────────────────
   // Off until a company sets a weekly threshold. The database works the hours
   // out from the shifts each time and decide_overtime() recomputes them again
@@ -1841,7 +1861,7 @@
   }
 
   async function loadOvertime() {
-    if (!OT_READY || OT_HOURS == null) { OVERTIME = []; return renderOvertime(); }
+    if (!OT_READY || OT_HOURS == null || !hasFeature("overtime")) { OVERTIME = []; return renderOvertime(); }
     if (DEMO) { OVERTIME = (D.overtime || []).slice(); return renderOvertime(); }
     var to = localDay(new Date()), from = localDay(new Date(Date.now() - 56 * 864e5));
     var r = await sb.rpc("overtime_weeks", { p_from: from, p_to: to });
@@ -1965,7 +1985,7 @@
 
   function renderNotices() {
     var box = $("notices");
-    if (!NOTICES_READY) { box.innerHTML = ""; return; }
+    if (!NOTICES_READY || !hasFeature("notices")) { box.innerHTML = ""; return; }
     var live = liveNotices(), out = [];
     live.forEach(function (n) {
       out.push('<div class="notice-live"><p>' + esc(n.body) + '</p>' +
@@ -2034,8 +2054,11 @@
       $("from").value = localDay(new Date(Date.now() - 6 * 864e5));
       $("to").value   = localDay(new Date());
       show("login", false); show("app", true); show("demoBar", true);
-      loadRotaFlag(); loadPrefs(); loadPay(); loadNow(); loadStaff(); loadSites(); runSheet(); loadReviews(); loadNotices();
-      loadOvertimeSetting().then(loadOvertime).then(renderReviews);
+      loadRotaFlag(); loadPrefs(); loadPay(); loadNow(); loadStaff(); loadSites(); runSheet(); loadReviews();
+      // Add-ons first: anything that decides whether to draw itself has to know
+      // what this client has before it draws.
+      loadFeatures().then(function () { loadNotices(); return loadOvertimeSetting(); })
+                    .then(loadOvertime).then(renderReviews);
       clearInterval(poll);
       poll = setInterval(function(){if(!navigator.onLine)return;loadNow();loadReviews();}, 30000);
       return;
@@ -2079,6 +2102,7 @@
     if (user.user_metadata && user.user_metadata.must_change_password) askNewPassword();
     await loadRotaFlag();
     loadPrefs();
+    await loadFeatures();
     await Promise.all([loadPay(), loadNow(), loadStaff(), loadSites(), loadReviews(), loadNotices(), loadOvertimeSetting()]);
     await loadOvertime();
     await runSheet();

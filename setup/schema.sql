@@ -110,6 +110,56 @@ as $$
 $$;
 
 
+-- ── ADD-ONS: WHAT THIS CLIENT HAS BEEN GIVEN ────────────────────────────
+--
+-- Two different things, kept apart on purpose:
+--
+--   ADD-ON   the owner decides on /platform whether a client has a feature at
+--            all. A client cannot switch on something they were never given.
+--   SETTING  the client's own manager decides how a feature they do have
+--            behaves (the overtime threshold, whether pay is shown, and so on).
+--
+-- Only what is switched OFF is stored. No row means the client has the feature,
+-- so adding this changes nothing for anybody already live until something is
+-- unticked.
+--
+-- Only the platform Edge Function writes here, with the service key: there is no
+-- insert, update or delete grant, so a client's manager cannot hand themselves a
+-- feature from the browser.
+create table if not exists company_features (
+  company_id uuid not null references companies(id) on delete cascade,
+  feature    text not null check (feature in
+               ('rota','pay','breaks','notices','handover','overtime','incidents')),
+  enabled    boolean not null,
+  updated_at timestamptz not null default now(),
+  primary key (company_id, feature)
+);
+alter table company_features enable row level security;
+
+drop policy if exists company_features_read on company_features;
+create policy company_features_read on company_features for select to authenticated
+  using (company_id = current_company_id());
+
+revoke all on table company_features from anon, authenticated;
+grant select on table company_features to authenticated;
+
+create or replace function has_feature(p_feature text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(
+    (select cf.enabled from company_features cf
+      where cf.company_id = current_company_id() and cf.feature = p_feature),
+    true)
+$$;
+
+revoke execute on function has_feature(text) from public, anon;
+grant execute on function has_feature(text) to authenticated;
+
+
 -- ── DISTANCE ────────────────────────────────────────────────────────────
 --
 -- Haversine, in metres. Deliberately a database function, not browser code:
@@ -646,13 +696,14 @@ alter table announcements enable row level security;
 drop policy if exists announcements_read on announcements;
 create policy announcements_read on announcements for select to authenticated
   using (company_id = current_company_id()
+         and has_feature('notices')
          and (is_manager()
               or (active and (expires_at is null or expires_at > now()))));
 
 drop policy if exists announcements_manage on announcements;
 create policy announcements_manage on announcements for all to authenticated
-  using (company_id = current_company_id() and is_manager())
-  with check (company_id = current_company_id() and is_manager()
+  using (company_id = current_company_id() and is_manager() and has_feature('notices'))
+  with check (company_id = current_company_id() and is_manager() and has_feature('notices')
               and (author_id is null
                    or exists (select 1 from profiles p
                               where p.id = announcements.author_id
@@ -1563,7 +1614,8 @@ as $$
     from shifts s
     join mine on mine.worksite_id = s.worksite_id
     left join worksites w on w.id = s.worksite_id
-   where s.company_id = current_company_id()
+   where has_feature('handover')
+     and s.company_id = current_company_id()
      and s.user_id <> auth.uid()
      and s.clock_out_at is not null
      and s.clock_out_at > now() - interval '24 hours'
@@ -1636,6 +1688,7 @@ as $$
     select id, coalesce(time_zone, 'Europe/London') as tz, overtime_weekly_hours as ot
       from companies
      where id = current_company_id()
+       and has_feature('overtime')
   ),
   weeks as (
     select s.user_id,
@@ -1689,6 +1742,9 @@ declare
 begin
   if not coalesce(is_manager(), false) then
     raise exception 'Manager access required.';
+  end if;
+  if not coalesce(has_feature('overtime'), false) then
+    raise exception 'Overtime is not part of this company''s plan.';
   end if;
   if p_status is null or p_status not in ('approved', 'rejected') then
     raise exception 'Choose approve or reject.';

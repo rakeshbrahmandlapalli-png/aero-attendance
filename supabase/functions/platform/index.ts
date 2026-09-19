@@ -122,6 +122,11 @@ Deno.serve(async (req) => {
   }
 
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  // What can be ticked on /platform. The check constraint on
+  // company_features.feature also allows "incidents"; it is left out here until
+  // that feature exists, because offering a switch for something that is not
+  // built is a lie. Add it to this list in the same commit that ships it.
+  const FEATURES = ["rota", "pay", "breaks", "notices", "handover", "overtime"];
 
   if (body.action === "update") {
     const id = String(body.company_id ?? "");
@@ -139,6 +144,43 @@ Deno.serve(async (req) => {
     if (error) return reply(400, { error: error.message });
     if (!data || data.length === 0) return reply(404, { error: "That company no longer exists." });
     return reply(200, { ok: true });
+  }
+
+  // Which add-ons a client has. Only what is switched OFF is stored: no row
+  // means they have it, so a client already live is untouched until something
+  // is unticked here.
+  if (body.action === "features") {
+    const id = String(body.company_id ?? "");
+    if (!uuid.test(id)) return reply(400, { error: "Unknown company." });
+    const { data, error } = await admin.from("company_features")
+      .select("feature, enabled").eq("company_id", id);
+    if (error) return reply(400, { error: "Add-ons are not set up yet. Run the add-ons SQL first." });
+    const off = (data ?? []).filter((r) => r.enabled === false).map((r) => r.feature);
+    return reply(200, { features: FEATURES, off });
+  }
+
+  if (body.action === "set_features") {
+    const id = String(body.company_id ?? "");
+    const off = Array.isArray(body.off) ? body.off.map(String) : null;
+    if (!uuid.test(id)) return reply(400, { error: "Unknown company." });
+    if (!off) return reply(400, { error: "Send the list of add-ons to switch off." });
+    const unknown = off.filter((f) => !FEATURES.includes(f));
+    if (unknown.length) return reply(400, { error: `Not an add-on: ${unknown.join(", ")}.` });
+
+    const exists = await admin.from("companies").select("id").eq("id", id).maybeSingle();
+    if (exists.error) return reply(400, { error: exists.error.message });
+    if (!exists.data) return reply(404, { error: "That company no longer exists." });
+
+    // Clear the lot, then write back only the ones switched off, so a feature
+    // ticked back on leaves no row behind to contradict the default.
+    const cleared = await admin.from("company_features").delete().eq("company_id", id);
+    if (cleared.error) return reply(400, { error: "Add-ons are not set up yet. Run the add-ons SQL first." });
+    if (off.length) {
+      const wrote = await admin.from("company_features")
+        .insert(off.map((feature) => ({ company_id: id, feature, enabled: false })));
+      if (wrote.error) return reply(400, { error: wrote.error.message });
+    }
+    return reply(200, { ok: true, off });
   }
 
   if (body.action === "delete") {
