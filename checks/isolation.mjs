@@ -25,6 +25,7 @@ const P = {           // people
 const SHIFT_A1 = U(3001), SHIFT_A2 = U(3002), SHIFT_B1 = U(3003);
 const CORR_A = U(4001);
 const ROTA_A_PUB = U(5001), ROTA_A_DRAFT = U(5002);
+const ANN_A = U(6001), ANN_A2 = U(6002), ANN_A_OFF = U(6003), ANN_A_GONE = U(6004), ANN_B = U(6005);
 
 const results = [];
 function check(name, ok, detail = "") { results.push({ name, ok: !!ok, detail }); }
@@ -62,12 +63,20 @@ await db.exec(`
   insert into push_subscriptions (user_id, company_id, endpoint, p256dh, auth) values ('${P.staffA1}','${CO_A}','https://push.example/a1','k','a');
   insert into notification_prefs (user_id, company_id) values ('${P.staffA1}','${CO_A}');
   insert into privacy_ack (user_id, company_id, version) values ('${P.staffA1}','${CO_A}',1);
+  insert into announcements (id, company_id, author_id, body, active, expires_at) values
+    ('${ANN_A}','${CO_A}','${P.mgrA}','Gate code changes Monday', true, null),
+    ('${ANN_A2}','${CO_A}','${P.mgrA}','Second live notice', true, null),
+    ('${ANN_A_OFF}','${CO_A}','${P.mgrA}','A switched-off notice', false, null),
+    ('${ANN_A_GONE}','${CO_A}','${P.mgrA}','A expired notice', true, now() - interval '1 hour'),
+    ('${ANN_B}','${CO_B}','${P.ownerB}','B depot notice', true, null);
+  insert into announcement_reads (announcement_id, user_id, company_id) values
+    ('${ANN_A}','${P.staffA1}','${CO_A}'), ('${ANN_A}','${P.staffA2}','${CO_A}');
   insert into auth.users (id, email) values ('${P.platform}','platform@aero.test');
   insert into platform_admins (user_id) values ('${P.platform}');
 `);
 
-const TABLES = ["availability", "notification_prefs", "pay_rates", "privacy_ack", "profiles", "push_subscriptions",
-                "rota_shifts", "shift_corrections", "shifts", "time_off", "worksites", "on_shift_now"];
+const TABLES = ["announcement_reads", "announcements", "availability", "notification_prefs", "pay_rates", "privacy_ack",
+                "profiles", "push_subscriptions", "rota_shifts", "shift_corrections", "shifts", "time_off", "worksites", "on_shift_now"];
 
 // ── 1. READ ISOLATION: nobody sees the other company's rows ──────────────
 const others = { A: CO_B, B: CO_A };
@@ -341,7 +350,7 @@ gap("a manager can set another company's person's pay rate in their own company"
 // would start failing (or, worse, leave that company's rows orphaned). Seeds one company
 // with a row in EVERY table and deletes it.
 {
-  const CO_C = U(1003), O = U(31), S = U(32), WC = U(2003), SH = U(3031);
+  const CO_C = U(1003), O = U(31), S = U(32), WC = U(2003), SH = U(3031), ANN_C = U(6031);
   await db.exec(`
     insert into companies (id, name) values ('${CO_C}', 'Doomed Ltd');
     insert into auth.users (id, email) values ('${O}','o@c.test'),('${S}','s@c.test');
@@ -357,6 +366,8 @@ gap("a manager can set another company's person's pay rate in their own company"
     insert into push_subscriptions (user_id, company_id, endpoint, p256dh, auth) values ('${S}','${CO_C}','https://p.example/c','k','a');
     insert into notification_prefs (user_id, company_id) values ('${S}','${CO_C}');
     insert into privacy_ack (user_id, company_id, version) values ('${S}','${CO_C}',1);
+    insert into announcements (id, company_id, author_id, body) values ('${ANN_C}','${CO_C}','${O}','C notice');
+    insert into announcement_reads (announcement_id, user_id, company_id) values ('${ANN_C}','${S}','${CO_C}');
   `);
   const before = (await asOwner(db, `select count(*)::int n from profiles where company_id = $1`, [CO_C])).rows[0].n;
   let err = "";
@@ -364,7 +375,7 @@ gap("a manager can set another company's person's pay rate in their own company"
   check("DELETE  removing a company succeeds", before === 2 && !err, err || `seeded ${before} people`);
   const left = [];
   for (const t of ["profiles", "worksites", "shifts", "pay_rates", "availability", "time_off", "rota_shifts", "shift_corrections",
-                   "push_subscriptions", "notification_prefs", "privacy_ack"]) {
+                   "push_subscriptions", "notification_prefs", "privacy_ack", "announcements", "announcement_reads"]) {
     const n = (await asOwner(db, `select count(*)::int n from ${t} where company_id = $1`, [CO_C])).rows[0].n;
     if (n) left.push(`${t}:${n}`);
   }
@@ -471,6 +482,58 @@ gap("a manager can set another company's person's pay rate in their own company"
   }
   await db.exec(`update companies set suspended = false where id = '${CO_D}'`);
   check("PAUSE  un-pausing brings everything back, untouched", Number(await sees(SD)) > 0 && Number(await sees(OD)) > 0, `saw ${await sees(SD)}`);
+}
+
+// ── 13. ANNOUNCEMENTS: managers write, staff only read what is live ──────
+// Section 11 promotes staffA2 to admin for good, so the plain-staff view has to
+// be tested as staffA1. Assert that, rather than trusting it to stay true.
+{
+  let r = await asOwner(db, `select role from profiles where id = $1`, [P.staffA1]);
+  check("ANN  (precondition) staffA1 is still plain staff", r.rows[0]?.role === "staff", `role is ${r.rows[0]?.role}`);
+
+  r = await as(db, P.staffA1, `select id from announcements`);
+  const seen = (r.rows || []).map((x) => x.id);
+  check("ANN  staff see the live announcements (sanity)", !r.error && seen.includes(ANN_A) && seen.includes(ANN_A2), r.error || JSON.stringify(seen));
+  check("ANN  staff cannot see a switched-off announcement", !seen.includes(ANN_A_OFF), "they saw it");
+  check("ANN  staff cannot see an expired announcement", !seen.includes(ANN_A_GONE), "they saw it");
+  check("ANN  staff see nothing of the other company's", !seen.includes(ANN_B), "they saw it");
+  r = await as(db, P.mgrA, `select id from announcements`);
+  check("ANN  a manager DOES see switched-off and expired ones (sanity)", !r.error && r.rows.length === 4, r.error || `saw ${r.rows.length}`);
+
+  r = await as(db, P.staffA1, `insert into announcements (company_id, body) values ($1,'staff notice')`, [CO_A]);
+  check("ANN  staff cannot post an announcement", blocked(r), "it posted");
+  r = await as(db, P.staffA1, `update announcements set active = false where id = $1`, [ANN_A]);
+  check("ANN  staff cannot switch an announcement off", blocked(r), "it changed");
+  r = await as(db, P.staffA1, `delete from announcements where id = $1`, [ANN_A]);
+  check("ANN  staff cannot delete an announcement", blocked(r), "it deleted");
+
+  r = await as(db, P.ownerB, `insert into announcements (company_id, body) values ($1,'B posting into A')`, [CO_A]);
+  check("ANN  another company's owner cannot post into A", blocked(r), "it posted");
+  r = await as(db, P.ownerB, `update announcements set body = 'hijacked' where id = $1`, [ANN_A]);
+  check("ANN  another company's owner cannot edit A's announcement", blocked(r), "it changed");
+  r = await as(db, P.ownerB, `delete from announcements where id = $1`, [ANN_A]);
+  check("ANN  another company's owner cannot delete A's announcement", blocked(r), "it deleted");
+  r = await as(db, P.mgrA, `insert into announcements (company_id, author_id, body) values ($1,$2,'wrong author')`, [CO_A, P.staffB1]);
+  check("ANN  a manager cannot credit another company's person as author", blocked(r), "it posted");
+
+  // A read is a fact: written once, by yourself, about your own company's notice.
+  r = await as(db, P.staffA1, `insert into announcement_reads (announcement_id, user_id, company_id) values ($1,$2,$3)`, [ANN_A2, P.staffA1, CO_A]);
+  check("ANN  staff can record their own read (sanity)", !r.error, r.error);
+  r = await as(db, P.staffA1, `insert into announcement_reads (announcement_id, user_id, company_id) values ($1,$2,$3)`, [ANN_A2, P.staffA2, CO_A]);
+  check("ANN  staff cannot record a read for a colleague", blocked(r), "it wrote");
+  r = await as(db, P.staffA1, `insert into announcement_reads (announcement_id, user_id, company_id) values ($1,$2,$3)`, [ANN_B, P.staffA1, CO_A]);
+  check("ANN  staff cannot record a read against another company's announcement", blocked(r), "it wrote");
+  r = await as(db, P.staffA1, `insert into announcement_reads (announcement_id, user_id, company_id) values ($1,$2,$3)`, [ANN_A_OFF, P.staffA1, CO_A]);
+  check("ANN  staff cannot record a read against an announcement they cannot see", blocked(r), "it wrote");
+  r = await as(db, P.staffA1, `delete from announcement_reads where user_id = $1`, [P.staffA1]);
+  check("ANN  a read cannot be withdrawn", blocked(r), "it deleted");
+  r = await as(db, P.staffA1, `update announcement_reads set read_at = now() - interval '5 days' where user_id = $1`, [P.staffA1]);
+  check("ANN  a read cannot be back-dated", blocked(r), "it changed");
+
+  r = await as(db, P.staffA1, `select user_id from announcement_reads where user_id <> $1`, [P.staffA1]);
+  check("ANN  staff cannot see who else has read it", !r.error && r.rows.length === 0, r.error || `saw ${r.rows.length}`);
+  r = await as(db, P.mgrA, `select user_id from announcement_reads where announcement_id = $1`, [ANN_A]);
+  check("ANN  a manager DOES see who has read it (sanity)", !r.error && r.rows.length === 2, r.error || `saw ${r.rows.length}`);
 }
 
 // ── report ───────────────────────────────────────────────────────────────

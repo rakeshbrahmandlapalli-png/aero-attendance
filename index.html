@@ -104,6 +104,10 @@
   .wrap section,#staff-inbox,#staff-account{padding:var(--s4);background:var(--card);}
   .wrap section+section{margin-top:var(--s2);}
   .section-head{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);margin-bottom:var(--s3);}
+  .notice-card{padding:var(--s4);border-left:4px solid var(--brand);background:var(--card);border-block:1px solid var(--line-soft);}
+  .notice-card+.notice-card{margin-top:var(--s3);}
+  .notice-card p{margin:0 0 var(--s3);overflow-wrap:anywhere;}
+  .notice-card .tiny{display:block;margin-bottom:var(--s3);}
   .section-head h2{margin:0;font-size:var(--t2);}
   .section-head strong{font-size:var(--t2);font-weight:600;}
   .section-head select{width:auto;min-height:44px;padding:0 var(--s2);border:0;background:none;color:var(--accent);font-weight:500;}
@@ -338,6 +342,11 @@
           <p class="note" id="locNote"></p>
         </section>
 
+        <section id="notices" class="hidden" aria-labelledby="noticesTitle">
+          <div class="section-head"><h2 id="noticesTitle">From your manager</h2></div>
+          <div id="noticesBody"></div>
+        </section>
+
         <section id="nextShift" class="hidden" aria-labelledby="nextTitle">
           <div class="section-head"><h2 id="nextTitle">Next shift</h2></div>
           <div id="nextShiftBody"></div>
@@ -474,6 +483,8 @@
       { id: "s2", name: "Terminal drop-off", lat: 51.88412, lng: -0.36998, radius_m: 200 }
     ],
     open: null,
+    notices: [{ id: "a1", body: "Gate code changes to 4417 from Monday. Ask Jo if it doesn't work.",
+                created_at: new Date(Date.now() - 26 * 3600000).toISOString() }],
     history: [
       demoShift(1, 6, 2, 14, 11),
       demoShift(2, 5, 58, 14, 3),
@@ -990,6 +1001,49 @@
   var DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
   function localDay(v) { var d = new Date(v); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
 
+  // ── NOTICES ────────────────────────────────
+  // What the manager has posted. Dismissing one records that this person read
+  // it, which is what the manager's "seen by" count is built from, so a notice
+  // only disappears once that write has gone through.
+  var NOTICES = [];
+
+  async function loadNotices() {
+    if (DEMO) { NOTICES = D.notices.slice(); return renderNotices(); }
+    if (!ME) return;
+    var r = await sb.from("announcements").select("id, body, created_at").order("created_at", { ascending: false });
+    // The announcements SQL may not have been run yet. Say nothing, break nothing.
+    if (r.error) { NOTICES = []; return renderNotices(); }
+    var mine = await sb.from("announcement_reads").select("announcement_id").eq("user_id", ME.id);
+    var read = {};
+    if (!mine.error) (mine.data || []).forEach(function (x) { read[x.announcement_id] = true; });
+    NOTICES = (r.data || []).filter(function (n) { return !read[n.id]; });
+    renderNotices();
+  }
+
+  function renderNotices() {
+    show("notices", NOTICES.length > 0);
+    if (!NOTICES.length) { $("noticesBody").innerHTML = ""; return; }
+    $("noticesBody").innerHTML = NOTICES.map(function (n) {
+      return '<div class="notice-card"><p>' + esc(n.body) + '</p>' +
+             '<span class="tiny">Posted ' + esc(new Date(n.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })) + '</span>' +
+             '<button type="button" class="g" data-seen="' + esc(n.id) + '">Got it</button></div>';
+    }).join("");
+    Array.prototype.forEach.call($("noticesBody").querySelectorAll("[data-seen]"), function (b) {
+      b.addEventListener("click", function () { dismissNotice(b.getAttribute("data-seen"), b); });
+    });
+  }
+
+  async function dismissNotice(id, btn) {
+    if (!DEMO) {
+      btn.disabled = true;
+      var r = await sb.from("announcement_reads").insert({ announcement_id: id, user_id: ME.id, company_id: ME.company_id });
+      // Leave it on screen if the read did not save, so it is never silently lost.
+      if (r.error) { btn.disabled = false; return fail(r.error); }
+    }
+    NOTICES = NOTICES.filter(function (n) { return n.id !== id; });
+    renderNotices();
+  }
+
   async function loadRota() {
     if (DEMO) { renderRota(); return; }
     if (!ME) return;
@@ -1125,7 +1179,7 @@
     USE_BREAKS = true;
     PRIVACY = { contact: "Jo Hargreaves, office manager", retention: "Six years after you leave, then deleted.", tracked: false, ackVersion: 0 };
     ROTA.on = true; ROTA.shifts = D.rota; ROTA.avail = D.avail; ROTA.off = D.off;
-    renderRota(); loadPrefs();
+    renderRota(); loadPrefs(); loadNotices();
     OPEN = D.open;
     renderHistory((D.open ? [D.open] : []).concat(D.history));
     renderStatus();
@@ -1210,6 +1264,7 @@
     renderHistory(hist.data || []);
     renderStatus();
     await loadRota();
+    await loadNotices();
     loadPrefs();
     await loadPrivacy();
 

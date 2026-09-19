@@ -3,6 +3,17 @@
 Aero Attendance, by AeroOne. Newest first. Dates are 2026. Anything that needs the owner to run SQL
 or redeploy an Edge Function says so.
 
+## Unreleased
+
+### Added
+- **Notices.** A manager posts a short message from the Now tab; everyone in that company sees it
+  on Home until they tap "Got it". Dismissing records that the person read it, so the manager sees
+  a "seen by" count and can switch a notice off or let it expire after 1, 3 or 7 days. A notice
+  stays on screen if the read fails to save, so it is never silently lost. *Needs:
+  `setup/update-2026-09-announcements.sql`.*
+  - Not yet wired to phone notifications: a notice appears the next time the app is opened. Pushing
+    it needs a `send-push` change and a redeploy, so it is a separate job.
+
 ## 1.0 (19 September)
 
 The first version sold to a client. What "1.0" means, and what it does not:

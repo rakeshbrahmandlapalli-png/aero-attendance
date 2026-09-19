@@ -101,6 +101,13 @@
   .stat-link .val,.stat-link .sub{color:var(--warn);}
   .stat-link .sub{text-decoration:underline;text-underline-offset:4px;}
   .flags{display:grid;gap:var(--s3);}.flags:empty{display:none;}
+  .notices{display:grid;gap:var(--s2);margin-bottom:var(--s4);}.notices:empty{display:none;}
+  .notice-live{padding:var(--s3) var(--s4);border-left:4px solid var(--brand);background:var(--surface);}
+  .notice-live p{margin:0;overflow-wrap:anywhere;}
+  .notice-row{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s3);flex-wrap:wrap;}
+  .notice-item{padding:var(--s3) 0;border-bottom:1px solid var(--line-soft);}
+  .notice-item:last-child{border-bottom:0;}
+  .notice-off{color:var(--ink-2);}
   .flag{padding:var(--s4);background:var(--warn-soft);border-left:4px solid var(--warn);color:var(--warn);overflow-wrap:anywhere;}
   .flag .act{display:block;margin-top:var(--s3);}
   .coverage{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s6);padding-bottom:var(--s6);border-bottom:1px solid var(--line);}
@@ -286,6 +293,7 @@
     <div class="page-heading"><div><h1 id="pageTitle">Attendance overview</h1><div class="date-line" id="boardDate"></div></div><div class="toolbar-actions"><button class="g hidden" id="notifications">Notifications</button><button class="g" id="settings">Company settings</button><button class="g" id="refresh">Refresh</button></div></div>
     <!-- ── NOW ────────────────────────────── -->
     <section id="tab-now" class="on">
+      <div id="notices" class="notices"></div>
       <div id="flags" class="flags"></div>
       <div id="stats" class="stats"></div>
       <h2>Site coverage</h2><div id="coverage" class="coverage"></div>
@@ -389,6 +397,7 @@
 <dialog id="rotaDialog" aria-labelledby="rotaTitle"><form id="rotaForm"><h2 id="rotaTitle">Add shift</h2><label class="field">Staff member<select id="rotaWho" required></select></label><label class="field">Date<input id="rotaDate" type="date" required></label><div class="time-pair"><label class="field">Start<input id="rotaStart" type="time" required></label><label class="field">Finish<input id="rotaEnd" type="time" required></label></div><p class="note" id="rotaHint"></p><label class="field">Worksite<select id="rotaSite"></select></label><label class="field">Note for staff (optional)<input id="rotaNote" maxlength="300"></label><div id="rotaWarn" class="warn-line hidden" role="status"></div><div id="rotaError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g hidden" id="deleteRota">Remove shift</button><button type="button" class="g" id="cancelRota">Cancel</button><button class="b" id="saveRota">Save shift</button></div></form></dialog>
 <dialog id="staffDialog" aria-labelledby="staffTitle"><form id="staffForm" novalidate><h2 id="staffTitle">Add staff</h2><div id="staffFields"><label class="field">Full name<input id="newName" maxlength="120" autocomplete="off"></label><label class="field">Email<input id="newEmail" type="email" inputmode="email" autocomplete="off"></label><label class="field">Role<select id="newRole"><option value="staff">Staff</option><option value="admin">Manager</option></select></label><label class="field">Starting password<input id="newPassword" maxlength="72" autocomplete="new-password" spellcheck="false"></label><button type="button" class="g sm" id="suggestPassword">Suggest a password</button><p class="note">Give it to them in person or by text. They choose their own password the first time they sign in.</p></div><p id="staffDone" class="hidden"></p><div id="staffError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelStaff">Cancel</button><button class="b" id="saveStaff">Add staff</button></div></form></dialog>
 <dialog id="pwDialog" aria-labelledby="pwTitle"><form id="pwForm" novalidate><h2 id="pwTitle">Choose your password</h2><p class="note">You signed in with a starting password. Choose your own to keep your account private.</p><label class="field">New password<input id="newPw" type="password" autocomplete="new-password"></label><label class="field">Type it again<input id="newPw2" type="password" autocomplete="new-password"></label><div class="err hidden" id="pwError" role="alert"></div><div class="bar"><button class="b" id="savePw">Save password</button></div></form></dialog>
+<dialog id="noticeDialog" aria-labelledby="noticeTitle"><h2 id="noticeTitle">Notices</h2><p class="note">Everyone in the company sees this on their home screen until they dismiss it.</p><label class="field">New notice<textarea id="noticeBody" maxlength="500" rows="3" placeholder="Something everyone needs to know today"></textarea></label><label class="field">Stop showing it<select id="noticeExpiry"><option value="">When I switch it off</option><option value="1">After 1 day</option><option value="3">After 3 days</option><option value="7">After 7 days</option></select></label><div id="noticeError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="b" id="saveNotice">Post notice</button></div><h3 class="notify-sub">Posted notices</h3><div id="noticeList"></div><div class="bar"><button type="button" class="g" id="closeNotice">Close</button></div></dialog>
 <dialog id="notifyDialog" aria-labelledby="notifyTitle"><h2 id="notifyTitle">Notifications</h2><p class="note" id="notifyState"></p><div class="bar notify-actions"><button type="button" class="b" id="notifyOn">Turn on notifications</button><button type="button" class="g hidden" id="notifyOff">Turn off for this device</button></div><h3 class="notify-sub">Tell me when</h3><div id="notifyPrefs"></div><div class="bar"><button type="button" class="g" id="closeNotify">Close</button></div></dialog>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
@@ -460,6 +469,9 @@
     company: "Example Logistics Ltd",
     showPay: true, timeZone: "Europe/London", currency: "GBP", brandName: "",
     useRota: true, rota: [], avail: {}, off: [], requireOnSite: true,
+    notices: [{ id: "a1", body: "Gate code changes to 4417 from Monday. Ask Jo if it doesn't work.",
+                active: true, expires_at: null, created_at: agoISO(26) }],
+    noticeReads: { a1: ["p1", "p2"] },
     privacyContact: "Jo Hargreaves, office manager", retentionText: "Six years after you leave, then deleted.",
     rates: { p1: 12.5, p2: 12.5, p3: 12.21, p4: 15 },
     now: [
@@ -1755,6 +1767,102 @@
   if('serviceWorker' in navigator && location.protocol==='https:' && !DEMO)navigator.serviceWorker.register('/sw.js').catch(function(error){fail(error);});
 
   // ── boot ─────────────────────────────────
+  // ── NOTICES ────────────────────────────────
+  // A manager posts a short message; everyone in the company sees it on Home
+  // until they dismiss it. Dismissing records the read, so the manager can see
+  // how many people have seen it.
+  var NOTICES = [], NOTICE_READS = {}, NOTICES_READY = false;
+
+  function shortDay(iso) {
+    return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  }
+  function liveNotices() {
+    var now = Date.now();
+    return NOTICES.filter(function (n) {
+      return n.active && (!n.expires_at || new Date(n.expires_at).getTime() > now);
+    });
+  }
+
+  async function loadNotices() {
+    if (DEMO) { NOTICES = D.notices.slice(); NOTICE_READS = D.noticeReads; NOTICES_READY = true; return renderNotices(); }
+    var r = await sb.from("announcements").select("id, body, active, expires_at, created_at").order("created_at", { ascending: false });
+    // The announcements SQL may not have been run yet. Show nothing rather than
+    // breaking the board.
+    if (r.error) { NOTICES_READY = false; return renderNotices(); }
+    NOTICES = r.data || [];
+    NOTICES_READY = true;
+    NOTICE_READS = {};
+    var reads = await sb.from("announcement_reads").select("announcement_id, user_id");
+    if (!reads.error) (reads.data || []).forEach(function (x) {
+      (NOTICE_READS[x.announcement_id] = NOTICE_READS[x.announcement_id] || []).push(x.user_id);
+    });
+    renderNotices();
+  }
+
+  function renderNotices() {
+    var box = $("notices");
+    if (!NOTICES_READY) { box.innerHTML = ""; return; }
+    var live = liveNotices(), out = [];
+    live.forEach(function (n) {
+      out.push('<div class="notice-live"><p>' + esc(n.body) + '</p>' +
+               '<div class="sub">Posted ' + esc(shortDay(n.created_at)) +
+               ' &middot; seen by ' + ((NOTICE_READS[n.id] || []).length) + '</div></div>');
+    });
+    out.push('<div class="notice-row"><button type="button" class="g sm" id="openNotices">' +
+             (live.length ? "Manage notices" : "Post a notice") + '</button></div>');
+    box.innerHTML = out.join("");
+    $("openNotices").addEventListener("click", function () { renderNoticeList(); $("noticeDialog").showModal(); });
+  }
+
+  function renderNoticeList() {
+    var out = [];
+    NOTICES.forEach(function (n) {
+      var off = !liveNotices().some(function (l) { return l.id === n.id; });
+      out.push('<div class="notice-item' + (off ? ' notice-off' : '') + '"><div class="notice-row">' +
+               '<span>' + esc(n.body) + '</span>' +
+               (off ? '<span class="sub">Not showing</span>'
+                    : '<button type="button" class="g sm" data-notice-off="' + esc(n.id) + '">Switch off</button>') +
+               '</div><div class="sub">Posted ' + esc(shortDay(n.created_at)) +
+               ' &middot; seen by ' + ((NOTICE_READS[n.id] || []).length) + '</div></div>');
+    });
+    $("noticeList").innerHTML = out.length ? out.join("") : '<p class="sub">Nothing posted yet.</p>';
+    Array.prototype.forEach.call($("noticeList").querySelectorAll("[data-notice-off]"), function (b) {
+      b.addEventListener("click", function () { switchNoticeOff(b.getAttribute("data-notice-off")); });
+    });
+  }
+
+  async function postNotice() {
+    var body = $("noticeBody").value.trim(), days = $("noticeExpiry").value;
+    show("noticeError", false);
+    if (!body) { $("noticeError").textContent = "Write the notice first."; return show("noticeError", true); }
+    var expires = days ? new Date(Date.now() + Number(days) * 864e5).toISOString() : null;
+    if (DEMO) {
+      NOTICES.unshift({ id: "n" + Date.now(), body: body, active: true, expires_at: expires, created_at: new Date().toISOString() });
+    } else {
+      var r = await sb.from("announcements").insert({ company_id: ME.company_id, author_id: ME.id, body: body, expires_at: expires });
+      if (r.error) { $("noticeError").textContent = r.error.message; return show("noticeError", true); }
+      await loadNotices();
+    }
+    $("noticeBody").value = ""; $("noticeExpiry").value = "";
+    renderNotices(); renderNoticeList();
+    toast("Notice posted");
+  }
+
+  async function switchNoticeOff(id) {
+    if (DEMO) {
+      NOTICES.forEach(function (n) { if (n.id === id) n.active = false; });
+    } else {
+      var r = await sb.from("announcements").update({ active: false }).eq("id", id);
+      if (r.error) { $("noticeError").textContent = r.error.message; return show("noticeError", true); }
+      await loadNotices();
+    }
+    renderNotices(); renderNoticeList();
+    toast("Notice switched off");
+  }
+
+  $("saveNotice").addEventListener("click", postNotice);
+  $("closeNotice").addEventListener("click", function () { $("noticeDialog").close(); });
+
   async function load() {
     if (DEMO) {
       ME = { id: "p4", company_id: "demo", full_name: "Priya Shah" };
@@ -1762,7 +1870,7 @@
       $("from").value = localDay(new Date(Date.now() - 6 * 864e5));
       $("to").value   = localDay(new Date());
       show("login", false); show("app", true); show("demoBar", true);
-      loadRotaFlag(); loadPrefs(); loadPay(); loadNow(); loadStaff(); loadSites(); runSheet(); loadReviews();
+      loadRotaFlag(); loadPrefs(); loadPay(); loadNow(); loadStaff(); loadSites(); runSheet(); loadReviews(); loadNotices();
       clearInterval(poll);
       poll = setInterval(function(){if(!navigator.onLine)return;loadNow();loadReviews();}, 30000);
       return;
@@ -1806,7 +1914,7 @@
     if (user.user_metadata && user.user_metadata.must_change_password) askNewPassword();
     await loadRotaFlag();
     loadPrefs();
-    await Promise.all([loadPay(), loadNow(), loadStaff(), loadSites(), loadReviews()]);
+    await Promise.all([loadPay(), loadNow(), loadStaff(), loadSites(), loadReviews(), loadNotices()]);
     await runSheet();
     renderStaff();
 
