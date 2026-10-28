@@ -11,11 +11,27 @@
 // It fails if a table is missing from the backup, if the restore puts rows back
 // in an order the foreign keys refuse, or if any value comes back changed.
 import { boot, asOwner } from "./harness.mjs";
-import { execFileSync } from "node:child_process";
+import { Worker } from "node:worker_threads";
 import { webcrypto } from "node:crypto";
 import { writeFileSync, readFileSync, rmSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
+// Workers execute the real CLI with isolated argv/exit state, without relying
+// on child-process permissions in a restricted development environment.
+async function runRestore(args) {
+  const worker = new Worker(new URL('./restore.mjs', import.meta.url), {argv: args, stdout: true, stderr: true});
+  let stdout = '', stderr = '';
+  worker.stdout.on('data', chunk => { stdout += chunk; });
+  worker.stderr.on('data', chunk => { stderr += chunk; });
+  return new Promise((resolve, reject) => {
+    worker.once('error', reject);
+    worker.once('exit', code => {
+      if (code === 0) resolve(stdout);
+      else { const error = new Error(stderr || `Restore exited ${code}`); error.stderr = stderr; reject(error); }
+    });
+  });
+}
 
 const U = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const CO = U(1001), OWNER = U(11), STAFF = U(12), SITE = U(2001), SHIFT = U(3001), ANN = U(6001), JOB = U(7001);
@@ -85,7 +101,7 @@ const jsonPath = join(dir, "backup.json"), sqlPath = join(dir, "restore.sql");
 writeFileSync(jsonPath, JSON.stringify(backup), "utf8");
 let toolOut = "";
 try {
-  toolOut = execFileSync(process.execPath, ["restore.mjs", jsonPath, "--out", sqlPath], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  toolOut = await runRestore([jsonPath, "--out", sqlPath]);
 } catch (e) {
   check("RESTORE restore.mjs runs", false, String(e.stderr || e.message).slice(0, 200));
 }
@@ -161,8 +177,7 @@ if (!restoreError) {
 
   let lockedOut = "";
   try {
-    lockedOut = execFileSync(process.execPath, ["restore.mjs", lockedPath, "--passphrase", pass, "--out", lockedSql],
-                             { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    lockedOut = await runRestore([lockedPath, "--passphrase", pass, "--out", lockedSql]);
   } catch (e) { lockedOut = String(e.stderr || e.message); }
   check("LOCKED a locked backup opens with the right passphrase", lockedOut.includes("Written to"), lockedOut.slice(0, 200));
   check("LOCKED ...and produces the same SQL as the unlocked one",
@@ -170,8 +185,7 @@ if (!restoreError) {
 
   let wrongPass = "";
   try {
-    execFileSync(process.execPath, ["restore.mjs", lockedPath, "--passphrase", "not the passphrase", "--out", join(dir, "no.sql")],
-                 { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    await runRestore([lockedPath, "--passphrase", "not the passphrase", "--out", join(dir, "no.sql")]);
     wrongPass = "it opened anyway";
   } catch (e) { wrongPass = String(e.stderr || ""); }
   check("LOCKED the wrong passphrase is refused, and writes nothing", /Wrong passphrase/.test(wrongPass), wrongPass.slice(0, 150));

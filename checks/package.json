@@ -10,9 +10,16 @@
     "restore": "node restore.mjs",
     "embeds": "node embeds.mjs",
     "resilience": "node resilience.mjs",
-    "payroll": "node payroll.mjs"
+    "payroll": "node payroll.mjs",
+    "shared": "node shared-transport.mjs && node shared-integration.mjs",
+    "shared:browser": "node shared-browser.mjs",
+    "shared:staff": "node shared-staff.mjs && node shared-staff-browser.mjs",
+    "step4": "node step4.mjs",
+    "shared:manager": "node shared-manager.mjs && node shared-manager-runtime.mjs && node shared-manager-browser.mjs",
+    "step5": "node step5.mjs"
   },
   "dependencies": {
-    "@electric-sql/pglite": "^0.3.0"
+    "@electric-sql/pglite": "0.5.11",
+    "playwright": "1.64.1"
   }
 }

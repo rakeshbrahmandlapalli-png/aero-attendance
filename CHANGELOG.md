@@ -5,6 +5,12 @@ or redeploy an Edge Function says so.
 
 ## Unreleased
 
+### Parking Ops private pilot (not deployed)
+- Added an opt-in shared backend for the existing staff and manager pages, separate session storage and single-use sign-in handoff. Legacy and demo modes retain their current backend.
+- Added a finish-only clock-out screen for an open shift when pilot access has ended.
+- Pinned the database test dependency to 0.5.11 and made restore tests run in isolated workers in restricted development environments.
+- Shared-backend database and transport checks pass. Step 3 local Chromium verification passed staff/manager demos and manager navigation at 360/390/430/1440px, using local files with external requests blocked. Real shared-backend browser journeys, Supabase API checks, deployment and the TAKEOFF pilot remain pending.
+
 ### Added (payslips)
 - **Generate payslips**, on the Timesheets tab (shown once estimated pay is on). One dialog with the options, and a live preview that changes as you change them: **pay period** (last week, this week, last 2 weeks, last month, this month, or your own dates), **which people**, **rounding** each shift to the exact minute or the nearest 5, 10 or 15 minutes, **overtime pay** (the normal rate, 1.25, 1.5, double, or another multiple; only for weeks a manager has approved), an optional **deduction** you name and enter (a percentage of gross pay, or a fixed amount), and whether to **list every shift**. It remembers your choices. Then **Print or save as PDF** (one page per person) or **Download CSV** (one row per person).
 - **They are earnings statements, not official payslips, and say so on the page.** Gross pay is hours times the person's rate. The app does not work out tax or National Insurance; a deduction appears only if you typed one in, and the statement says it was entered by the employer. Anybody with no hourly rate gets no statement and is listed as needing one.
