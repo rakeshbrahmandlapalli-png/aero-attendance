@@ -1279,7 +1279,10 @@
       return signedOutWith("Could not load your profile: " + prof.error.message);
     }
     if (!prof.data) {
-      if (CFG.shared && await window.attendanceFinishOnly(sb)) return;
+      if (CFG.shared) {
+        signedOut();
+        if (await window.attendanceFinishOnly(sb)) return;
+      }
       // A paused company shows its people nothing at all, which looks exactly like "no company".
       var paused = await sb.rpc("my_company_paused");
       return signedOutWith(!paused.error && paused.data === true
@@ -1341,7 +1344,7 @@
     show("app", true);
     refreshMap();
     updateAccount(); loadActivity();
-    if (user.user_metadata && user.user_metadata.must_change_password) askNewPassword();
+    if (!CFG.shared && user.user_metadata && user.user_metadata.must_change_password) askNewPassword();
   }
 
   async function onAction() {
@@ -1540,6 +1543,8 @@
   if('serviceWorker' in navigator && location.protocol === 'https:' && !DEMO) navigator.serviceWorker.register('/sw.js').catch(function(error){$("installStatus").textContent=error.message;});
 
   function signedOut() {
+    var finishOnly = document.getElementById('attendance-finish-only');
+    if (finishOnly) finishOnly.remove();
     ME = null; OPEN = null; REQUESTS=[];HISTORY=[];clearInterval(tick);
     stopWatch(); MAP.me = null;
     MONTH_ROWS = []; SHEET_MONTH = null; PAY = { on: false, rate: null }; SELECTED_DAY = null;
@@ -1548,6 +1553,7 @@
     show("clock", false); show("main", true);
     show("app", false);
     show("login", true);
+    document.querySelectorAll('dialog[open]').forEach(function (dialog) { dialog.close(); });
   }
 
   async function signIn() {
@@ -1556,6 +1562,7 @@
       email: $("email").value.trim(), password: $("pw").value
     });
     if (r.error) {
+      if (CFG.shared) { await sb.auth.signOut({scope: 'local'}); signedOut(); }
       $("loginErr").textContent = r.error.message;
       show("loginErr", true);
       return;

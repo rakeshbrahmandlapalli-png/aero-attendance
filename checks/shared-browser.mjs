@@ -3,6 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
+import {sdkSource, verifySharedCheckouts} from './shared-checkout.mjs';
+verifySharedCheckouts();
 const root=fileURLToPath(new URL('../',import.meta.url));
 async function serve(route) {
  let p=new URL(route.request().url()).pathname;
@@ -22,7 +24,7 @@ try {
   await context.route('**/*',route=>{
     const url=new URL(route.request().url());
     if(url.origin===base)return serve(route);
-    if(url.href==='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js')return route.fulfill({contentType:'application/javascript',body:fs.readFileSync(new URL('../../takeoff-ops/public/vendor/supabase-2.117.2.js',import.meta.url),'utf8')});
+    if(url.href==='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js')return route.fulfill({contentType:'application/javascript',body:sdkSource()});
     return route.abort('blockedbyclient');
   });
   const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));

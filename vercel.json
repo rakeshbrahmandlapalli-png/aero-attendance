@@ -1,4 +1,5 @@
 {
+  "git": { "deploymentEnabled": { "attendance-integration": false } },
   "rewrites": [
     {
       "source": "/demo",

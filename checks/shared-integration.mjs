@@ -1,18 +1,10 @@
-import {boot,as} from './harness.mjs';
+import {as} from './harness.mjs';
+import {bootShared} from './shared-fixture.mjs';
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
-const db=await boot();
+const db=await bootShared();
 const read=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8');
 const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
-await db.exec(`create schema private;
-alter table companies add column slug text,add column brand jsonb default '{}',add column suspended_at timestamptz,add column yards text[],add column drops_day_end time default '06:00';
-create table staff(id uuid primary key,company_id uuid references companies(id),user_id uuid,name text,active boolean default true,removed_at timestamptz,desk_names text[] default '{}');
-create table activity(company_id uuid,staff_name text,action text,value text);
-create function me() returns staff language sql security definer set search_path=public as $$select * from staff where user_id=auth.uid()$$;
-create function is_platform_admin() returns boolean language sql as $$select false$$;`);
-for(const name of ['130-attendance-addon.sql','131-attendance-identity.sql','132-attendance-pilot.sql']) await db.exec(read('../../takeoff-ops/setup/'+name));
-const shared=read('../../takeoff-ops/setup/134-attendance-shared.sql').replace(/^\s*create extension[^;]*;/gim,'-- Harness provides extensions');
-await db.exec(shared);await db.exec(shared);
 for(const n of [1,2]) {
  await db.query("insert into companies(id,name,brand) values($1,$2,'{\"attendance\":true}')",[id(n),'Company '+n]);
  await db.query('insert into aero_companies(id,name) values($1,$2)',[id(n),'Company '+n]);
