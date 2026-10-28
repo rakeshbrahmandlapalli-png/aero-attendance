@@ -41,12 +41,12 @@ async function loaded(page,company='Example company 1') {
   await expect(page.locator('#pwDialog')).toBeHidden();
   await expect(page.locator('#staffBody tr')).not.toHaveCount(0);
 }
-async function range(page,from,to=from,who='') {
+async function range(page,from,to=from,who='',timeout=5000) {
   await page.locator('[data-tab=sheets]').click();
   await page.locator('#from').fill(from);await page.locator('#to').fill(to);await page.locator('#who').selectOption(who);
   const done=page.waitForResponse(response=>response.url().startsWith(apiOrigin+'/rest/v1/aero_shifts?')&&new URL(response.url()).searchParams.get('select')?.includes('profiles:'));
   await page.locator('#run').click();await done;
-  await expect(page.locator('#csv')).toBeEnabled();
+  await expect(page.locator('#csv')).toBeEnabled({timeout});
 }
 async function setup(api,width) {
   const context=await browser.newContext({viewport:{width,height:844},serviceWorkers:'block',timezoneId:'Europe/London',acceptDownloads:true});
@@ -176,7 +176,9 @@ try {
       if(width===1440) {
         await api.db.exec(`insert into aero_shifts(company_id,user_id,worksite_id,clock_in_at,clock_out_at,note)
 select '${id(1)}','${id(10)}','${id(101)}','2026-10-20T00:00:00Z'::timestamptz+n*interval '1 minute','2026-10-20T00:00:00Z'::timestamptz+(n+1)*interval '1 minute','Bulk example '||n from generate_series(1,1001) n`);
-        await range(page,'2026-10-20');await expect(page.locator('#sheetBody tr')).toHaveCount(1001);
+        // The SQL stand-in resolves embedded profiles/sites per row; allow all three
+        // real pagination requests to finish under load. Ordinary ranges keep 5s.
+        await range(page,'2026-10-20','2026-10-20','',30000);await expect(page.locator('#sheetBody tr')).toHaveCount(1001);
         assert.equal((await download(page,'#csv')).rows.length,1001,'Export must include more than the API row limit');
       }
       // A late audit response after logout cannot repopulate hidden manager data.
