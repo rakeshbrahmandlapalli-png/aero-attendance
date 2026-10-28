@@ -14,7 +14,9 @@
     "shared": "node shared-transport.mjs && node shared-integration.mjs",
     "shared:browser": "node shared-browser.mjs",
     "shared:staff": "node shared-staff.mjs && node shared-staff-browser.mjs",
-    "step4": "node step4.mjs"
+    "step4": "node step4.mjs",
+    "shared:manager": "node shared-manager.mjs && node shared-manager-runtime.mjs && node shared-manager-browser.mjs",
+    "step5": "node step5.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "0.5.11",

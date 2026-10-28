@@ -11,7 +11,7 @@ import {id} from './shared-fixture.mjs';
 const base = 'http://localhost';
 const staffKey = 'aero-shared-staff-auth';
 let browser, journeys = 0, navigation = 0;
-const api = await testApi();
+const api = await testApi({excludeNotifications:process.argv.includes('--no-notifications')});
 const parkingBefore = await api.parkingSnapshot();
 const errors = [], unexpected = [];
 async function setup(width) {

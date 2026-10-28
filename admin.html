@@ -468,6 +468,8 @@
   var CFG = window.APP_CONFIG || {};
   var sb = null, ME = null;
   var NOW = [], SHEET = [], STAFF = [], SITES = [], TODAY = [];
+  var sheetToken = 0, sheetQuery = null, sheetLoading = false;
+  var reviewToken = 0, auditToken = 0, loadToken = 0;
   var sortKey = "clock_in_at", sortDir = 1;
   var poll = null;
   var REQUESTS = [], AUDIT = [], editingSite = null, requestsLoaded = false, auditLoaded = false;
@@ -711,7 +713,10 @@
   // Today's counts get their own query so they stay right whatever dates the
   // Timesheets tab is showing.
   async function loadNow() {
+    var manager = ME;
+    if (!manager) return;
     try { await loadRotaToday(); } catch (error) { fail(error); }
+    if (ME !== manager) return;
     var midnight = new Date(); midnight.setHours(0, 0, 0, 0);
     if (DEMO) {
       NOW = D.now;
@@ -727,12 +732,14 @@
         .or("clock_in_at.gte." + since + ",clock_out_at.gte." + since)
     ]);
     var err = res[0].error || res[1].error;
+    if (ME !== manager) return;
     if (err) { fail(err); return; }
     NOW = res[0].data || [];
     TODAY = res[1].data || [];
     // What has been cleared. If its SQL has not been run there is nothing to read,
     // and the Clear buttons stay hidden rather than doing nothing.
     var dis = await sb.from("dismissed_alerts").select("alert_key").gte("dismissed_at", new Date(Date.now() - 7 * 864e5).toISOString());
+    if (ME !== manager) return;
     DISMISS_READY = !dis.error;
     DISMISSED = {};
     (dis.data || []).forEach(function (d) { DISMISSED[d.alert_key] = true; });
@@ -954,9 +961,12 @@
   });
 
   // ── TIMESHEETS ───────────────────────────
+  function sheetFilterKey() { return JSON.stringify([$("from").value, $("to").value, $("who").value]); }
   async function runSheet() {
     var from = $("from").value, to = $("to").value, who = $("who").value;
     if (from && to && from > to) { toast("The start date must be before the end date."); return; }
+    var token = ++sheetToken, manager = ME, key = sheetFilterKey();
+    sheetQuery = null;
     if (DEMO) {
       var person = D.staff.find(function(p) { return p.id === who; });
       SHEET = D.sheet.filter(function(s) { var day = localDay(s.clock_in_at); return (!from || day >= from) && (!to || day <= to) && (!person || s.profiles.full_name === person.full_name); })
@@ -966,20 +976,31 @@
           var site = D.sites.find(function (w) { return w.id === s.worksite_id; });
           return Object.assign({}, s, { worksites: site ? { name: site.name } : null });
         });
-      renderSheet(); renderStats(); return;
+      sheetQuery = key; renderSheet(); renderStats(); return;
     }
-    var q = sb.from("shifts")
-      .select("*, profiles(full_name), worksites(name)")
-      .order("clock_in_at", { ascending: false });
-    if (from) q = q.gte("clock_in_at", new Date(from + "T00:00:00").toISOString());
-    if (to) { var end = new Date(to + "T00:00:00"); end.setDate(end.getDate()+1); q = q.lt("clock_in_at", end.toISOString()); }
-    if (who)  q = q.eq("user_id", who);
-
-    var r = await q;
-    if (r.error) { fail(r.error); return; }
-    SHEET = r.data || [];
-    renderSheet();
-    renderStats();
+    if (!manager) return;
+    sheetLoading = true; $("csv").disabled = true;
+    try {
+      var rows = [], offset = 0, pageSize = 500;
+      while (true) {
+        var q = sb.from("shifts").select("*, profiles(full_name), worksites(name)")
+          .order("clock_in_at", { ascending: false }).order("id", { ascending: true });
+        if (from) q = q.gte("clock_in_at", new Date(from + "T00:00:00").toISOString());
+        // Calendar arithmetic keeps the end exclusive across 23/25-hour days.
+        if (to) { var end = new Date(to + "T00:00:00"); end.setDate(end.getDate()+1); q = q.lt("clock_in_at", end.toISOString()); }
+        if (who) q = q.eq("user_id", who);
+        var r = await q.range(offset, offset + pageSize - 1);
+        if (token !== sheetToken || ME !== manager) return;
+        if (r.error) { fail(r.error); return; }
+        rows = rows.concat(r.data || []);
+        if (!r.data || r.data.length < pageSize) break;
+        offset += pageSize;
+      }
+      SHEET = rows; sheetQuery = key;
+      renderSheet(); renderStats();
+    } finally {
+      if (token === sheetToken) { sheetLoading = false; $("csv").disabled = false; }
+    }
   }
 
   function shiftHours(s) {
@@ -1032,7 +1053,13 @@
   }
 
   // Payroll runs on spreadsheets, not on screenshots of a dashboard.
+  function csvCell(value) {
+    var text = String(value == null ? "" : value);
+    if (/^\s*[=+\-@]/.test(text) || /^[\t\r\n]/.test(text)) text = "'" + text;
+    return '"' + text.replace(/"/g, '""') + '"';
+  }
   function exportCsv() {
+    if (sheetLoading || sheetQuery !== sheetFilterKey()) { toast("Choose Show to load these filters before exporting."); return; }
     var rows = visibleSheet();
     if (!rows.length) { toast("Nothing to export"); return; }
     var head = ["Name", "Start date", "In", "End date", "Out", "Break (mins)", "Hours", "In OK", "Out OK", "Site", "Note", "Status"].concat(PAY_ON ? ["Hourly rate", "Est. pay"] : []);
@@ -1040,11 +1067,7 @@
     rows.forEach(function (s) {
       // A cell starting with = + - @ is run as a formula by Excel/Sheets. Staff
       // names and notes are typed by staff, so neutralise them with a leading '.
-      var cell = function (v) {
-        var s = String(v == null ? "" : v);
-        if (/^\s*[=+\-@]/.test(s) || /^[\t\r\n]/.test(s)) s = "'" + s;
-        return '"' + s.replace(/"/g, '""') + '"';
-      };
+      var cell = csvCell;
       lines.push([
         cell(s.profiles && s.profiles.full_name),
         cell(dmy(s.clock_in_at)), cell(hhmm(s.clock_in_at)),
@@ -1070,6 +1093,8 @@
 
   // ── STAFF ────────────────────────────────
   async function loadStaff() {
+    var manager = ME;
+    if (!manager) return;
     var selected = $("who").value;
     if (DEMO) {
       STAFF = D.staff;
@@ -1085,10 +1110,12 @@
       renderStaff(); renderStats(); renderFlags(true); if (USE_ROTA && ROTA_WEEK) renderRota(); return;
     }
     var r = await sb.from("profiles").select("*").order("full_name");
+    if (ME !== manager) return;
     if (r.error) { fail(r.error); return; }
     STAFF = r.data || [];
     await loadProfileExtras();
     var ak = await sb.from("privacy_ack").select("user_id, seen_at");
+    if (ME !== manager) return;
     ACK_READY = !ak.error;
     ACK = {}; ((ak.data) || []).forEach(function (a) { ACK[a.user_id] = a.seen_at; });
     $("who").innerHTML = '<option value="">Everyone</option>' + STAFF.map(function (p) {
@@ -1274,8 +1301,11 @@
 
   // ── SITES ────────────────────────────────
   async function loadSites() {
+    var manager = ME;
+    if (!manager) return;
     if (DEMO) { SITES = D.sites; renderSites(); renderStats(); return; }
     var r = await sb.from("worksites").select("*").order("name");
+    if (ME !== manager) return;
     if (r.error) { fail(r.error); return; }
     SITES = r.data || [];
     renderSites();
@@ -1367,17 +1397,19 @@
   }
   async function loadReviews() {
     if(!ME)return;
+    var manager=ME, token=++reviewToken;
     try {
       var previous=REQUESTS.map(function(r){return r.id;}), before=JSON.stringify(REQUESTS);
       if(DEMO){if(!requestsLoaded)seedReviews();}
       else {
         var r=await sb.from('shift_corrections').select('*, profiles!shift_corrections_user_id_fkey(full_name)').order('created_at',{ascending:false}).limit(500);
+        if(ME!==manager||token!==reviewToken)return;
         if(r.error)throw r.error;REQUESTS=r.data||[];
       }
       if(requestsLoaded && $('boardAlerts').checked && REQUESTS.some(function(r){return r.status==='pending'&&!previous.includes(r.id);}))toast('A new shift correction needs review.');
       var changed=!requestsLoaded || before!==JSON.stringify(REQUESTS);
       requestsLoaded=true;if(changed)renderReviews();$('reviewUpdated').textContent='Updated '+hhmm(new Date());
-    }catch(error){$('reviewUpdated').textContent='Could not refresh';if(!requestsLoaded)$('reviews').textContent=error.message;else fail(error);}
+    }catch(error){if(ME!==manager||token!==reviewToken)return;$('reviewUpdated').textContent='Could not refresh';if(!requestsLoaded)$('reviews').textContent=error.message;else fail(error);}
   }
   function renderReviews() {
     var drafts={};document.querySelectorAll('#reviews textarea').forEach(function(el){drafts[el.id]=el.value;});
@@ -1402,17 +1434,20 @@
   }
   async function loadAudit() {
     if (!ME) return;
+    var manager = ME, token = ++auditToken;
     try {
       if (DEMO) {
         if (!D.audit) D.audit = [{ id: 'demo-audit-1', action: 'approved', entity: 'shift_correction', summary: 'Manager approved a shift correction.', created_at: new Date(Date.now() - 86400000).toISOString() }, { id: 'demo-audit-2', action: 'published', entity: 'rota_shift', summary: 'Manager published the weekly rota.', created_at: new Date(Date.now() - 172800000).toISOString() }];
         AUDIT = D.audit.slice();
       } else {
         var r = await sb.from('audit_events').select('id,action,entity,summary,created_at').order('created_at', { ascending: false }).limit(100);
+        if (ME !== manager || token !== auditToken) return;
         if (r.error) throw r.error;
         AUDIT = r.data || [];
       }
       auditLoaded = true; renderAudit(); $('auditUpdated').textContent = 'Updated ' + hhmm(new Date());
     } catch (error) {
+      if (ME !== manager || token !== auditToken) return;
       $('auditUpdated').textContent = 'Could not refresh';
       $('auditEvents').innerHTML = '<div class="err" role="alert">' + esc(error.message || 'Audit history is not available yet. Run the audit SQL migration, then refresh.') + '</div>';
     }
@@ -1425,13 +1460,14 @@
     if (!rows.length) { toast('Nothing to export'); return; }
     var csv = [['Date', 'Action', 'Entity', 'Summary']].concat(rows.map(function (e) {
       return [e.created_at || '', e.action || '', e.entity || '', e.summary || ''];
-    })).map(function (row) { return row.map(function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(','); }).join('\n');
-    var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+    })).map(function (row) { return row.map(csvCell).join(','); }).join('\r\n');
+    var blob = new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8'});
     var link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'aero-audit-' + new Date().toISOString().slice(0,10) + '.csv'; link.click();
     setTimeout(function () { URL.revokeObjectURL(link.href); }, 1000);
   });
   function reviewRequest(id,approve) {
     return withLock(async function(){
+      var manager=ME;
       var request=REQUESTS.find(function(r){return r.id===id;});if(!request||request.status!=='pending')return;
       var note=$('review-note-'+id).value.trim();
       if(DEMO){
@@ -1439,9 +1475,18 @@
         if(approve && shift){shift.clock_in_at=request.requested_in;shift.clock_out_at=request.requested_out;}
         request.status=approve?'approved':'rejected';request.review_note=note;request.reviewed_at=new Date().toISOString();
       }else{
-        var r=await sb.rpc('review_shift_correction',{p_id:id,p_approve:approve,p_note:note});if(r.error)throw r.error;
+        var r=await sb.rpc('review_shift_correction',{p_id:id,p_approve:approve,p_note:note});
+        if(ME!==manager)return;
+        if(r.error){
+          // A committed decision may have lost its response. Confirm this exact
+          // actor/decision/note before reporting success or allowing a retry.
+          var check=await sb.from('shift_corrections').select('*').eq('id',id).maybeSingle();
+          if(ME!==manager)return;
+          if(check.error||!check.data||check.data.status!==(approve?'approved':'rejected')||check.data.reviewed_by!==manager.id||check.data.review_note!==note)throw r.error;
+        }
       }
       toast(approve?'Correction approved':'Correction rejected');await loadReviews();renderReviews();await runSheet();await loadNow();
+      if(auditLoaded)await loadAudit();
     });
   }
   $('reviewFilter').addEventListener('change',renderReviews);
@@ -2875,6 +2920,7 @@
   $("closeNotice").addEventListener("click", function () { $("noticeDialog").close(); });
 
   async function load() {
+    var token=++loadToken;
     if (DEMO) {
       ME = { id: "p4", company_id: "demo", full_name: "Priya Shah" };
       $("company").textContent = D.company;
@@ -2891,6 +2937,7 @@
       return;
     }
     var got = await sb.auth.getUser();
+    if(token!==loadToken)return;
     if (got.error && isNetworkError(got.error)) return bootProblem();
     var user = got.data.user;
     if (!user) return signedOut();
@@ -2898,6 +2945,7 @@
     var prof = await sb.from("profiles")
       .select("id, full_name, role, company_id, companies!profiles_company_id_fkey(name)")
       .eq("id", user.id).maybeSingle();
+    if(token!==loadToken)return;
     if (prof.error) {
       if (isAuthError(prof.error)) return signedOutWith("You've been signed out. Please sign in again.");
       if (isNetworkError(prof.error)) return bootProblem();
@@ -2924,13 +2972,17 @@
 
     show("login", false); show("app", true);
 
-    if (user.user_metadata && user.user_metadata.must_change_password) askNewPassword();
+    if (!CFG.shared && user.user_metadata && user.user_metadata.must_change_password) askNewPassword();
     await loadRotaFlag();
+    if(token!==loadToken)return;
     loadPrefs();
     await loadFeatures();
+    if(token!==loadToken)return;
     await Promise.all([loadPay(), loadNow(), loadStaff(), loadSites(), loadReviews(), loadNotices(), loadOvertimeSetting()]);
+    if(token!==loadToken)return;
     await loadOvertime();
     await runSheet();
+    if(token!==loadToken)return;
     renderStaff();
 
     clearInterval(poll);
@@ -2939,6 +2991,17 @@
 
   function signedOut() {
     ME = null; REQUESTS=[];requestsLoaded=false;attentionIds=null;clearInterval(poll);
+    loadToken++;reviewToken++;auditToken++;
+    sheetToken++;sheetQuery=null;sheetLoading=false;$("csv").disabled=false;
+    NOW=[];SHEET=[];STAFF=[];SITES=[];TODAY=[];AUDIT=[];auditLoaded=false;
+    FLAGS=[];DISMISSED={};JOB_ROLES=[];DETAILS={};PROFILES_READY=false;
+    ACK={};ACK_READY=false;PRIVACY_CONTACT='';RETENTION_TEXT='';
+    ['nowBody','sheetBody','staffBody','siteBody','reviews','auditEvents','grandTotal','stats','flags','coverage','reviewCount','reviewUpdated','auditUpdated'].forEach(function(id){$(id).textContent='';});
+    $("who").innerHTML='<option value="">Everyone</option>';
+    ['nowSearch','staffSearch','auditFilter'].forEach(function(id){$(id).value='';});
+    $("staffStatus").value='active';$("reviewFilter").value='pending';
+    document.querySelectorAll('dialog[open]').forEach(function(dialog){dialog.close();});
+    document.querySelector('nav button[data-tab="now"]').click();
     PAY_ON=false;PAY_READY=false;RATES={};
     LOCALE_READY=false;TZ="Europe/London";CUR="GBP";
     USE_ROTA=false;ROTA_READY=false;ROTA_SHIFTS=[];AVAIL={};OFF=[];ROTA_WEEK=null;ROTA_DAY=null;TODAY_ROTA=[];RECENT=[];
@@ -2950,7 +3013,7 @@
     var r = await sb.auth.signInWithPassword({
       email: $("email").value.trim(), password: $("pw").value
     });
-    if (r.error) { $("loginErr").textContent = r.error.message; show("loginErr", true); return; }
+    if (r.error) { if(CFG.shared){await sb.auth.signOut({scope:'local'});signedOut();} $("loginErr").textContent = r.error.message; show("loginErr", true); return; }
     load();
   }
 

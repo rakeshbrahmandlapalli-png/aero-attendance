@@ -9,11 +9,11 @@ const identifier = value => {
   assert.match(value, /^[a-z_][a-z_0-9]*$/);
   return '"' + value + '"';
 };
-export async function testApi() {
+export async function testApi({seed = seedStaff, excludeNotifications = false, rowLimit = 1000} = {}) {
   const db = await bootShared();
-  await seedStaff(db);
+  await seed(db);
   const tokens = new Map(), sessions = new Map(), requests = [], failures = [];
-  let sequence = 0, nextFailure = null;
+  let sequence = 0, nextFailure = null, nextHold = null;
   function mint(user) {
     const token = 'test-handoff-' + (++sequence);
     tokens.set(token, user);
@@ -61,6 +61,14 @@ export async function testApi() {
     if (!user) return reply(401, {code:'PGRST301',message:'Auth session missing'});
     const name = url.pathname.replace(/^\/rest\/v1\/(?:rpc\/)?/, '');
     assert.match(name, /^aero_[a-z_]+$/, 'Shared mode must use namespaced API paths');
+    // Manager acceptance does not exercise the deferred notification feature.
+    if (excludeNotifications && name === 'aero_notification_prefs' && method === 'GET') return reply(404,{message:'Outside Step 5 scope'});
+    let responseHold=null;
+    if(nextHold?.name===name && nextHold.predicate(url)) {
+      const hold=nextHold;nextHold=null;
+      if(hold.afterRead)responseHold=hold;
+      else {hold.received(request.url());await hold.gate;}
+    }
     const injection = nextFailure?.name === name ? nextFailure : null;
     if (injection) nextFailure = null;
     if (injection && !injection.afterCommit) return reply(503, {message:'network response lost in test'});
@@ -68,7 +76,7 @@ export async function testApi() {
       let data;
       if (url.pathname.startsWith('/rest/v1/rpc/')) {
         assert.equal(method, 'POST');
-        const allowed = ['aero_clock_in','aero_clock_out','aero_start_break','aero_end_break','aero_open_shift','aero_request_shift_correction','aero_my_company_paused','aero_my_handover','aero_overtime_weeks'];
+        const allowed = ['aero_clock_in','aero_clock_out','aero_start_break','aero_end_break','aero_open_shift','aero_request_shift_correction','aero_review_shift_correction','aero_my_company_paused','aero_my_handover','aero_overtime_weeks'];
         assert.ok(allowed.includes(name), 'Unexpected RPC: ' + name);
         const args = Object.entries(body);
         const call = identifier(name) + '(' + args.map(([key], i) => identifier(key)+' => $'+(i+1)).join(',') + ')';
@@ -77,11 +85,19 @@ export async function testApi() {
         data = meta.proretset ? rows.map(r=>r.result) : rows[0]?.result ?? null;
       } else {
         assert.equal(method, 'GET', 'Only RPCs may write in this staff acceptance adapter');
-        const allowed = ['aero_profiles','aero_companies','aero_worksites','aero_shifts','aero_shift_corrections','aero_announcements','aero_announcement_reads','aero_privacy_ack','aero_notification_prefs'];
+        const allowed = ['aero_profiles','aero_companies','aero_worksites','aero_shifts','aero_shift_corrections','aero_announcements','aero_announcement_reads','aero_privacy_ack','aero_notification_prefs','aero_company_features','aero_on_shift_now','aero_dismissed_alerts','aero_audit_events'];
         assert.ok(allowed.includes(name), 'Unexpected table: '+name);
         const args = [], clauses = [];
         for (const [column, filter] of url.searchParams) {
-          if (['select','order','limit'].includes(column)) continue;
+          if (['select','order','limit','offset'].includes(column)) continue;
+          if(column === 'or') {
+            const terms=filter.replace(/^\(|\)$/g,'').split(',');
+            const alternatives=terms.map(term=>{
+              const match=/^([a-z_]+)\.gte\."([^\"]+)"$/.exec(term);
+              assert.ok(match,'Unsupported OR filter: '+term);args.push(match[2]);return identifier(match[1])+' >= $'+args.length;
+            });
+            clauses.push('('+alternatives.join(' or ')+')');continue;
+          }
           const match = /^(eq|gte|lte|gt|lt|is)\.(.*)$/.exec(filter);
           assert.ok(match, 'Unsupported filter: '+filter);
           if (match[1] === 'is') { assert.equal(match[2], 'null'); clauses.push(identifier(column)+' is null'); }
@@ -89,33 +105,41 @@ export async function testApi() {
         }
         let sql = 'select * from '+identifier(name)+(clauses.length ? ' where '+clauses.join(' and ') : '');
         if (url.searchParams.has('order')) {
-          const [column, direction] = url.searchParams.get('order').split('.');
-          assert.ok(['asc','desc'].includes(direction));
-          sql += ' order by '+identifier(column)+' '+direction;
+          sql += ' order by '+url.searchParams.get('order').split(',').map(order=>{
+            const [column,direction]=order.split('.');assert.ok(['asc','desc'].includes(direction));return identifier(column)+' '+direction;
+          }).join(',');
         }
         if (url.searchParams.has('limit')) {
           const limit = Number(url.searchParams.get('limit'));
           assert.ok(Number.isInteger(limit) && limit >= 0 && limit <= 1000);
-          sql += ' limit '+limit;
-        }
+          sql += ' limit '+Math.min(limit,rowLimit);
+        } else sql += ' limit '+rowLimit;
+        if(url.searchParams.has('offset')) {const offset=Number(url.searchParams.get('offset'));assert.ok(Number.isInteger(offset)&&offset>=0);sql+=' offset '+offset;}
         data = await committed(db, user, sql, args);
         const select = url.searchParams.get('select') || '*';
-        const embed = 'companies:aero_companies!aero_profiles_company_id_fkey(name)';
-        if (select.includes('(')) {
-          assert.equal(name, 'aero_profiles');
-          assert.ok(select.endsWith(embed), 'Expected explicitly named companies relationship');
-          for (const row of data) row.companies = (await committed(db,user,'select name from aero_companies where id=$1',[row.company_id]))[0] || null;
+        // Only declared direct foreign keys are supported; real PostgREST
+        // relationship discovery remains a separate gate.
+        const embeds=[];
+        const selection=select.replace(/(companies|profiles|worksites):(aero_[a-z_]+)(![a-z_]+)?\(([a-z_, ]+)\)/g,(_all,alias,table,constraint,columns)=>{
+          embeds.push({alias,table,constraint:constraint?.slice(1),columns:columns.split(',').map(c=>c.trim())});return alias;
+        });
+        assert.ok(!selection.includes('('),'Unsupported embed '+select);
+        for(const embed of embeds) {
+          const fks=(await db.query(`select c.conname,a.attname from pg_constraint c join pg_attribute a on a.attrelid=c.conrelid and a.attnum=c.conkey[1] where c.contype='f' and c.conrelid=$1::regclass and c.confrelid=$2::regclass`,[name,embed.table])).rows;
+          const fk=embed.constraint?fks.find(f=>f.conname===embed.constraint):fks.length===1?fks[0]:null;
+          assert.ok(fk,'Ambiguous/missing direct FK '+name+' -> '+embed.table);
+          for(const column of embed.columns) identifier(column);
+          for(const row of data) row[embed.alias]=row[fk.attname]?(await committed(db,user,'select '+embed.columns.map(identifier).join(',')+' from '+identifier(embed.table)+' where id=$1',[row[fk.attname]]))[0]||null:null;
         }
-        if (select !== '*') {
-          const columns = select.replace(embed, 'companies').split(',').map(s=>s.trim());
-          for (const column of columns) identifier(column);
-          data = data.map(row=>Object.fromEntries(columns.map(column=>[column,row[column]])));
-        }
+        const columns=selection.split(',').map(s=>s.trim());
+        for(const column of columns) if(column!=='*') identifier(column);
+        if(!columns.includes('*')) data=data.map(row=>Object.fromEntries(columns.map(column=>[column,row[column]])));
         if (request.headers().accept?.includes('application/vnd.pgrst.object+json')) {
           if (data.length !== 1) return reply(406,{code:'PGRST116',details:'The result contains '+data.length+' rows',message:'JSON object requested, multiple (or no) rows returned'});
           data = data[0];
         }
       }
+      if(responseHold){responseHold.received(request.url());await responseHold.gate;}
       if (injection?.afterCommit) return reply(503, {message:'network response lost in test'});
       return reply(200, data);
     } catch (error) {
@@ -130,5 +154,10 @@ export async function testApi() {
   }
   return {db, route, mint, session, requests, failures, parkingSnapshot,
     failNext(name, afterCommit = false) {nextFailure = {name,afterCommit};},
+    holdNext(name,predicate=()=>true,{afterRead=false}={}) {
+      let release,received;
+      const result={received:new Promise(resolve=>{received=resolve;}),release:()=>release()};
+      nextHold={name,predicate,afterRead,received,gate:new Promise(resolve=>{release=resolve;})};return result;
+    },
     close:()=>db.close()};
 }
