@@ -420,6 +420,7 @@
 <dialog id="pwDialog" aria-labelledby="pwTitle"><form id="pwForm" novalidate><h2 id="pwTitle">Choose your password</h2><p class="note">You signed in with a starting password. Choose your own to keep your account private.</p><label for="newPw">New password</label><input id="newPw" type="password" autocomplete="new-password"><label for="newPw2">Type it again</label><input id="newPw2" type="password" autocomplete="new-password"><div class="err hidden" id="pwError" role="alert"></div><div class="dialog-actions"><button class="btn" id="savePw">Save password</button></div></form></dialog>
 <dialog id="privacyDialog" aria-labelledby="privacyTitle"><div class="privacy"><h2 id="privacyTitle"></h2><div id="privacyBody"></div><div class="dialog-actions"><button type="button" class="btn g" id="closePrivacy">Close</button></div></div></dialog>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="/shared-backend.js"></script>
 <script>
 (function () {
   "use strict";
@@ -1112,6 +1113,7 @@
   // error because the signal dipped: if it cannot get an answer it leaves what is on screen.
   async function loadRota(quiet) {
     if (DEMO) { renderRota(); return; }
+    if (CFG.shared) { ROTA = {on: false, shifts: [], avail: {}, off: []}; renderRota(); return; }
     if (!ME) return;
     var co = await sb.from("companies").select("use_rota").eq("id", ME.company_id).maybeSingle();
     if (co.error && quiet) return;
@@ -1277,6 +1279,7 @@
       return signedOutWith("Could not load your profile: " + prof.error.message);
     }
     if (!prof.data) {
+      if (CFG.shared && await window.attendanceFinishOnly(sb)) return;
       // A paused company shows its people nothing at all, which looks exactly like "no company".
       var paused = await sb.rpc("my_company_paused");
       return signedOutWith(!paused.error && paused.data === true
@@ -1765,7 +1768,7 @@
   // Web push. Works on Android in Chrome, and on iPhone only when Aero is
   // opened from the Home Screen (iOS 16.4+). This public key pairs with
   // VAPID_PRIVATE_KEY, a secret held only by the send-push Edge Function.
-  var VAPID_PUBLIC_KEY = "BPdlsdSbtk_42k_Tny-htsB229uKzlffF_skV1dBLyNEVKMlGJynZhesoPvy5PkXtER7rmnyuJjIKXTH4i2kN3Q";
+  var VAPID_PUBLIC_KEY = CFG.shared ? "BIUvnDQXjj4nWd2EIx7kLAGTTWamJ0oM1V806Ubh7HeiUJfaZWRxwvlUrP7pZTVULpFOYBbWrKtmSC1AmdNtnWw" : "BPdlsdSbtk_42k_Tny-htsB229uKzlffF_skV1dBLyNEVKMlGJynZhesoPvy5PkXtER7rmnyuJjIKXTH4i2kN3Q";
   var PREFS = null, notifyBusy = false;
   function pushSupported() { return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window; }
   function iosOutsideHomeScreen() {
@@ -1967,7 +1970,7 @@
     box.appendChild(again);
   }
 
-  sb = window.supabase.createClient(CFG.url, CFG.key, { global: { fetch: timedFetch } });
+  sb = (window.createAttendanceClient || window.supabase.createClient)(CFG.url, CFG.key, { global: { fetch: timedFetch } });
   sb.auth.onAuthStateChange(function (event, session) {
     if (event === "SIGNED_OUT" && ME) return sessionEnded();
     // Somebody signed in as a DIFFERENT person in another tab of this same app.
@@ -1987,7 +1990,8 @@
     signingOut = false;
   });
 
-  sb.auth.getSession().then(function (s) {
+  (window.attendancePilotReady ? window.attendancePilotReady(sb) : sb.auth.getSession()).then(function (s) {
+    if (s.error) return signedOutWith(s.error.message);
     if (s.data.session) load(); else signedOut();
   });
 })();

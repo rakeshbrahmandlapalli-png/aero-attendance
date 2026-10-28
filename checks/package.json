@@ -10,9 +10,11 @@
     "restore": "node restore.mjs",
     "embeds": "node embeds.mjs",
     "resilience": "node resilience.mjs",
-    "payroll": "node payroll.mjs"
+    "payroll": "node payroll.mjs",
+    "shared": "node shared-transport.mjs && node shared-integration.mjs",
+    "shared:browser": "node shared-browser.mjs"
   },
   "dependencies": {
-    "@electric-sql/pglite": "^0.3.0"
+    "@electric-sql/pglite": "0.5.11"
   }
 }

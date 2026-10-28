@@ -460,6 +460,7 @@
 <dialog id="noticeDialog" aria-labelledby="noticeTitle"><h2 id="noticeTitle">Notices</h2><p class="note">Everyone in the company sees this on their home screen until they dismiss it.</p><label class="field">New notice<textarea id="noticeBody" maxlength="500" rows="3"></textarea></label><label class="field">Stop showing it<select id="noticeExpiry"><option value="">When I switch it off</option><option value="1">After 1 day</option><option value="3">After 3 days</option><option value="7">After 7 days</option></select></label><div id="noticeError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="b" id="saveNotice">Post notice</button></div><h3 class="notify-sub">Posted notices</h3><div id="noticeList"></div><div class="bar"><button type="button" class="g" id="closeNotice">Close</button></div></dialog>
 <dialog id="notifyDialog" aria-labelledby="notifyTitle"><h2 id="notifyTitle">Notifications</h2><p class="note" id="notifyState"></p><div class="bar notify-actions"><button type="button" class="b" id="notifyOn">Turn on notifications</button><button type="button" class="g hidden" id="notifyOff">Turn off for this device</button></div><h3 class="notify-sub">Tell me when</h3><div id="notifyPrefs"></div><h3 class="notify-sub">Check that they work</h3><div class="bar"><button type="button" class="g" id="pushCheck">Send me a test</button></div><p class="note" id="pushCheckResult" role="status"></p><div class="bar"><button type="button" class="g" id="closeNotify">Close</button></div></dialog>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="/shared-backend.js"></script>
 <script>
 (function () {
   "use strict";
@@ -692,6 +693,7 @@
   // Estimated pay is optional and off by default. PAY_READY is false until the
   // pay SQL has been run, so the board keeps working without it.
   async function loadPay() {
+    if (CFG.shared) { PAY_READY = false; PAY_ON = false; RATES = {}; return; }
     if (DEMO) { PAY_READY = true; PAY_ON = D.showPay; RATES = D.rates; return; }
     var co = await sb.from("companies").select("show_pay").eq("id", ME.company_id).maybeSingle();
     if (co.error) { PAY_READY = false; PAY_ON = false; RATES = {}; return; }
@@ -1107,6 +1109,7 @@
   }
 
   function renderStaff() {
+    if (CFG.shared) show('addStaff', false);
     var q = $("staffSearch").value.trim().toLowerCase();
     var rows = STAFF.filter(function (p) {
       var status = $("staffStatus").value;
@@ -1123,10 +1126,10 @@
         '<td class="num">' + (!PAY_READY ? '<span class="tiny">—</span>' : RATES[p.id] != null ? money(RATES[p.id]) : '<span class="tiny">Not set</span>') + "</td>" +
         '<td style="text-align:right">' +
           (PAY_READY ? '<button class="g sm" data-rate="' + p.id + '">Set rate</button> ' : "") +
-          (p.active && p.id !== ME.id && (p.role !== "owner" || ME.role === "owner")
+          (!CFG.shared && p.active && p.id !== ME.id && (p.role !== "owner" || ME.role === "owner")
             ? '<button class="g sm" data-pw="' + p.id + '">New password</button> ' : "") +
-          (p.active ? '<button class="g sm" data-profile="' + p.id + '">Edit profile</button> ' : "") +
-          (p.id === ME.id || p.role === "owner" ? "" : '<button class="g sm" data-toggle="' + p.id + '">' +
+          (!CFG.shared && p.active ? '<button class="g sm" data-profile="' + p.id + '">Edit profile</button> ' : "") +
+          (CFG.shared || p.id === ME.id || p.role === "owner" ? "" : '<button class="g sm" data-toggle="' + p.id + '">' +
             (p.active ? "Remove" : "Restore") + "</button>") + "</td>" +
       "</tr>";
     }).join("");
@@ -1157,6 +1160,7 @@
   // "swift-responder" (Supabase picked it; an address can never be renamed).
   var STAFF_FUNCTION = "swift-responder";
   async function staffAction(body) {
+    if (CFG.shared) throw new Error('During the private pilot, staff access is managed through Parking Ops.');
     var r = await sb.functions.invoke(STAFF_FUNCTION, { body: body });
     if (!r.error) return r.data;
     var msg = r.error.message;
@@ -1510,7 +1514,7 @@
     PRIVACY_CONTACT = (PRIVACY_READY && pv.data && pv.data.privacy_contact) || "";
     RETENTION_TEXT = (PRIVACY_READY && pv.data && pv.data.retention_text) || "";
     var co = await sb.from("companies").select("use_rota").eq("id", ME.company_id).maybeSingle();
-    ROTA_READY = !co.error;
+    ROTA_READY = !CFG.shared && !co.error;
     USE_ROTA = !!(ROTA_READY && co.data && co.data.use_rota);
     applyRota();
   }
@@ -1841,7 +1845,7 @@
   // Web push. Works on Android in Chrome, and on iPhone only when Aero is
   // opened from the Home Screen (iOS 16.4+). This public key pairs with
   // VAPID_PRIVATE_KEY, a secret held only by the send-push Edge Function.
-  var VAPID_PUBLIC_KEY = "BPdlsdSbtk_42k_Tny-htsB229uKzlffF_skV1dBLyNEVKMlGJynZhesoPvy5PkXtER7rmnyuJjIKXTH4i2kN3Q";
+  var VAPID_PUBLIC_KEY = CFG.shared ? "BIUvnDQXjj4nWd2EIx7kLAGTTWamJ0oM1V806Ubh7HeiUJfaZWRxwvlUrP7pZTVULpFOYBbWrKtmSC1AmdNtnWw" : "BPdlsdSbtk_42k_Tny-htsB229uKzlffF_skV1dBLyNEVKMlGJynZhesoPvy5PkXtER7rmnyuJjIKXTH4i2kN3Q";
   var PREFS = null, notifyBusy = false;
   function pushSupported() { return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window; }
   function iosOutsideHomeScreen() {
@@ -1958,7 +1962,7 @@
     (r.data || []).forEach(function (x) { FEATURES[x.feature] = x.enabled; });
   }
 
-  function hasFeature(f) { return FEATURES[f] !== false; }
+  function hasFeature(f) { return CFG.shared ? f === 'breaks' : FEATURES[f] !== false; }
 
   // ── OVERTIME ───────────────────────────────
   // Off until a company sets a weekly threshold. The database works the hours
@@ -1971,6 +1975,7 @@
   }
 
   async function loadOvertimeSetting() {
+    if (CFG.shared) { OT_READY = false; OT_HOURS = null; return; }
     if (DEMO) { OT_READY = true; OT_HOURS = D.overtimeHours == null ? null : D.overtimeHours; return; }
     var co = await sb.from("companies").select("overtime_weekly_hours").eq("id", ME.company_id).maybeSingle();
     // The overtime SQL may not have been run yet: treat that as "overtime off",
@@ -3032,7 +3037,7 @@
     // On a shared office computer that means the next member of staff to open the
     // staff app clocks in as the manager. The staff app keeps the default slot, so
     // nobody who is signed in there is signed out; managers sign in to the board once.
-    sb = window.supabase.createClient(CFG.url, CFG.key, { global: { fetch: timedFetch }, auth: { storageKey: "aero-manager-auth" } });
+    sb = (window.createAttendanceClient || window.supabase.createClient)(CFG.url, CFG.key, { global: { fetch: timedFetch }, auth: { storageKey: "aero-manager-auth" } });
     sb.auth.onAuthStateChange(function (event, session) {
       if (event === "SIGNED_OUT" && ME) return sessionEnded();
       // Somebody signed in as a DIFFERENT person in another tab of this same board.
@@ -3133,7 +3138,7 @@
     if (FORCED_DEMO) $("demoLink").href = /^\/demo/.test(location.pathname) ? "/demo" : "index.html?demo";
     load();
   }
-  else sb.auth.getSession().then(function (s) { if (s.data.session) load(); else signedOut(); });
+  else (window.attendancePilotReady ? window.attendancePilotReady(sb) : sb.auth.getSession()).then(function (s) { if (s.error) return signedOutWith(s.error.message); if (s.data.session) load(); else signedOut(); });
 })();
 </script>
 </body>
