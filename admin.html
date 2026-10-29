@@ -13,7 +13,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23E8871E'/%3E%3Cpath d='M21 43V32M32 43V21M43 43V28' stroke='%230E1420' stroke-width='5.5' stroke-linecap='round'/%3E%3C/svg%3E">
 
 <script>
-  window.APP_CONFIG = {
+  window.APP_CONFIG = window.STAGING_CONFIG ? window.STAGING_CONFIG.client() : {
     url: "https://ljrzcrphuepqtfrayeid.supabase.co",
     key: "sb_publishable_nZARbee_a2fgpA6pkZ-P-w_pN2ruf9n"    // same two values as index.html
   };

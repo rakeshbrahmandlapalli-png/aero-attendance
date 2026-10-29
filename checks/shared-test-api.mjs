@@ -3,7 +3,7 @@
 // Playwright fulfills every request locally; this opens no network listener.
 import assert from 'node:assert/strict';
 import {bootShared, seedStaff, committed} from './shared-fixture.mjs';
-import {createHash} from 'node:crypto';
+import {createHash,randomUUID} from 'node:crypto';
 export const apiOrigin = 'http://shared-backend.test';
 const identifier = value => {
   assert.match(value, /^[a-z_][a-z_0-9]*$/);
@@ -15,14 +15,14 @@ export async function testApi({seed = seedStaff, excludeNotifications = false, r
   const tokens = new Map(), sessions = new Map(), requests = [], failures = [];
   let sequence = 0, nextFailure = null, nextHold = null;
   function mint(user) {
-    const token = 'test-handoff-' + (++sequence);
+    const token = 'test-handoff-' + randomUUID();
     tokens.set(token, user);
     return token;
   }
   // A parking account's metadata must not open Attendance's legacy password UI.
   const authUser = user => ({id:user, email:user+'@example.test', aud:'authenticated', role:'authenticated', user_metadata:{must_change_password:true}});
   function session(user) {
-    const key = 'test-session-' + (++sequence);
+    const key = 'test-session-' + randomUUID();
     sessions.set(key, user);
     // The SDK decodes JWT expiry; this unsigned token is accepted only here.
     const jwt = [Buffer.from(JSON.stringify({alg:'none'})).toString('base64url'),
@@ -159,5 +159,6 @@ export async function testApi({seed = seedStaff, excludeNotifications = false, r
       const result={received:new Promise(resolve=>{received=resolve;}),release:()=>release()};
       nextHold={name,predicate,afterRead,received,gate:new Promise(resolve=>{release=resolve;})};return result;
     },
+    userForToken: token => sessions.get(token),
     close:()=>db.close()};
 }

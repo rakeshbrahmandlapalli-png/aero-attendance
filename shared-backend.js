@@ -2,14 +2,14 @@
 (function () {
   'use strict';
   var query = new URLSearchParams(location.search);
-  var enabled = query.get('pilot') === '1';
+  var enabled = !!window.STAGING_CONFIG || query.get('pilot') === '1';
   try {
     if (query.get('legacy') === '1') localStorage.removeItem('aero-shared-pilot');
     if (enabled) localStorage.setItem('aero-shared-pilot', '1');
     enabled = enabled || localStorage.getItem('aero-shared-pilot') === '1';
   } catch (_) {}
   if (!enabled || /\/demo(?:\/|$)/.test(location.pathname) || query.has('demo')) return;
-  window.APP_CONFIG = {
+  window.APP_CONFIG = window.STAGING_CONFIG ? window.STAGING_CONFIG.client() : {
     url: 'https://oioqjfrlwrjovnouhusp.supabase.co',
     key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pb3FqZnJsd3Jqb3Zub3VodXNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2Mjk3MDQsImV4cCI6MjEwNTIwNTcwNH0.09ddpfS4_KwZN7QWJoAiwaIl02wQLaw6yJWEltNMQ2U',
     shared: true
