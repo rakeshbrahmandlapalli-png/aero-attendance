@@ -1,4 +1,5 @@
 {
+  "git": { "deploymentEnabled": { "attendance-integration": false, "claude/project-thread-xro69h": false } },
   "rewrites": [
     {
       "source": "/demo",

@@ -75,7 +75,7 @@ const check = (name, ok, detail = "") => results.push({ name, ok: !!ok, detail }
     const q = (result) => { const p = Promise.resolve(result); const chain = new Proxy(function () {}, { get: (_, k) => (k === "then" ? p.then.bind(p) : k === "catch" ? p.catch.bind(p) : () => chain) }); return chain; };
     const sb = { from: (t) => q(t === "companies" ? companyResult : queryResult) };
     const run = new Function("DEMO", "ME", "sb", "state", "fails", "localDay", `
-      var ROTA = state.ROTA; function renderRota() { state.rendered++; } function fail(e) { fails.push(e); }
+      var CFG = {shared: false}; var ROTA = state.ROTA; function renderRota() { state.rendered++; } function fail(e) { fails.push(e); }
       ${load}
       return { call: loadRota, get ROTA() { return ROTA; } };`)(false, { id: "u1", company_id: "c1" }, sb, state, fails, () => "2026-09-19");
     return { run, state, fails };
