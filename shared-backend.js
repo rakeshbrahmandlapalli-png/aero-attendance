@@ -79,13 +79,14 @@
     if (previous) previous.remove();
     var section = document.createElement('section');
     section.id = 'attendance-finish-only';
-    section.style.cssText = 'box-sizing:border-box;max-width:560px;margin:48px auto;padding:24px';
-    var heading = document.createElement('h1'); heading.textContent = 'Finish your shift';
+    section.style.cssText = 'box-sizing:border-box;max-width:560px;margin:0 auto;padding:48px 16px 24px;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#0E1420';
+    var heading = document.createElement('h1'); heading.textContent = 'Finish your shift'; heading.style.cssText = 'font-size:24px;line-height:1.2;font-weight:600;margin:0 0 12px';
     var text = document.createElement('p');
     text.textContent = 'Attendance access has ended. You can still clock out of your open shift. Location will be marked unverified.';
-    var button = document.createElement('button'); button.className = 'btn'; button.textContent = 'Clock out';
-    var error = document.createElement('p'); error.setAttribute('role', 'status');
-    var endBreak = document.createElement('button'); endBreak.className = 'btn g'; endBreak.textContent = 'End break';
+    text.style.cssText = 'font-size:16px;line-height:1.5;color:#4A5363;margin:0 0 24px';
+    var button = document.createElement('button'); button.className = 'btn'; button.textContent = 'Clock out'; button.style.cssText = 'width:100%;min-height:56px;margin:0 0 12px';
+    var error = document.createElement('p'); error.setAttribute('role', 'status'); error.style.cssText = 'font-size:14px;color:#B42318;margin:8px 0 0';
+    var endBreak = document.createElement('button'); endBreak.className = 'btn g'; endBreak.textContent = 'End break'; endBreak.style.cssText = 'width:100%;min-height:56px;margin:0 0 12px';
     endBreak.onclick = async function () {
       endBreak.disabled = button.disabled = true; error.textContent = '';
       var ended = await client.rpc('end_break');
