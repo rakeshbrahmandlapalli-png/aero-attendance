@@ -13,10 +13,10 @@ create table staff(id uuid primary key,company_id uuid references companies(id),
 create table activity(company_id uuid,staff_name text,action text,value text);
 create function me() returns staff language sql security definer set search_path=public as $$select * from staff where user_id=auth.uid()$$;
 create function is_platform_admin() returns boolean language sql as $$select false$$;`);
-    for (const name of ['130-attendance-addon.sql', '131-attendance-identity.sql', '132-attendance-pilot.sql']) {
+    for (const name of ['133-attendance-addon.sql', '134-attendance-identity.sql', '135-attendance-pilot.sql']) {
       await db.exec(readParking('setup/' + name));
     }
-    const shared = readParking('setup/134-attendance-shared.sql').replace(/^\s*create extension[^;]*;/gim, '-- Harness provides extensions');
+    const shared = readParking('setup/136-attendance-shared.sql').replace(/^\s*create extension[^;]*;/gim, '-- Harness provides extensions');
     await db.exec(shared);
     await db.exec(shared);
     return db;

@@ -16,7 +16,7 @@ try {
  await assert.rejects(()=>committed(db,id(10),'select aero_clock_in($1,54,1,1)',[id(101)]),/Move inside/);checks++;
  await committed(db,id(10),'select aero_clock_in($1,51.5,-0.1,10)',[id(101)]);
  await committed(db,id(10),'select aero_start_break()');
- await db.exec(readParking('setup/rollback/134-attendance-shared-rollback.sql'));
+ await db.exec(readParking('setup/rollback/136-attendance-shared-rollback.sql'));
  ok((await committed(db,id(10),'select * from aero_profiles')).length===0,'Kill switch denies reads');
  await assert.rejects(()=>committed(db,id(10),'select aero_clock_in($1,51.5,-0.1,10)',[id(101)]));checks++;
  const closed=(await committed(db,id(10),'select to_jsonb(aero_clock_out(null,null)) s'))[0].s;
