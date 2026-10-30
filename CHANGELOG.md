@@ -5,6 +5,10 @@ or redeploy an Edge Function says so.
 
 ## Unreleased
 
+### Manager board and the way back to Parking Ops
+- The manager board now shows On shift now first; alerts of one kind are grouped (Show / Clear all of that kind), single alerts keep their own Clear and Clock out.
+- Staff opened from Parking Ops get a "Parking Ops" link back. Only the Parking Ops addresses listed in `shared-backend.js` are trusted. No database change. Check: `node checks/attendance-screens.mjs`.
+
 ### Parking Ops private pilot (not deployed)
 - Added an opt-in shared backend for the existing staff and manager pages, separate session storage and single-use sign-in handoff. Legacy and demo modes retain their current backend.
 - Added a finish-only clock-out screen for an open shift when pilot access has ended.

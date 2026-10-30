@@ -14,6 +14,17 @@
     key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pb3FqZnJsd3Jqb3Zub3VodXNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2Mjk3MDQsImV4cCI6MjEwNTIwNTcwNH0.09ddpfS4_KwZN7QWJoAiwaIl02wQLaw6yJWEltNMQ2U',
     shared: true
   };
+  // The way back to Parking Ops. Parking Ops adds &back=<its own address>; only these
+  // addresses are trusted, so a made-up link can't send staff somewhere else.
+  // Add the address of any new Parking Ops site here.
+  var PARKING_OPS = ['https://takeoff-ops.vercel.app', 'https://parkingbay-ops.vercel.app'];
+  try {
+    var back = query.get('back');
+    if (back && PARKING_OPS.indexOf(back) !== -1) localStorage.setItem('aero-back-to', back);
+  } catch (_) {}
+  window.attendanceBackUrl = function () {
+    try { var url = localStorage.getItem('aero-back-to'); return PARKING_OPS.indexOf(url) !== -1 ? url : ''; } catch (_) { return ''; }
+  };
   var create = window.supabase.createClient;
   function selection(value) {
     return value.replace(/\b(companies|profiles|worksites)(![a-zA-Z0-9_]+)?\(/g, function (_, table, constraint) {

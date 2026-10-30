@@ -93,6 +93,7 @@
   #app{min-height:100vh;background:var(--surface);}
   .top{display:flex;align-items:center;gap:var(--s3);max-width:560px;margin:0 auto;padding:var(--s3) var(--s4);background:var(--navy);color:#fff;}
   .top .co{color:var(--on-navy-2);}
+  .backops{color:#AEB7C4;font-size:var(--t1);min-height:44px;display:inline-flex;align-items:center;text-decoration:none;white-space:nowrap;}.backops[hidden]{display:none;}.backops:hover{color:#fff;}.backops:focus-visible{outline:2px solid #E8871E;outline-offset:2px;}
   .identity{display:flex;align-items:center;gap:var(--s3);min-width:0;}
   .identity>div{min-width:0;}
   .avatar{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:var(--r);background:var(--navy-2);border:1px solid var(--navy-line);color:#fff;font-size:var(--t1);font-weight:600;}
@@ -323,6 +324,7 @@
 
   <div id="main">
     <header class="top">
+      <a class="backops" id="backOps" href="#" hidden>← Parking Ops</a>
       <div class="identity">
         <span class="avatar" id="avatar" aria-hidden="true">SW</span>
         <div>
@@ -1997,6 +1999,7 @@
     signingOut = false;
   });
 
+  (function () { var u = window.attendanceBackUrl && window.attendanceBackUrl(), a = $("backOps"); if (u && a) { a.href = u; a.hidden = false; } })();
   (window.attendancePilotReady ? window.attendancePilotReady(sb) : sb.auth.getSession()).then(function (s) {
     if (s.error) return signedOutWith(s.error.message);
     if (s.data.session) load(); else signedOut();
