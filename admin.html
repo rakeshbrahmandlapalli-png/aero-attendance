@@ -349,10 +349,6 @@
     <!-- ── NOW ────────────────────────────── -->
     <section id="tab-now" class="on">
       <div id="notices" class="notices"></div>
-      <div id="flags" class="flags"></div>
-      <div id="stats" class="stats"></div>
-      <h2>Site coverage</h2><div id="coverage" class="coverage"></div>
-
       <h2>On shift now</h2>
       <div class="sub" id="nowSub">—</div>
       <div class="bar"><input id="nowSearch" type="search" placeholder="Search staff" aria-label="Search on-shift staff"><select id="nowSite" aria-label="Filter worksite"><option value="">All sites</option></select><label class="filter-check"><input id="attentionOnly" type="checkbox">Needs attention</label></div>
@@ -368,6 +364,10 @@
         <tbody id="nowBody"></tbody>
       </table></div>
       <div id="nowEmpty" class="empty hidden">No shifts match these filters.</div>
+      <div id="flags" class="flags"></div>
+      <div id="stats" class="stats"></div>
+      <h2>Site coverage</h2><div id="coverage" class="coverage"></div>
+
     </section>
 
     <!-- ── ROTA ───────────────────────────── -->
@@ -807,6 +807,24 @@
       "</span></div>";
   }
 
+  // Two or more alerts of one kind show as one row (Show opens them, Clear clears them all).
+  var GROUP_NAME = { 1: "Shifts running too long", 2: "Not clocked in for a rota shift", 3: "Clocked in away from site", 4: "Rota shifts not worked", 5: "Working but not on the rota", 6: "No verified clock-in location" };
+  var OPEN_GROUPS = {};
+  function flagsHtml(list) {
+    var out = "", i = 0;
+    while (i < list.length) {
+      var rank = list[i].rank, run = [];
+      while (i < list.length && list[i].rank === rank) run.push(list[i++]);
+      if (run.length < 2) { out += flagHtml(run[0]); continue; }
+      var open = !!OPEN_GROUPS[rank];
+      out += '<div class="flag' + (run[0].bad ? " bad" : "") + ' flag-group"><span class="ft"><b>' + esc(GROUP_NAME[rank] || "Alerts") + " (" + run.length + ")</b></span><span class=\"act\">" +
+        '<button type="button" class="g sm" data-group="' + rank + '" aria-expanded="' + open + '">' + (open ? "Hide" : "Show") + "</button>" +
+        (DISMISS_READY ? '<button type="button" class="g sm" data-clear-group="' + rank + '">Clear ' + run.length + "</button>" : "") + "</span></div>" +
+        (open ? run.map(flagHtml).join("") : "");
+    }
+    return out;
+  }
+
   function renderFlags(quiet) {
     var ids=NOW.filter(needsAttention).map(function(s){return s.shift_id;});
     if(!quiet && attentionIds && $('boardAlerts').checked && ids.some(function(id){return !attentionIds.includes(id);}))toast('An attendance exception needs attention.');
@@ -838,7 +856,7 @@
       ? '<div class="flag-count"><span>' + out.length + " things need attention</span>" +
         (DISMISS_READY ? '<button type="button" class="g sm" id="clearAllFlags">Clear all</button>' : "") + "</div>"
       : "";
-    $("flags").innerHTML = head + out.map(flagHtml).join("");
+    $("flags").innerHTML = head + flagsHtml(out);
     // The "Needs attention" card counts exactly what is listed, so the two never disagree.
     renderStats();
   }
@@ -863,6 +881,10 @@
   $("flags").addEventListener("click", function (e) {
     var one = e.target.closest("button[data-clear]");
     if (one) return clearAlerts([{ key: one.getAttribute("data-clear"), summary: one.getAttribute("data-summary") }]);
+    var grp = e.target.closest("button[data-group]");
+    if (grp) { var r = grp.getAttribute("data-group"); OPEN_GROUPS[r] = !OPEN_GROUPS[r]; return renderFlags(true); }
+    var clr = e.target.closest("button[data-clear-group]");
+    if (clr) { var k = +clr.getAttribute("data-clear-group"); return clearAlerts(FLAGS.filter(function (f) { return f.rank === k; }).map(function (f) { return { key: f.key, summary: f.summary }; })); }
     if (e.target.closest("#clearAllFlags")) return clearAlerts(FLAGS.map(function (f) { return { key: f.key, summary: f.summary }; }));
   });
 
