@@ -148,8 +148,11 @@ developer-only folder with its own package.json, kept out of the site by
     `current_company_id()`, and a line in `TABLES` in the test. To prove a
     check can fail, run the test on a deliberately broken copy of the schema:
     `SCHEMA_FILE=path/to/broken.sql node isolation.mjs`.
-11. **The privacy notice must stay true.** `noticeHtml()` in index.html is what
-    every member of staff can open under Account. It never pops up by itself (owner's decision, 19 Sep 2026); opening it records that they read it, for the manager's Staff tab. It is the
+11. **The privacy notice must stay true.** `noticeHtml()` in index.html is the
+    notice. It never pops up by itself (owner's decision, 19 Sep 2026). On 1 Nov 2026
+    the owner removed the Privacy notice button from Account (`#openPrivacy` is kept
+    in the page, hidden), so staff currently have no way to open it and the Staff
+    tab's "Notice read" dates stop moving. Do not bring the button back without asking. It is the
     employer's notice to its staff (the company is the controller; this app and
     AeroOne are the processor), built from what the app really does and from
     `companies.privacy_contact` / `retention_text`. If a change collects, shows
@@ -248,10 +251,19 @@ Staff app structure — keep it:
   tabs 56px (selected: navy text + short orange bar). Inputs use 16px text so iOS does not zoom.
   Checkbox labels provide the full touch target. No hover-only controls.
   Every control has a visible focus ring.
-- Under 768px, manager table records stack into labelled two-column rows.
-  Names and notes get full width; time values stay together. Retain real
-  tables above that breakpoint and in print. Keep mobile labels in CSS in
-  sync with the table headings and preserve table semantics in markup.
+- Enterprise pass (owner, 1 Nov 2026: "looks AI-made / toyish"): compact and calm.
+  Manager tables sit in a thin bordered box with a grey header row and 44-52px
+  rows; row actions are plain text buttons; alerts are ONE bordered list with a
+  dot per line (red, or orange for a group), never pink blocks; the figures are
+  one bordered strip; "On site" is a green dot with plain ink text. On/off
+  settings are switches (a styled checkbox, so behaviour is unchanged). From
+  1024px the manager board has a light left side bar instead of the navy top
+  bar; 36px buttons and 14px inputs only with a mouse (pointer:fine), touch
+  keeps 44px. Previews: project files previews/attendance-enterprise/.
+- Under 768px, a manager table record is one compact row: name on the first
+  line (action button at the right), then the other values on one line with
+  " · " between them, no labels. Retain real tables above that breakpoint and
+  in print, and preserve table semantics in markup.
 - Empty states use readable text and open spacing; errors use attention
   colour and a left rule; busy controls keep legible text and stable size.
 - Transitions: 160ms colour changes and handle snap-back, a 120ms press scale

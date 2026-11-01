@@ -294,6 +294,42 @@
   #noteWrap textarea{min-height:72px;}
   body:has(#clock:not(.hidden)) .toast{top:calc(72px + env(safe-area-inset-top));bottom:auto;}
   @media(min-width:768px){.clock{border-inline:1px solid var(--line);}}
+/* Enterprise pass (1 Nov 2026): quieter notes, smaller figures, switches. */
+.btn,button.b,button.g{min-height:44px;padding:var(--s2) var(--s4);font-size:var(--t1);font-weight:500;}
+.who{font-size:var(--t2);font-weight:600;}
+.top .co{font-size:var(--t1);}
+.avatar{width:36px;height:36px;border-radius:50%;font-weight:500;}
+.section-head{margin-bottom:var(--s2);}
+.section-head h2,.section-head strong{font-size:var(--t2);}
+/* notes from the manager and handovers: a quiet bordered note */
+.notice-card{padding:var(--s3) var(--s4);border:1px solid var(--line);border-left:2px solid var(--brand);border-radius:var(--r);font-size:var(--t1);}
+.notice-card.plain{border-left:1px solid var(--line);}
+.notice-card p{margin:0 0 var(--s1);}
+.notice-card .tiny{margin-bottom:var(--s2);}
+.notice-card .btn{min-height:36px;padding:var(--s1) var(--s3);}
+/* timesheet */
+.month-nav h2{font-size:var(--t2);}
+.month-nav .icon-btn{width:40px;height:40px;border-radius:var(--r);border:1px solid var(--line);}
+.sheet-stats{gap:0;border:1px solid var(--line);border-radius:var(--r);}
+.sheet-stats>div{padding:var(--s2) var(--s3);border-left:1px solid var(--line-soft);}
+.sheet-stats>div:first-child{border-left:0;}
+.sheet-stats strong{font-size:var(--t3);}
+.pay{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:0 var(--s3);}
+.pay strong{font-size:var(--t3);}
+.pay .note,.pay p{flex-basis:100%;font-size:var(--t1);}
+.row,.inbox-item{font-size:var(--t1);}
+/* account: rows with switches */
+.account-row{padding:var(--s3) 0;font-size:var(--t1);}
+.account-row strong{font-weight:500;}
+.notify{padding:var(--s3) 0;}
+.notify h3{font-size:var(--t1);font-weight:600;}
+.notify .btn{width:auto;background:var(--card);color:var(--ink);border-color:var(--line);}
+.check,.notify-pref{justify-content:space-between;min-height:48px;margin:0;border-bottom:1px solid var(--line-soft);font-size:var(--t1);color:var(--ink);}
+.check input,.notify-pref input{order:2;appearance:none;-webkit-appearance:none;position:relative;width:40px;height:24px;min-height:24px;margin:0;padding:0;border:0;border-radius:12px;background:#C3CAD5;cursor:pointer;transition:background-color 160ms;}
+.check input::after,.notify-pref input::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform 160ms;}
+.check input:checked,.notify-pref input:checked{background:var(--navy);}
+.check input:checked::after,.notify-pref input:checked::after{transform:translateX(16px);}
+#staff-account>.btn{margin-top:var(--s3);}
 </style>
 </head>
 <body>
@@ -390,7 +426,7 @@
         <section><div id="monthList" class="list"></div></section>
       </div>
       <div id="staff-inbox" class="hidden" role="tabpanel" aria-labelledby="nav-inbox"><div class="section-head"><h2>Activity</h2><button class="link" id="refreshActivity">Refresh</button></div><div id="activity" aria-live="polite"></div></div>
-      <div id="staff-account" class="hidden" role="tabpanel" aria-labelledby="nav-account"><div class="section-head"><h2>Your account</h2></div><div class="account-row"><span>Name</span><strong id="accountName"></strong></div><div class="account-row"><span>Company</span><strong id="accountCompany"></strong></div><div id="notifyBox" class="notify hidden"><h3>Notifications</h3><p class="note" id="notifyState"></p><button type="button" class="btn" id="notifyOn">Turn on notifications</button><button type="button" class="btn g hidden" id="notifyOff">Turn off for this phone</button><div id="notifyPrefs"></div></div><label class="check"><input type="checkbox" id="shiftReminder" checked>Show long-shift reminders while the app is open</label><div class="account-row"><span>Location</span><strong>Clock-in and clock-out only</strong></div><div class="account-row"><span>Version</span><strong>1.0 · by AeroOne</strong></div><button class="btn hidden" id="installApp">Install Aero</button><p class="note" id="installStatus"></p><button type="button" class="btn g" id="openPrivacy">Privacy notice</button><button class="btn g signout" id="signout">Sign out</button></div>
+      <div id="staff-account" class="hidden" role="tabpanel" aria-labelledby="nav-account"><div class="section-head"><h2>Your account</h2></div><div class="account-row"><span>Name</span><strong id="accountName"></strong></div><div class="account-row"><span>Company</span><strong id="accountCompany"></strong></div><div id="notifyBox" class="notify hidden"><h3>Notifications</h3><p class="note" id="notifyState"></p><button type="button" class="btn" id="notifyOn">Turn on notifications</button><button type="button" class="btn g hidden" id="notifyOff">Turn off for this phone</button><div id="notifyPrefs"></div></div><label class="check"><input type="checkbox" id="shiftReminder" checked>Show long-shift reminders while the app is open</label><div class="account-row"><span>Location</span><strong>Clock-in and clock-out only</strong></div><div class="account-row"><span>Version</span><strong>1.0 · by AeroOne</strong></div><button class="btn hidden" id="installApp">Install Aero</button><p class="note" id="installStatus"></p><button type="button" class="btn g hidden" id="openPrivacy">Privacy notice</button><button class="btn g signout" id="signout">Sign out</button></div>
     </main>
 
     <nav class="staff-nav" aria-label="Staff views"><button id="nav-work" aria-controls="staff-work" aria-selected="true" data-view="work"><span>Home</span></button><button id="nav-rota" class="hidden" aria-controls="staff-rota" aria-selected="false" data-view="rota"><span>Rota</span></button><button id="nav-sheet" aria-controls="staff-sheet" aria-selected="false" data-view="sheet"><span>Timesheet</span></button><button id="nav-inbox" aria-controls="staff-inbox" aria-selected="false" data-view="inbox"><span>Activity <span class="num" id="inboxCount"></span></span></button><button id="nav-account" aria-controls="staff-account" aria-selected="false" data-view="account"><span>Account</span></button></nav>
@@ -1540,8 +1576,7 @@
   var installPrompt = null;
   window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();installPrompt=e;show('installApp',true);});
   $("installApp").addEventListener('click',async function(){if(installPrompt){await installPrompt.prompt();installPrompt=null;show('installApp',false);}});
-  window.addEventListener('appinstalled',function(){show('installApp',false);$("installStatus").textContent='Aero is installed.';});
-  $("installStatus").textContent = location.protocol === 'file:' ? 'Home-screen installation is available on the hosted app.' : /iPad|iPhone|iPod/.test(navigator.userAgent) ? 'In Safari, open Share and choose Add to Home Screen.' : 'Install Aero from your browser menu when available.';
+  window.addEventListener('appinstalled',function(){show('installApp',false);});
   if('serviceWorker' in navigator && location.protocol === 'https:' && !DEMO) navigator.serviceWorker.register('/sw.js').catch(function(error){$("installStatus").textContent=error.message;});
 
   function signedOut() {
@@ -1673,7 +1708,7 @@
     PRIVACY.ackVersion = (!a.error && a.data && a.data.version) || 0;
   }
 
-  // Nothing pops up: the notice sits under Account for anyone who wants it.
+  // Nothing pops up. The owner took the Account button off on 1 Nov 2026; the code stays so it can come back.
   // Opening it there records that this person has read this version, quietly,
   // so the manager's Staff tab can say who has. A failure changes nothing.
   function openPrivacy() {
