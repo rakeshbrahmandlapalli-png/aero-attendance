@@ -5,6 +5,15 @@ or redeploy an Edge Function says so.
 
 ## Unreleased
 
+### Calmer, enterprise look (manager board and staff app)
+- Smaller titles, buttons and inputs; tables in a thin bordered box with a grey header row; row actions as plain text buttons.
+- Alerts are one list with a dot per line instead of pink blocks; the figures and site coverage are one quiet strip.
+- "On site" is a green dot with plain text. On/off settings (Company settings, notifications, filters) are switches. Company settings is grouped: Company, Clocking and pay, Privacy notice, Rota and overtime.
+- From 1024px wide the manager board has a light left side bar instead of the navy top bar. On a phone, each record is one compact row.
+- Staff app: quieter manager notes and handovers, smaller timesheet figures, switches under Account.
+- Removed from Account, at the owner's request: the "Install Aero from your browser menu" line and the Privacy notice button (the notice code stays, hidden).
+- Only the look changes; no database change and no change to what any button does.
+
 ### Manager board and the way back to Parking Ops
 - The manager board now shows On shift now first; alerts of one kind are grouped (Show / Clear all of that kind), single alerts keep their own Clear and Clock out.
 - Staff opened from Parking Ops get a "Parking Ops" link back. Only the Parking Ops addresses listed in `shared-backend.js` are trusted. No database change. Check: `node checks/attendance-screens.mjs`.

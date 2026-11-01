@@ -305,6 +305,144 @@
     tr{display:table-row;break-inside:avoid;}th,td{display:table-cell;padding:var(--s1);font-size:var(--t1);white-space:normal;}td::before{display:none;}
     .av{display:none;}
   }
+/* Enterprise pass (1 Nov 2026): compact type, bordered tables, alerts as one list, switches, side bar from 1024px. */
+:root{--ok:#0F7B4A;}
+h1{font-size:var(--t4);}
+h2,section>h2{font-size:var(--t2);margin:var(--s6) 0 var(--s3);}
+.page-heading{margin-bottom:var(--s6);}
+.date-line{margin-top:var(--s1);}
+.brand{font-size:var(--t3);}
+header .co{font-size:var(--t1);}
+.btn,button.b,button.g{min-height:40px;padding:var(--s2) var(--s3);font-size:var(--t1);font-weight:500;}
+.lucide{width:16px;height:16px;}
+.toolbar-actions{gap:var(--s2);}
+input,select{min-height:44px;padding:var(--s2) var(--s3);border-color:var(--line);}
+input:focus,select:focus{border-color:var(--ink-2);}
+label,.field{font-size:var(--t1);}
+/* notices */
+.notice-live{padding:var(--s3) var(--s4);border:1px solid var(--line);border-left:2px solid var(--brand);border-radius:var(--r);background:var(--card);}
+.notice-live .tiny{font-size:var(--t1);}
+/* tables */
+table{border:1px solid var(--line);border-radius:var(--r);border-collapse:separate;border-spacing:0;overflow:hidden;}
+th{padding:var(--s2) var(--s4);background:var(--surface);font-size:var(--t1);font-weight:500;color:var(--ink-2);border-bottom:1px solid var(--line);}
+.sort-button{min-height:32px;padding:0;}
+td{padding:var(--s2) var(--s4);font-size:var(--t1);height:52px;}
+tbody tr:last-child td{border-bottom:0;}
+.name{font-weight:500;font-size:var(--t1);gap:var(--s2);}
+.av{width:28px;height:28px;border-radius:50%;font-size:12px;}
+.role{font-size:var(--t1);}
+.st{color:var(--ink);}
+.st.ok{color:var(--ink);}.st.ok i{background:var(--ok);}
+.st.away{color:var(--warn);}
+td .tiny,td .sub{font-size:var(--t1);}
+td button.g,.flag button.g{min-height:32px;padding:var(--s1) var(--s3);border-color:transparent;background:none;color:var(--ink);}
+td button.g:hover,.flag button.g:hover{background:var(--surface);border-color:var(--line);}
+td:last-child:has(button){text-align:right;}
+td button.danger,td button[data-off]{color:var(--warn);}
+/* alerts: one list, a dot per row, no pink blocks */
+.flags{gap:0;border:1px solid var(--line);border-radius:var(--r);margin-top:var(--s6);}
+.flag-count{padding:var(--s2) var(--s2) var(--s2) var(--s4);background:var(--surface);border-bottom:1px solid var(--line);font-size:var(--t1);font-weight:600;color:var(--ink);}
+.flag-count button.g{min-height:32px;background:none;border-color:transparent;}
+.flag{display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap;padding:var(--s2) var(--s2) var(--s2) var(--s4);min-height:52px;background:none;border:0;border-bottom:1px solid var(--line-soft);color:var(--ink);font-size:var(--t1);}
+.flag:last-child{border-bottom:0;}
+.flag .ft{position:relative;padding-left:var(--s4);flex:1 1 240px;}
+.flag .ft::before{content:"";position:absolute;left:0;top:.55em;width:8px;height:8px;border-radius:50%;background:var(--warn);}
+.flag .ft b{font-weight:500;}
+.flag.flag-group .ft::before{background:var(--brand);}
+.flag .act{margin:0 0 0 auto;gap:var(--s1);}
+/* figures: one quiet strip */
+.stats{gap:0;padding:0;margin:var(--s6) 0;border:1px solid var(--line);border-radius:var(--r);}
+.stat{padding:var(--s3) var(--s4);border-left:1px solid var(--line-soft);}
+.stat:first-child{border-left:0;}
+.stat .val{font-size:var(--t3);margin:var(--s1) 0 0;}
+.stat:first-child .val{color:var(--ink);}
+.stat .sub{font-size:var(--t1);}
+.coverage{gap:0;padding:0;border:1px solid var(--line);border-radius:var(--r);}
+.coverage>div{padding:var(--s3) var(--s4);border-left:1px solid var(--line-soft);}
+.coverage>div:first-child{border-left:0;}
+.coverage strong{font-size:var(--t3);}
+dialog{padding:var(--s6);}
+dialog h2{font-size:var(--t3);margin:0 0 var(--s4);}
+dialog label{margin:var(--s3) 0 var(--s1);}
+/* switches for on/off settings */
+.filter-check,.notify-pref{justify-content:space-between;min-height:48px;color:var(--ink);font-size:var(--t1);border-bottom:1px solid var(--line-soft);}
+.filter-check input,.notify-pref input{order:2;appearance:none;-webkit-appearance:none;position:relative;width:40px;height:24px;min-height:24px;margin:0;padding:0;border:0;border-radius:12px;background:#C3CAD5;cursor:pointer;transition:background-color 160ms;}
+.filter-check input::after,.notify-pref input::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform 160ms;}
+.filter-check input:checked,.notify-pref input:checked{background:var(--ink);}
+.filter-check input:checked::after,.notify-pref input:checked::after{transform:translateX(16px);}
+.bar .filter-check{border-bottom:0;gap:var(--s3);}
+.set-group{margin:var(--s6) 0 var(--s1);font-size:var(--t1);font-weight:600;color:var(--ink);}
+.set-group:first-of-type{margin-top:0;}
+#settingsForm .field{margin:var(--s3) 0;}
+@media(max-width:767px){
+  main{padding-top:var(--s4);}
+  .page-heading{gap:var(--s2);}
+  .toolbar-actions .g{flex:0 0 auto;}
+  table{border:0;border-radius:0;}
+  #tab-now thead tr{display:flex;gap:0;padding:0;margin-bottom:var(--s3);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;}
+  #tab-now.on thead::before{content:none;}
+  #tab-now th{flex:1;border-left:1px solid var(--line-soft);background:var(--card);}
+  #tab-now th:first-child{border-left:0;}
+  #tab-now .sort-button{border:0;border-radius:0;min-height:36px;justify-content:center;font-size:var(--t1);}
+  tr{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s1) 0;padding:var(--s3) 0;position:relative;border-top:1px solid var(--line-soft);}
+  td{height:auto;padding:0;font-size:var(--t1);color:var(--ink-2);}
+  td::before{display:none!important;}
+  td:first-child{flex:0 0 100%;font-size:var(--t1);color:var(--ink);padding-right:110px;}
+  td:last-child:not(:has(button)){padding-right:0;}
+  td:not(:first-child):not(:last-child)+td:not(:last-child)::after{}
+  td:not(:first-child):not(:last-child){padding-right:var(--s2);}
+  td:not(:first-child):not(:last-child):not(:nth-last-child(2))::after{content:"·";padding-left:var(--s2);color:var(--ink-2);}
+  td:last-child:has(button){position:absolute;right:0;top:var(--s3);display:flex;gap:var(--s1);}
+  #staffBody tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s1) var(--s3);}
+  #staffBody td{padding:0!important;}
+  #staffBody td::after{content:none!important;}
+  #staffBody td:first-child{grid-column:1/-1;}
+  #staffBody td:last-child:has(button){position:static;grid-column:1/-1;justify-content:flex-start;flex-wrap:wrap;margin:var(--s1) 0 0 -8px;gap:0;}
+  td button{white-space:nowrap;}
+  td button.g{padding:var(--s1) var(--s2);}
+  .av{display:none;}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .stat:nth-child(3){border-left:0;}
+  .stat:nth-child(n+3){border-top:1px solid var(--line-soft);}
+  .flag .act{flex:0 0 auto;margin-left:auto;}
+  header nav{padding-top:0;}
+  nav button{min-height:56px;font-size:12px;}
+}
+@media(min-width:768px){
+  header{padding:var(--s3) var(--s8);}
+  header nav{gap:var(--s4);}
+  header nav button{font-size:var(--t1);font-weight:500;min-height:40px;}
+  main{padding-top:var(--s6);}
+  .bar{margin:var(--s3) 0 var(--s4);}
+}
+/* Desktop: a quiet left side bar, dense content */
+@media(min-width:1024px){
+  #app:not(.hidden){display:grid;grid-template-columns:232px minmax(0,1fr);grid-template-rows:auto 1fr;min-height:100vh;}
+  #demoBar{grid-column:1/-1;}
+  header{grid-column:1;align-self:stretch;min-height:100vh;flex-direction:column;align-items:stretch;justify-content:flex-start;flex-wrap:nowrap;gap:0;padding:var(--s4) var(--s3);background:#F7F8FA;color:var(--ink);border-right:1px solid var(--line);}
+  header>div:first-child{padding:var(--s1) var(--s3) var(--s4);border-bottom:1px solid var(--line);margin-bottom:var(--s3);}
+  .brand{font-size:var(--t2);}
+  header .co{color:var(--ink-2);}
+  header nav{order:0;flex-basis:auto;flex-direction:column;gap:2px;}
+  header nav button{justify-content:flex-start;gap:var(--s3);min-height:36px;padding:0 var(--s3);border:0;border-radius:6px;color:var(--ink-2);font-size:var(--t1);font-weight:500;}
+  header nav button:hover{background:#EDF0F4;color:var(--ink);}
+  header nav button.on{background:#E9ECF1;color:var(--ink);box-shadow:inset 2px 0 0 var(--brand);border-bottom:0;}
+  header nav :focus-visible{outline-color:var(--accent);}
+  header nav .lucide{width:16px;height:16px;}
+  header>.link{margin-top:auto;align-self:flex-start;min-height:36px;padding:0 var(--s3);color:var(--ink-2);font-size:var(--t1);}
+  main{grid-column:2;max-width:1360px;width:100%;margin:0;padding:var(--s6) var(--s8) var(--s12);}
+  h1{font-size:var(--t3);}
+  .page-heading{padding-bottom:var(--s4);margin-bottom:var(--s4);border-bottom:1px solid var(--line);}
+  td{height:44px;padding:var(--s1) var(--s4);}
+  th{padding:var(--s2) var(--s4);}
+  .flag{min-height:44px;}
+  .bar>input,.bar>select{flex:0 1 280px;}
+}
+/* Mouse and trackpad only: touch screens (iPad) keep 44px controls and 16px inputs. */
+@media(min-width:1024px) and (hover:hover) and (pointer:fine){
+  .btn,button.b,button.g{min-height:36px;}
+  input,select{min-height:36px;padding:var(--s1) var(--s3);font-size:var(--t1);}
+}
 </style>
 </head>
 <body>
@@ -447,7 +585,7 @@
     <section id="tab-audit"><h2>Audit history</h2><p class="note">A record of attendance corrections and rota changes for this company.</p><div class="bar"><label class="field">Action<select id="auditFilter"><option value="">All activity</option><option value="requested">Requests</option><option value="approved">Approvals</option><option value="rejected">Rejections</option><option value="created">Created</option><option value="updated">Updated</option><option value="removed">Removed</option></select></label><button class="g" id="refreshAudit">Refresh</button><button class="g" id="exportAudit">Export CSV</button><span class="notify-state" id="auditUpdated"></span></div><div id="auditEvents" aria-live="polite"></div></section>
   </main>
 </div>
-<dialog id="settingsDialog" aria-labelledby="settingsTitle"><form id="settingsForm"><h2 id="settingsTitle">Company settings</h2><label class="field">Company name<input id="companyName" required maxlength="120"></label><label class="field" id="tzWrap">Time zone<select id="timeZone"></select></label><label class="field" id="curWrap">Currency<select id="currency"></select></label><label class="filter-check" id="payToggleWrap"><input type="checkbox" id="showPay">Show estimated pay</label><label class="filter-check" id="onSiteToggleWrap"><input type="checkbox" id="requireOnSite">Only allow clock-in on site</label><label class="filter-check" id="breakToggleWrap"><input type="checkbox" id="useBreaks">Staff record breaks</label><label class="field" id="privacyContactWrap">Privacy notice: who staff ask about their data<input id="privacyContact" maxlength="200" autocomplete="off"></label><label class="field" id="retentionWrap">Privacy notice: how long records are kept<input id="retentionText" maxlength="200" autocomplete="off"></label><label class="filter-check" id="rotaToggleWrap"><input type="checkbox" id="useRota">Use rota &amp; availability</label><label class="field" id="otWrap">Overtime after (hours a week)<input id="overtimeHours" type="number" inputmode="decimal" min="0.5" max="168" step="0.5" autocomplete="off"></label><div id="settingsError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelSettings">Cancel</button><button class="b" id="saveSettings">Save changes</button></div></form></dialog>
+<dialog id="settingsDialog" aria-labelledby="settingsTitle"><form id="settingsForm"><h2 id="settingsTitle">Company settings</h2><div class="set-group">Company</div><label class="field">Company name<input id="companyName" required maxlength="120"></label><label class="field" id="tzWrap">Time zone<select id="timeZone"></select></label><label class="field" id="curWrap">Currency<select id="currency"></select></label><div class="set-group">Clocking and pay</div><label class="filter-check" id="payToggleWrap"><input type="checkbox" id="showPay">Show estimated pay</label><label class="filter-check" id="onSiteToggleWrap"><input type="checkbox" id="requireOnSite">Only allow clock-in on site</label><label class="filter-check" id="breakToggleWrap"><input type="checkbox" id="useBreaks">Staff record breaks</label><div class="set-group">Privacy notice</div><label class="field" id="privacyContactWrap">Who staff ask about their data<input id="privacyContact" maxlength="200" autocomplete="off"></label><label class="field" id="retentionWrap">How long records are kept<input id="retentionText" maxlength="200" autocomplete="off"></label><div class="set-group">Rota and overtime</div><label class="filter-check" id="rotaToggleWrap"><input type="checkbox" id="useRota">Use rota &amp; availability</label><label class="field" id="otWrap">Overtime after (hours a week)<input id="overtimeHours" type="number" inputmode="decimal" min="0.5" max="168" step="0.5" autocomplete="off"></label><div id="settingsError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelSettings">Cancel</button><button class="b" id="saveSettings">Save changes</button></div></form></dialog>
 <dialog id="rateDialog" aria-labelledby="rateTitle"><form id="rateForm"><h2 id="rateTitle">Hourly rate</h2><p class="note" id="rateWho"></p><label class="field">Pounds per hour<input id="rateValue" type="number" inputmode="decimal" min="0" max="1000" step="0.01"></label><p class="note">Used only to estimate pay from completed hours. Clear it and save to remove the rate.</p><div id="rateError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g" id="cancelRate">Cancel</button><button class="b" id="saveRate">Save rate</button></div></form></dialog>
 
 <dialog id="rotaDialog" aria-labelledby="rotaTitle"><form id="rotaForm"><h2 id="rotaTitle">Add shift</h2><label class="field">Staff member<select id="rotaWho" required></select></label><label class="field">Date<input id="rotaDate" type="date" required></label><div class="time-pair"><label class="field">Start<input id="rotaStart" type="time" required></label><label class="field">Finish<input id="rotaEnd" type="time" required></label></div><p class="note" id="rotaHint"></p><label class="field">Worksite<select id="rotaSite"></select></label><label class="field">Note for staff (optional)<input id="rotaNote" maxlength="300"></label><div id="rotaWarn" class="warn-line hidden" role="status"></div><div id="rotaError" class="err hidden" role="alert"></div><div class="bar"><button type="button" class="g hidden" id="deleteRota">Remove shift</button><button type="button" class="g" id="cancelRota">Cancel</button><button class="b" id="saveRota">Save shift</button></div></form></dialog>
